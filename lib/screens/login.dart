@@ -1,4 +1,5 @@
- import 'dart:convert';
+ import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -6,6 +7,7 @@ import '../models/storeToken.dart';
 import '../utils/Routes.dart';
 import '../utils/api_config.dart';
 import '../utils/colors.dart';
+import '../utils/session.dart';
 import '../widgets/custom_text_form_field.dart';
 import '../widgets/gradient_button.dart';
 // import 'package:brl_task4/screens/recaptcha.dart';
@@ -45,6 +47,9 @@ class _LoginState extends State<Login> {
       dynamic generateResponse = jsonDecode(response.body);
       Token.fromJson(generateResponse);
       await secureStorage.writeSecureData(key,generateResponse);
+      // No bloquea el login: si /user/me falla, el rol simplemente queda
+      // sin cachear y se puede volver a pedir más adelante.
+      unawaited(Session.fetchCurrentUser(generateResponse));
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Inicio de sesión exitoso"),),);
