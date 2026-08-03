@@ -1,20 +1,20 @@
-# Team Management App - Radio Doliv Organizational Update
+# Team Management App - Actualización Organizacional de Radio Doliv
 
-> This document describes the new architecture and functional requirements for the next version of the application.
+> Este documento describe la nueva arquitectura y los requisitos funcionales para la próxima versión de la aplicación.
 
-## Overview
+## Resumen
 
-The current application is designed as a generic team management platform.
+La aplicación actual está diseñada como una plataforma genérica de gestión de equipos.
 
-The project must now evolve into an organizational management system specifically designed for **Radio Doliv**, introducing a hierarchical company structure with three different access levels:
+El proyecto ahora debe evolucionar hacia un sistema de gestión organizacional diseñado específicamente para **Radio Doliv**, introduciendo una estructura jerárquica de empresa con tres niveles de acceso distintos:
 
 - Director General
-- Department Manager
-- Employee
+- Manager de Departamento
+- Empleado
 
-> **IMPORTANT**
+> **IMPORTANTE**
 >
-> Although this document is written in English, **the entire application UI must remain 100% in Spanish**, including buttons, dialogs, menus, notifications, validation messages, and all user-facing text.
+> Toda la interfaz de la aplicación debe permanecer 100% en español, incluyendo botones, diálogos, menús, notificaciones, mensajes de validación y todo el texto visible para el usuario.
 
 ---
 
@@ -72,163 +72,163 @@ equipos/tareas/chat/recursos existente fue modificado.
 
 ---
 
-# New Organizational Structure
+# Nueva estructura organizacional
 
-The application should represent the following hierarchy:
+La aplicación debe representar la siguiente jerarquía:
 
 ```
-Company (Radio Doliv)
+Empresa (Radio Doliv)
 
 └── Director General
       │
       ├── Marketing
       │      ├── Manager
-      │      └── Employees
+      │      └── Empleados
       │
-      ├── Systems
+      ├── Sistemas
       │      ├── Manager
-      │      └── Employees
+      │      └── Empleados
       │
-      ├── Human Resources
+      ├── Recursos Humanos
       │      ├── Manager
-      │      └── Employees
+      │      └── Empleados
       │
-      └── Broadcasting
+      └── Radiodifusión
              ├── Manager
-             └── Employees
+             └── Empleados
 ```
 
-The concept of **Team** should gradually evolve into a company-wide organizational structure.
+El concepto de **Equipo** debe evolucionar gradualmente hacia una estructura organizacional a nivel de toda la empresa.
 
 ---
 
-# User Roles
+# Roles de usuario
 
 ## Director General
 
-Highest level of permissions.
+Máximo nivel de permisos.
 
-Responsibilities:
+Responsabilidades:
 
-- Create departments
-- Register department managers
-- Register employees
-- Assign department managers
-- Create company-wide announcements
-- Create strategic tasks
-- Assign tasks to departments
-- View company analytics
-- View department performance
-- Approve leave requests
-- Access all chats
-- Access all shared resources
-
----
-
-## Department Manager
-
-Each department has exactly one manager.
-
-Responsibilities:
-
-- Manage department employees
-- Create tasks
-- Assign tasks
-- Validate completed tasks
-- Create department announcements
-- Upload shared resources
-- View department reports
-- Approve employee work
-- Manage department chat
-
-Managers cannot modify other departments.
+- Crear departamentos
+- Registrar managers de departamento
+- Registrar empleados
+- Asignar managers de departamento
+- Crear anuncios para toda la empresa
+- Crear tareas estratégicas
+- Asignar tareas a departamentos
+- Ver analítica de la empresa
+- Ver el desempeño de los departamentos
+- Aprobar solicitudes de permiso
+- Acceder a todos los chats
+- Acceder a todos los recursos compartidos
 
 ---
 
-## Employee
+## Manager de Departamento
 
-Employees have limited permissions.
+Cada departamento tiene exactamente un manager.
 
-They can:
+Responsabilidades:
 
-- View assigned tasks
-- Complete tasks
-- View announcements
-- Access department chat
-- Upload work resources
-- Request leave
-- View personal progress
-- View department information
+- Gestionar a los empleados del departamento
+- Crear tareas
+- Asignar tareas
+- Validar tareas completadas
+- Crear anuncios del departamento
+- Subir recursos compartidos
+- Ver reportes del departamento
+- Aprobar el trabajo de los empleados
+- Gestionar el chat del departamento
 
-Employees cannot manage users.
+Los managers no pueden modificar otros departamentos.
 
 ---
 
-# Departments
+## Empleado
 
-The initial departments are:
+Los empleados tienen permisos limitados.
+
+Pueden:
+
+- Ver las tareas asignadas
+- Completar tareas
+- Ver anuncios
+- Acceder al chat del departamento
+- Subir recursos de trabajo
+- Solicitar permisos
+- Ver su progreso personal
+- Ver información del departamento
+
+Los empleados no pueden gestionar usuarios.
+
+---
+
+# Departamentos
+
+Los departamentos iniciales son:
 
 - Marketing
-- Systems
-- Human Resources
-- Broadcasting
+- Sistemas
+- Recursos Humanos
+- Radiodifusión
 
-The architecture must allow creating additional departments in the future.
-
----
-
-# Dashboard Redesign
-
-Instead of a single dashboard, the application should display different dashboards depending on the authenticated user's role.
-
-## Director Dashboard
-
-Includes:
-
-- Company overview
-- Departments
-- Employees
-- Active tasks
-- Performance charts
-- Leave approvals
-- Company announcements
-- Reports
+La arquitectura debe permitir crear departamentos adicionales en el futuro.
 
 ---
 
-## Manager Dashboard
+# Rediseño del Dashboard
 
-Includes:
+En lugar de un único dashboard, la aplicación debe mostrar dashboards distintos según el rol del usuario autenticado.
 
-- Department overview
-- Department employees
-- Pending tasks
-- Completed tasks
-- Department resources
-- Department announcements
+## Dashboard del Director
+
+Incluye:
+
+- Resumen de la empresa
+- Departamentos
+- Empleados
+- Tareas activas
+- Gráficas de desempeño
+- Aprobaciones de permisos
+- Anuncios de la empresa
+- Reportes
+
+---
+
+## Dashboard del Manager
+
+Incluye:
+
+- Resumen del departamento
+- Empleados del departamento
+- Tareas pendientes
+- Tareas completadas
+- Recursos del departamento
+- Anuncios del departamento
 - Chat
 
 ---
 
-## Employee Dashboard
+## Dashboard del Empleado
 
-Includes:
+Incluye:
 
-- My Tasks
-- My Progress
-- My Calendar
-- My Announcements
-- Department Chat
-- Shared Resources
-- Leave Requests
+- Mis Tareas
+- Mi Progreso
+- Mi Calendario
+- Mis Anuncios
+- Chat del Departamento
+- Recursos Compartidos
+- Solicitudes de Permiso
 
 ---
 
-# Permission System
+# Sistema de permisos
 
-Replace the current Team Leader authorization model with a Role-Based Access Control (RBAC) system.
+Reemplazar el modelo actual de autorización por Líder de Equipo con un sistema de Control de Acceso Basado en Roles (RBAC).
 
-Supported roles:
+Roles soportados:
 
 ```
 director
@@ -238,15 +238,15 @@ manager
 employee
 ```
 
-Every endpoint should validate permissions according to the authenticated user's role.
+Todo endpoint debe validar los permisos según el rol del usuario autenticado.
 
 ---
 
-# Database Changes
+# Cambios en la base de datos
 
 ## Companies
 
-Create a company entity.
+Crear una entidad de empresa.
 
 ```
 companies
@@ -275,7 +275,7 @@ manager_id
 
 ## Users
 
-Extend the existing users table with:
+Extender la tabla de usuarios existente con:
 
 ```
 department_id
@@ -285,23 +285,23 @@ role
 position
 ```
 
-Examples:
+Ejemplos:
 
 ```
-Software Engineer
+Ingeniero de Software
 
-Marketing Specialist
+Especialista en Marketing
 
-Radio Host
+Locutor de Radio
 
-HR Coordinator
+Coordinador de RRHH
 ```
 
 ---
 
 ## Tasks
 
-Extend tasks with:
+Extender las tareas con:
 
 ```
 created_by
@@ -323,7 +323,7 @@ status
 
 ## Announcements
 
-Create a new table.
+Crear una tabla nueva.
 
 ```
 announcements
@@ -341,19 +341,19 @@ created_by
 created_at
 ```
 
-If
+Si
 
 ```
 department_id = NULL
 ```
 
-the announcement is visible company-wide.
+el anuncio es visible para toda la empresa.
 
 ---
 
 ## Reports
 
-Create a reports module.
+Crear un módulo de reportes.
 
 ```
 reports
@@ -371,16 +371,16 @@ comments
 
 ---
 
-# Task Workflow
+# Flujo de trabajo de tareas
 
-Tasks should follow this workflow:
+Las tareas deben seguir este flujo:
 
 ```
 Director
 
 ↓
 
-Department
+Departamento
 
 ↓
 
@@ -388,145 +388,145 @@ Manager
 
 ↓
 
-Employee
+Empleado
 
 ↓
 
-Employee completes task
+El empleado completa la tarea
 
 ↓
 
-Manager validates
+El manager valida
 
 ↓
 
-Director views statistics
+El director ve las estadísticas
 ```
 
 ---
 
-# Leave Requests
+# Solicitudes de permiso
 
-Employees submit leave requests.
+Los empleados envían solicitudes de permiso.
 
-Managers review department requests.
+Los managers revisan las solicitudes del departamento.
 
-The Director General has final visibility over every request.
-
----
-
-# Notifications
-
-Notifications should support:
-
-- New task assigned
-- Task completed
-- Task approved
-- Leave approved
-- Leave rejected
-- New announcement
-- Department updates
-- Resource uploaded
+El Director General tiene visibilidad final sobre todas las solicitudes.
 
 ---
 
-# Reports & Analytics
+# Notificaciones
 
-The Director dashboard should include:
+Las notificaciones deben soportar:
 
-- Tasks by department
-- Completed tasks
-- Pending tasks
-- Employee productivity
-- Department productivity
-- Weekly statistics
-- Monthly statistics
+- Nueva tarea asignada
+- Tarea completada
+- Tarea aprobada
+- Permiso aprobado
+- Permiso rechazado
+- Nuevo anuncio
+- Actualizaciones del departamento
+- Recurso subido
 
-Managers should only see their own department's analytics.
+---
+
+# Reportes y Analítica
+
+El dashboard del Director debe incluir:
+
+- Tareas por departamento
+- Tareas completadas
+- Tareas pendientes
+- Productividad de empleados
+- Productividad por departamento
+- Estadísticas semanales
+- Estadísticas mensuales
+
+Los managers solo deben ver la analítica de su propio departamento.
 
 ---
 
 # Chat
 
-Keep the existing chat module.
+Mantener el módulo de chat existente.
 
-Add support for:
+Agregar soporte para:
 
-- Department chat
-- Company announcements
-- System notifications
+- Chat de departamento
+- Anuncios de la empresa
+- Notificaciones del sistema
 
 ---
 
-# Resources
+# Recursos
 
-Keep the shared resources module.
+Mantener el módulo de recursos compartidos existente.
 
-Resources belong to a department.
+Los recursos pertenecen a un departamento.
 
-Supported resource types:
+Tipos de recurso soportados:
 
-- Documents
-- Images
+- Documentos
+- Imágenes
 - PDFs
 - Videos
-- External links
+- Enlaces externos
 
 ---
 
-# Future Features
+# Funcionalidades futuras
 
-The architecture should be designed to support future modules without major refactoring.
+La arquitectura debe estar diseñada para soportar módulos futuros sin necesidad de una refactorización mayor.
 
-Examples:
+Ejemplos:
 
-- Attendance control
-- Time tracking
-- Electronic signatures
-- KPI dashboards
-- Calendar integration
-- Push notifications
-- Mobile notifications
-- Project management
-- Performance evaluations
-
----
-
-# UI Language Requirement
-
-**This is mandatory.**
-
-The project documentation, source code, comments, and README files may be written in Spanish.
-
-However:
-
-- Every screen
-- Every button
-- Every dialog
-- Every validation
-- Every notification
-- Every error message
-- Every menu
-- Every label
-- Every form
-
-**must remain entirely in Spanish.**
-
-No English text should appear anywhere in the user interface.
+- Control de asistencia
+- Registro de horas
+- Firmas electrónicas
+- Dashboards de KPIs
+- Integración de calendario
+- Notificaciones push
+- Notificaciones móviles
+- Gestión de proyectos
+- Evaluaciones de desempeño
 
 ---
 
-# Migration Notes
+# Requisito de idioma de la interfaz
 
-The current project already contains working modules for:
+**Esto es obligatorio.**
 
-- Authentication
-- Tasks
-- Notifications
+La documentación del proyecto, el código fuente, los comentarios y los archivos README pueden estar en español.
+
+Sin embargo:
+
+- Cada pantalla
+- Cada botón
+- Cada diálogo
+- Cada validación
+- Cada notificación
+- Cada mensaje de error
+- Cada menú
+- Cada etiqueta
+- Cada formulario
+
+**debe permanecer completamente en español.**
+
+Ningún texto en inglés debe aparecer en ninguna parte de la interfaz de usuario.
+
+---
+
+# Notas de migración
+
+El proyecto actual ya contiene módulos funcionales para:
+
+- Autenticación
+- Tareas
+- Notificaciones
 - Chat
-- Shared Resources
-- Leave Requests
+- Recursos Compartidos
+- Solicitudes de Permiso
 
-These modules should be reused whenever possible.
+Estos módulos deben reutilizarse siempre que sea posible.
 
-The migration should focus on replacing the existing Team/Leader architecture with the new Company/Department/Role hierarchy while minimizing unnecessary refactoring.
+La migración debe enfocarse en reemplazar la arquitectura actual de Equipo/Líder por la nueva jerarquía de Empresa/Departamento/Rol, minimizando refactorizaciones innecesarias.
