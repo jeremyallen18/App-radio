@@ -2,6 +2,8 @@ const express = require('express');
 const crypto = require('crypto');
 const pool = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { isTeamMember, requireTeamMember, requireTeamLeader } = require('../middleware/teamAccess');
+const { notifyUser } = require('../utils/notify');
 
 const router = express.Router();
 
@@ -151,7 +153,7 @@ router.get('/showTeams', requireAuth, async (req, res) => {
 
 // POST /team/sendTeamcode/:teamId/:domainName  { recipients: [email, ...] }
 // Invita (agrega) usuarios ya registrados a un área del equipo.
-router.post('/sendTeamcode/:teamId/:domainName', requireAuth, async (req, res) => {
+router.post('/sendTeamcode/:teamId/:domainName', requireAuth, requireTeamMember, async (req, res) => {
   const { teamId, domainName } = req.params;
   const { recipients } = req.body;
   if (!Array.isArray(recipients) || !recipients.length) {
@@ -198,6 +200,9 @@ router.post('/task/:teamcode', requireAuth, async (req, res) => {
   try {
     const [[team]] = await pool.query('SELECT id FROM teams WHERE team_code = :teamcode', { teamcode });
     if (!team) return res.status(404).json({ error: 'Equipo no encontrado' });
+    if (!(await isTeamMember(team.id, req.user.id))) {
+      return res.status(403).json({ error: 'No perteneces a este equipo' });
+    }
     const [[domain]] = await pool.query(
       'SELECT id FROM domains WHERE team_id = :teamId AND name = :domainName',
       { teamId: team.id, domainName }
@@ -225,6 +230,11 @@ router.post('/taskDone', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'teamCode, domainName, email y task son obligatorios' });
   }
   try {
+    const [[team]] = await pool.query('SELECT id FROM teams WHERE team_code = :teamCode', { teamCode });
+    if (!team) return res.status(404).json({ error: 'Equipo no encontrado' });
+    if (!(await isTeamMember(team.id, req.user.id))) {
+      return res.status(403).json({ error: 'No perteneces a este equipo' });
+    }
     const [result] = await pool.query(
       `UPDATE tasks tk
        JOIN domains d ON d.id = tk.domain_id
@@ -287,7 +297,7 @@ router.get('/completedTasks', requireAuth, async (req, res) => {
 });
 
 // POST /team/deleteMember/:teamId  { memberEmail }  (LResign.dart -> Resign, "Eliminar miembro")
-router.post('/deleteMember/:teamId', requireAuth, async (req, res) => {
+router.post('/deleteMember/:teamId', requireAuth, requireTeamLeader, async (req, res) => {
   const { teamId } = req.params;
   const { memberEmail } = req.body;
   if (!memberEmail) return res.status(400).json({ error: 'memberEmail es obligatorio' });
@@ -304,6 +314,15 @@ router.post('/deleteMember/:teamId', requireAuth, async (req, res) => {
        WHERE d.team_id = :teamId AND dm.user_id = :userId`,
       { teamId, userId: member.id }
     );
+    const [[team]] = await pool.query('SELECT team_name FROM teams WHERE id = :teamId', { teamId });
+    if (team) {
+      await notifyUser(
+        member.id,
+        teamId,
+        'member_removed',
+        `Fuiste eliminado del equipo "${team.team_name}"`
+      );
+    }
     return res.status(200).json({ message: 'Miembro eliminado' });
   } catch (err) {
     return res.status(500).json({ error: 'Error eliminando al miembro' });
@@ -311,13 +330,15 @@ router.post('/deleteMember/:teamId', requireAuth, async (req, res) => {
 });
 
 // POST /team/leaderResign/:teamId  { Correo }  (LResign.dart -> Resign, "Asignar nuevo líder")
-router.post('/leaderResign/:teamId', requireAuth, async (req, res) => {
+router.post('/leaderResign/:teamId', requireAuth, requireTeamLeader, async (req, res) => {
   const { teamId } = req.params;
   const correo = req.body.Correo;
   if (!correo) return res.status(400).json({ error: 'Correo es obligatorio' });
   try {
     const [[newLeader]] = await pool.query('SELECT id FROM users WHERE email = :correo', { correo });
     if (!newLeader) return res.status(404).json({ error: 'No existe un usuario con ese correo' });
+    const [[team]] = await pool.query('SELECT team_name FROM teams WHERE id = :teamId', { teamId });
+    if (!team) return res.status(404).json({ error: 'Equipo no encontrado' });
     await pool.query('UPDATE teams SET leader_id = :leaderId WHERE id = :teamId', {
       leaderId: newLeader.id,
       teamId,
@@ -326,6 +347,12 @@ router.post('/leaderResign/:teamId', requireAuth, async (req, res) => {
       teamId,
       userId: newLeader.id,
     });
+    await notifyUser(
+      newLeader.id,
+      teamId,
+      'leader_assigned',
+      `Ahora eres el líder del equipo "${team.team_name}"`
+    );
     return res.status(200).json({ message: 'Nuevo líder asignado' });
   } catch (err) {
     return res.status(500).json({ error: 'Error asignando el nuevo líder' });

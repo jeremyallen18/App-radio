@@ -40,7 +40,6 @@ class _LoginState extends State<Login> {
     );
     if (!mounted) return;
     setState(() => _isLoading = false);
-      print(response.body);
     if (response.statusCode == 200) {
 
       dynamic generateResponse = jsonDecode(response.body);
@@ -49,12 +48,10 @@ class _LoginState extends State<Login> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Inicio de sesión exitoso"),),);
-      print('API Response: ${response.body}');
       await Navigator.pushNamed(context, MyRoutes.BottomNavBar);
 
     } else {
       print('Failed to join the team. Status Code: ${response.statusCode}');
-      print('Error Message: ${response.body}');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Correo o contraseña incorrectos")),
       );

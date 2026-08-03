@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../utils/api_config.dart';
+import 'login.dart';
 
 class ChatScreenfetch extends StatefulWidget {
   @override
@@ -24,7 +25,11 @@ class _ChatScreenfetchState extends State<ChatScreenfetch> {
 
 
     try {
-      final response = await http.get(Uri.parse(apiUrl));
+      final token = await secureStorage.readSecureData(key);
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: <String, String>{'Authorization': token ?? ''},
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);

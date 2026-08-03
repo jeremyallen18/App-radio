@@ -4,6 +4,7 @@ import "package:flutter/material.dart";
 import 'package:http/http.dart' as http;
 import '../utils/api_config.dart';
 import '../utils/colors.dart';
+import '../utils/Routes.dart';
 import 'LResign.dart';
 import 'MResign.dart';
 import 'addTask.dart';
@@ -57,6 +58,64 @@ class _t_detailState extends State<t_detail> {
       );
     }
     return false;
+  }
+
+  Future<void> _confirmDeleteTeam() async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.darkField,
+        title: const Text('Eliminar equipo', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Se eliminará "$teamName" junto con sus áreas, tareas y recursos. '
+          'Esta acción no se puede deshacer.',
+          style: const TextStyle(color: AppColors.darkMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar', style: TextStyle(color: AppColors.darkMuted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    await _deleteTeam();
+  }
+
+  Future<void> _deleteTeam() async {
+    dynamic storedValue = await secureStorage.readSecureData(key);
+    try {
+      final response = await http.post(
+        Uri.parse('$kBaseUrl/team/deleteTeam/$teamId'),
+        headers: <String, String>{'Authorization': storedValue ?? ''},
+      );
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Equipo eliminado')),
+        );
+        Navigator.pushNamedAndRemoveUntil(context, MyRoutes.BottomNavBar, (route) => false);
+      } else if (response.statusCode == 403) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Solo el líder puede eliminar el equipo')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo eliminar el equipo (${response.statusCode})')),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error de red al eliminar el equipo')),
+      );
+    }
   }
 
   Future<void> data (dynamic teams) async{
@@ -449,16 +508,18 @@ class _t_detailState extends State<t_detail> {
                       MaterialPageRoute(builder: (context) =>
                           Resign(teamId: teamId)));
                 }),
+                _actionButton("Eliminar equipo", Icons.delete_outline,
+                    _confirmDeleteTeam, danger: true),
               ],
             ),
     );
   }
 
-  Widget _actionButton(String label, IconData icon, VoidCallback onTap) {
+  Widget _actionButton(String label, IconData icon, VoidCallback onTap, {bool danger = false}) {
     return ElevatedButton.icon(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.indigo.shade400,
+        backgroundColor: danger ? Colors.red.shade700 : Colors.indigo.shade400,
         foregroundColor: Colors.white,
       ),
       icon: Icon(icon, size: 18),

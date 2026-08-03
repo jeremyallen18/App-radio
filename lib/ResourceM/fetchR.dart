@@ -55,14 +55,14 @@ class _ShowTextScreenState extends State<ShowTextScreen> {
  
   Future<void> fetchMessages() async {
     try {
-      var request = http.Request(
-        'GET',
-        Uri.parse(
-          '$kBaseUrl/text/showText/${widget.teamId}',
-        ),
-      );
+      dynamic storedValue = await secureStorage.readSecureData(key);
 
-      http.Response response = await http.get(request.url);
+      http.Response response = await http.get(
+        Uri.parse('$kBaseUrl/text/showText/${widget.teamId}'),
+        headers: {
+          'Authorization': storedValue ?? '',
+        },
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);

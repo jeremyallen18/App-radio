@@ -101,7 +101,9 @@ class _PostTextScreenState extends State<PostTextScreen> {
 
       http.StreamedResponse response = await request.send();
 
-      if (response.statusCode == 201) {
+      // El backend PHP responde 201 y el de Node 200; ambos significan que el
+      // texto se guardó.
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final Map<String, dynamic> responseData =
             json.decode(await response.stream.bytesToString());
         setState(() {

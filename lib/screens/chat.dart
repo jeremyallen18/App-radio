@@ -5,6 +5,7 @@ import 'package:brl_task4/screens/chatHistory.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../utils/api_config.dart';
+import 'login.dart';
 
 class ChatScreen extends StatefulWidget {
   final String name;
@@ -37,7 +38,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _fetchMessages() async {
     try {
-      final response = await http.get(Uri.parse(_chatApiUrl));
+      final token = await secureStorage.readSecureData(key);
+      final response = await http.get(
+        Uri.parse(_chatApiUrl),
+        headers: <String, String>{'Authorization': token ?? ''},
+      );
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         final List<dynamic> chats = decoded['chats'] ?? [];
@@ -72,10 +77,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _controller.clear();
     try {
-      final response = await http.post(Uri.parse(_sendApiUrl), body: {
-        'username': myUsername,
-        'message': text,
-      });
+      final token = await secureStorage.readSecureData(key);
+      final response = await http.post(
+        Uri.parse(_sendApiUrl),
+        headers: <String, String>{'Authorization': token ?? ''},
+        body: {'message': text},
+      );
       if (response.statusCode == 200) {
         await _fetchMessages();
       } else {

@@ -1,12 +1,13 @@
 const express = require('express');
 const pool = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { requireTeamMember } = require('../middleware/teamAccess');
 
 const router = express.Router();
 
 // POST /leave/applyLeave/:teamid  { leaves: [{ startDate, endDate, reason }] }
 // (leave approval/leave.dart)
-router.post('/applyLeave/:teamid', requireAuth, async (req, res) => {
+router.post('/applyLeave/:teamid', requireAuth, requireTeamMember, async (req, res) => {
   const { teamid } = req.params;
   const leaves = req.body.leaves;
   if (!Array.isArray(leaves) || !leaves.length) {
@@ -36,8 +37,16 @@ router.post('/applyLeave/:teamid', requireAuth, async (req, res) => {
 router.post('/leaveResult/:leaveId', requireAuth, async (req, res) => {
   const { leaveId } = req.params;
   try {
-    const [[leave]] = await pool.query('SELECT status FROM leave_requests WHERE id = :leaveId', { leaveId });
+    const [[leave]] = await pool.query(
+      `SELECT lr.status, lr.user_id, t.leader_id
+       FROM leave_requests lr JOIN teams t ON t.id = lr.team_id
+       WHERE lr.id = :leaveId`,
+      { leaveId }
+    );
     if (!leave) return res.status(404).json({ error: 'Solicitud de permiso no encontrada' });
+    if (leave.user_id !== req.user.id && leave.leader_id !== req.user.id) {
+      return res.status(403).json({ error: 'No puedes consultar esta solicitud' });
+    }
     return res.status(200).json({ status: leave.status });
   } catch (err) {
     return res.status(500).json({ error: 'Error consultando la solicitud' });
