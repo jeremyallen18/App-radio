@@ -3,11 +3,13 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
+const pool = require('./db');
 const authRoutes = require('./routes/auth.routes');
 const teamsRoutes = require('./routes/teams.routes');
 const leaveRoutes = require('./routes/leave.routes');
 const chatRoutes = require('./routes/chat.routes');
 const resourcesRoutes = require('./routes/resources.routes');
+const notificationsRoutes = require('./routes/notifications.routes');
 
 const app = express();
 const basePath = process.env.BASE_PATH || '/hive-backend';
@@ -31,6 +33,7 @@ api.use('/user', authRoutes);
 api.use('/team', teamsRoutes);
 api.use('/leave', leaveRoutes);
 api.use('/chat', chatRoutes);
+api.use('/notifications', notificationsRoutes);
 api.use('/', resourcesRoutes); // resources.routes.js ya declara /image/... y /text/...
 
 app.use(basePath, api);
@@ -40,6 +43,13 @@ app.get('/', (req, res) => {
 });
 
 const port = Number(process.env.PORT) || 80;
-app.listen(port, () => {
-  console.log(`hive-backend (MySQL) escuchando en http://localhost:${port}${basePath}`);
-});
+pool.ensureSchema()
+  .then(() => {
+    app.listen(port, () => {
+      console.log(`hive-backend (MySQL) escuchando en http://localhost:${port}${basePath}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Error preparando el esquema de la base de datos:', err);
+    process.exit(1);
+  });

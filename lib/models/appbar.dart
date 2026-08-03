@@ -1,4 +1,5 @@
 import 'package:brl_task4/screens/login.dart';
+import 'package:brl_task4/screens/notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -16,6 +17,22 @@ class MyAppBar extends StatefulWidget implements PreferredSizeWidget {
 
 class _MyAppBarState extends State<MyAppBar> {
   String userName="";
+  int unreadCount = 0;
+
+  Future<void> unreadCountAPI() async {
+    dynamic storedValue = await secureStorage.readSecureData(key);
+    final response = await http.get(
+      Uri.parse('$kBaseUrl/notifications'),
+      headers: <String, String>{'Authorization': storedValue ?? ''},
+    );
+    if (response.statusCode == 200 && mounted) {
+      final decoded = json.decode(response.body);
+      final List<dynamic> notifications = decoded['notifications'] ?? [];
+      setState(() {
+        unreadCount = notifications.where((n) => n['readAt'] == null).length;
+      });
+    }
+  }
 
   Future<void> nameAPI() async {
     dynamic storedValue = await secureStorage.readSecureData(key);
@@ -44,6 +61,7 @@ class _MyAppBarState extends State<MyAppBar> {
   void initState() {
     super.initState();
     nameAPI();
+    unreadCountAPI();
   }
 
   @override
@@ -89,12 +107,41 @@ class _MyAppBarState extends State<MyAppBar> {
               ),
             ],
           ),
-          IconButton(
-            icon: Icon(
-              Icons.notifications,
-              color: Colors.white,
-            ),
-            onPressed: () {},
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.notifications,
+                  color: Colors.white,
+                ),
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                  );
+                  unreadCountAPI();
+                },
+              ),
+              if (unreadCount > 0)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Text(
+                      '$unreadCount',
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),

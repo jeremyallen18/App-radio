@@ -3,6 +3,7 @@ const path = require('path');
 const multer = require('multer');
 const pool = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { requireTeamMember, isTeamMember } = require('../middleware/teamAccess');
 
 const router = express.Router();
 
@@ -22,6 +23,9 @@ router.post('/image/addImage', requireAuth, upload.single('photo'), async (req, 
   if (!teamId || !req.file) {
     return res.status(400).json({ error: 'teamId y el archivo "photo" son obligatorios' });
   }
+  if (!(await isTeamMember(teamId, req.user.id))) {
+    return res.status(403).json({ error: 'No perteneces a este equipo' });
+  }
   try {
     const publicUrl = `${process.env.PUBLIC_URL || ''}${process.env.BASE_PATH || '/hive-backend'}/uploads/${req.file.filename}`;
     await pool.query(
@@ -36,7 +40,7 @@ router.post('/image/addImage', requireAuth, upload.single('photo'), async (req, 
 
 // GET /image/showImage/:teamId -> array plano [{ imgURL, imgName }, ...]
 // (ResourceM/fetchR.dart, imagecc.dart)
-router.get('/image/showImage/:teamId', requireAuth, async (req, res) => {
+router.get('/image/showImage/:teamId', requireAuth, requireTeamMember, async (req, res) => {
   const { teamId } = req.params;
   try {
     const [rows] = await pool.query(
@@ -50,7 +54,7 @@ router.get('/image/showImage/:teamId', requireAuth, async (req, res) => {
 });
 
 // POST /text/addText/:teamId  { text }  (ResourceM/getR.dart, doc.dart)
-router.post('/text/addText/:teamId', requireAuth, async (req, res) => {
+router.post('/text/addText/:teamId', requireAuth, requireTeamMember, async (req, res) => {
   const { teamId } = req.params;
   const { text } = req.body;
   if (!text) return res.status(400).json({ error: 'text es obligatorio' });
@@ -68,7 +72,7 @@ router.post('/text/addText/:teamId', requireAuth, async (req, res) => {
 // GET /text/showText/:teamId -> { data: [{ email, texts: [...] }, ...] }
 // agrupado por usuario (ver lib/ResourceM/fetchR.dart: messages[i]['email'] /
 // messages[i]['texts']).
-router.get('/text/showText/:teamId', requireAuth, async (req, res) => {
+router.get('/text/showText/:teamId', requireAuth, requireTeamMember, async (req, res) => {
   const { teamId } = req.params;
   try {
     const [rows] = await pool.query(

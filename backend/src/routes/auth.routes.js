@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const pool = require('../db');
 const { signToken } = require('../utils/token');
 const { requireAuth } = require('../middleware/auth');
+const { requireTeamMember } = require('../middleware/teamAccess');
 
 const router = express.Router();
 
@@ -138,7 +139,7 @@ router.post('/newPassword/:email', async (req, res) => {
 // POST /user/sendMessage/:teamId  { Correo, message }
 // Reutilizado por ResourceM/Leaderassist.dart (pedir ayuda al líder) y
 // screens/MResign.dart (avisar intención de renunciar).
-router.post('/sendMessage/:teamId', requireAuth, async (req, res) => {
+router.post('/sendMessage/:teamId', requireAuth, requireTeamMember, async (req, res) => {
   const { teamId } = req.params;
   const correo = req.body.Correo;
   const { message } = req.body;

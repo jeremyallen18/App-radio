@@ -197,7 +197,6 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
       'Authorization' :storedValue,
       'Content-Type': 'application/json'
     };
-      print(storedValue);
     var request = http.Request(
       'POST',
       Uri.parse(
@@ -234,10 +233,9 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
       http.StreamedResponse response = await request.send();   
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData =
-            jsonDecode(await response.stream.bytesToString()); 
-        final String teamId = responseData['team']['_id'];     
-        print(teamId);
+        final String responseBody = await response.stream.bytesToString();
+        final Map<String, dynamic> responseData = jsonDecode(responseBody);
+        final String teamId = responseData['team']['_id'];
 
         Navigator.push(
           context,
@@ -248,7 +246,6 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
         );
 
         _showErrorSnackBar('Team created successfully');
-        print(await response.stream.bytesToString());
       } else {
         _showErrorSnackBar(response.reasonPhrase!);
         print(response.reasonPhrase);

@@ -140,9 +140,9 @@ class InviteMembersScreen extends StatelessWidget {
 
   TextEditingController emailController = TextEditingController();
 
-  Future<void> _sendInvitation() async {
+  Future<void> _sendInvitation(BuildContext context) async {
 
-    // wahi create team wala code copy karke chote mote changes kiye hai bas 
+    // wahi create team wala code copy karke chote mote changes kiye hai bas
 
     dynamic storedValue = await secureStorage.readSecureData(key);
     var headers = <String, String>{
@@ -168,16 +168,32 @@ class InviteMembersScreen extends StatelessWidget {
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData =
             jsonDecode(await response.stream.bytesToString());
+        if (!context.mounted) return;
         if (responseData['success'] == true) {
-          print(responseData['message']);
+          emailController.clear();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(responseData['message']?.toString() ?? 'Invitación enviada'),
+            ),
+          );
         } else {
-          print('Error sending invitation: ${responseData['message']}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(responseData['message']?.toString() ?? 'No se pudo enviar la invitación'),
+            ),
+          );
         }
       } else {
-        print(response.reasonPhrase);
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo enviar la invitación (${response.statusCode})')),
+        );
       }
     } catch (error) {
-      print('Error sending invitation: $error');
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error de red al enviar la invitación')),
+      );
     }
   }
 
@@ -237,7 +253,7 @@ class InviteMembersScreen extends StatelessWidget {
           Buttonki(
             buttonName: 'Send Invite',
             onTap: () {
-              _sendInvitation();
+              _sendInvitation(context);
             },
             bgColor: const Color.fromARGB(255, 11, 26, 60),
             textColor: Colors.white,
