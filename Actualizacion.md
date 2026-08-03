@@ -18,6 +18,60 @@ The project must now evolve into an organizational management system specificall
 
 ---
 
+# Estado de la implementación (plantilla de seguimiento)
+
+> Esta tabla es la plantilla que debe usar cada equipo para reportar avance.
+> Al tomar un módulo: cambiar `Estado` a `En progreso`, poner el nombre del
+> equipo/persona, y actualizar a `Hecho` con un enlace al PR al terminar.
+> **Recordatorio de arquitectura**: el backend que realmente sirve la app es
+> **PHP en `C:\xampp\htdocs\hive-backend`** (no la carpeta `backend/` Node del
+> repo, que es código muerto). Toda la BD real es `hive_db`, no lo que
+> describe `database/schema.sql`.
+
+| Módulo | Estado | Equipo | Notas |
+|---|---|---|---|
+| Base organizacional (companies, departments, roles, RBAC) | **Hecho** | — | Ver detalle abajo. Desbloquea todo lo demás. |
+| Dashboards por rol (Director / Manager / Employee) | Pendiente | abraham | Ver [actualizaciones/abraham.md](actualizaciones/abraham.md). |
+| Gestión de departamentos (UI) + Reportes y analítica | Pendiente | diana | Ver [actualizaciones/diana.md](actualizaciones/diana.md). |
+| Anuncios (announcements) | Pendiente | jona | Ver [actualizaciones/jona.md](actualizaciones/jona.md). |
+| Extensión de tareas (workflow Director→Manager→Employee) + Notificaciones nuevas | Pendiente | robert | Ver [actualizaciones/robert.md](actualizaciones/robert.md). |
+| Leave requests jerárquico + Chat y Recursos por departamento | Pendiente | wen | Ver [actualizaciones/wen.md](actualizaciones/wen.md). |
+
+Cada rama del repo (`abraham`, `diana`, `jona`, `robert`, `wen`) tiene su
+archivo de tareas correspondiente en [actualizaciones/](actualizaciones/README.md).
+
+## Base organizacional — qué quedó hecho
+
+**Backend PHP** (`C:\xampp\htdocs\hive-backend`):
+- Migración aplicada a `hive_db`: tablas `companies` y `departments`, y
+  `users` extendida con `role` (`director`/`manager`/`employee`, default
+  `employee`), `position`, `department_id` (ver
+  `hive-backend/schema.sql` y `hive-backend/migrations/001_org_structure.sql`).
+- `helpers.php`: `require_role()` y `require_department_manager_or_director()`
+  para proteger endpoints por rol.
+- Endpoints nuevos en `index.php`:
+  - `GET /user/me` — perfil del usuario autenticado (rol, position, departamento).
+  - `POST /company/create`, `GET /company/info`, `POST /company/update`.
+  - `POST /department/create`, `GET /department/list`.
+  - `POST /department/assignManager/{id}` (solo director).
+  - `POST /department/assignEmployee/{id}` (director o manager del propio departamento).
+- Verificado con `node tools/php-backend-test-org.js` (28/28 pass) y sin
+  regresiones en la suite existente `node tools/php-backend-test.js` (89/89 pass).
+
+**Flutter**:
+- `lib/models/models.dart`: `AppRole`, `DepartmentInfo`, `UserProfile`.
+- `lib/utils/session.dart`: `Session.fetchCurrentUser()` (llama a `/user/me`
+  y cachea el rol) y `Session.getCachedRole()`.
+- `lib/screens/login.dart`: tras iniciar sesión, cachea el rol en segundo
+  plano sin bloquear la navegación existente.
+
+**Lo que falta a propósito** (queda para el módulo "Dashboards por rol"):
+enrutar a 3 pantallas distintas según `Session.getCachedRole()`, y las
+pantallas de gestión de departamentos para el Director. Ningún flujo de
+equipos/tareas/chat/recursos existente fue modificado.
+
+---
+
 # New Organizational Structure
 
 The application should represent the following hierarchy:
