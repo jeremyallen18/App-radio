@@ -44,3 +44,11 @@ app.*.map.json
 
 # Claude AI
 .claude/
+
+# Node (tools/ scripts against the live PHP backend)
+node_modules/
+
+# Backend PHP (hive-backend)
+hive-backend/.env
+hive-backend/uploads/*
+!hive-backend/uploads/.gitkeep
