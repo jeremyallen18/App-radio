@@ -15,7 +15,7 @@ Aplicación Flutter para gestionar equipos de trabajo: creación y unión a equi
 - [Esquema de base de datos (`hive_db`)](#esquema-de-base-de-datos-hive_db)
 - [Endpoints](#endpoints)
 - [Herramientas y pruebas](#herramientas-y-pruebas)
-- [Cómo correr el proyecto](#cómo-correr-el-proyecto)
+- [Cómo correr el proyecto (guía paso a paso)](#cómo-correr-el-proyecto-guía-paso-a-paso)
 
 ## Arquitectura general
 
@@ -363,24 +363,105 @@ Pruebas de widget de Flutter:
 flutter test
 ```
 
-## Cómo correr el proyecto
+## Cómo correr el proyecto (guía paso a paso)
 
-1. Si `C:\xampp\htdocs\hive-backend` no existe todavía (clon nuevo del repo), crear la junction hacia el backend versionado:
-   ```powershell
-   New-Item -ItemType Junction -Path "C:\xampp\htdocs\hive-backend" -Target "C:\xampp\htdocs\App-radio\hive-backend"
-   ```
-2. Copiar `hive-backend\.env.example` a `hive-backend\.env` y ajustar las credenciales de DB.
-3. Levantar **Apache** y **MySQL** desde el panel de XAMPP.
-4. Cargar el esquema si es la primera vez: `mysql -u root -p < C:\xampp\htdocs\hive-backend\schema.sql`.
-5. Ajustar `kBaseUrl` en [`lib/utils/api_config.dart`](lib/utils/api_config.dart) con la IP LAN de la máquina que corre Apache.
-6. Correr la app:
+Esta guía asume que nunca instalaste este proyecto antes. Andá paso por paso, sin saltarte ninguno — cada uno depende del anterior. Si algo no coincide exactamente con lo que ves en tu pantalla, no sigas adivinando: preguntá en el grupo del equipo antes de continuar.
+
+Vas a necesitar instalar, en este orden:
+
+1. **[Git](https://git-scm.com/downloads)** — para descargar el código del proyecto.
+2. **[XAMPP](https://www.apachefriends.org/es/download.html)** — un programa que simula, en tu propia computadora, el servidor donde vive el backend (la parte PHP) y la base de datos (MySQL). Instalalo en la ubicación por defecto (`C:\xampp`).
+3. **[Flutter](https://docs.flutter.dev/get-started/install)** — el kit con el que está hecha la app. Seguí la guía oficial para Windows; al final corré `flutter doctor` en una terminal y resolvé cualquier cosa marcada en rojo antes de seguir.
+4. Un editor de código — **[Android Studio](https://developer.android.com/studio)** o **[VS Code](https://code.visualstudio.com/)** funcionan bien. Si vas a probar en un celular Android o en un emulador, necesitás Android Studio igual, aunque después edites el código en VS Code.
+
+Una vez instalado todo eso:
+
+### 1. Descargar el proyecto
+
+Abrí una terminal (en Windows, buscá "Git Bash" o "PowerShell") y corré:
+
+```bash
+cd C:\xampp\htdocs
+git clone https://github.com/jeremyallen18/App-radio.git
+```
+
+Esto crea la carpeta `C:\xampp\htdocs\App-radio` con todo el código.
+
+### 2. Conectar el backend con XAMPP
+
+El backend (la carpeta `hive-backend/`) vive *dentro* del proyecto que acabás de descargar, pero XAMPP necesita encontrarlo en `C:\xampp\htdocs\hive-backend` (un nivel más arriba) para poder servirlo. Para lograr eso sin duplicar archivos, se crea un **acceso directo especial de Windows** (se llama "junction") que hace que esas dos ubicaciones apunten a la misma carpeta real.
+
+Abrí **PowerShell** (no hace falta ser administrador) y pegá esto tal cual:
+
+```powershell
+New-Item -ItemType Junction -Path "C:\xampp\htdocs\hive-backend" -Target "C:\xampp\htdocs\App-radio\hive-backend"
+```
+
+Si no da ningún error, funcionó. No hace falta entender exactamente qué hace el comando — solo ejecutarlo una vez, la primera vez que instalás el proyecto en tu computadora.
+
+### 3. Configurar las claves de acceso a la base de datos
+
+Dentro de la carpeta `hive-backend`, buscá el archivo `.env.example` y hacé una copia llamada `.env` (sin el `.example` al final). En Windows, lo más fácil es: click derecho sobre `.env.example` → Copiar, click derecho en la misma carpeta → Pegar, y renombrar la copia a `.env`.
+
+Si estás usando la configuración estándar de XAMPP (usuario `root`, sin contraseña), no necesitás cambiar nada más adentro de ese archivo.
+
+### 4. Prender Apache y MySQL
+
+Abrí el **Panel de Control de XAMPP** y hacé clic en **Start** al lado de **Apache** y de **MySQL**. Ambos deberían quedar en verde. Si alguno no arranca, generalmente es porque otro programa (como Skype) está usando el mismo puerto — cerrá ese programa y probá de nuevo.
+
+### 5. Crear la base de datos
+
+Con MySQL ya prendido, abrí una terminal y corré (te va a pedir la contraseña de MySQL; si nunca la cambiaste, apretá Enter sin escribir nada):
+
+```bash
+mysql -u root -p < C:\xampp\htdocs\hive-backend\schema.sql
+```
+
+Esto crea todas las tablas que la app necesita. Solo hay que hacerlo una vez.
+
+### 6. Decirle a la app dónde está tu backend
+
+Como cada persona del equipo corre su propio backend en su propia computadora, la app necesita saber la dirección de red (IP) de *tu* máquina.
+
+Para encontrarla en Windows, abrí una terminal y corré:
+
+```bash
+ipconfig
+```
+
+Buscá la línea que dice **"Dirección IPv4"** (algo como `192.168.1.25`) dentro de tu red Wi-Fi o Ethernet — esa es tu IP.
+
+Abrí el archivo [`lib/utils/api_config.dart`](lib/utils/api_config.dart) y reemplazá la IP que ya está por la tuya, dejando el resto igual:
+
+```dart
+const String kBaseUrl = 'http://TU_IP_AQUI/hive-backend';
+```
+
+> ⚠️ Si vas a probar la app en un **celular físico**, tu celular y tu computadora tienen que estar conectados a la **misma red Wi-Fi**. Si solo vas a usar un emulador o la versión de escritorio, con seguir estos pasos alcanza.
+
+### 7. Instalar las dependencias de Flutter y correr la app
+
+Ya en la carpeta del proyecto (`C:\xampp\htdocs\App-radio`):
 
 ```bash
 flutter pub get
 flutter run
 ```
 
-Para generar los íconos nativos tras cambiar el logo:
+`flutter pub get` descarga todas las librerías que usa el proyecto (solo hace falta cuando cambian, no cada vez). `flutter run` te va a preguntar en qué dispositivo abrir la app (un emulador, tu celular conectado por USB, o Windows/Chrome) — elegí uno y esperá a que compile. La primera vez puede tardar varios minutos.
+
+Si todo salió bien, deberías ver la pantalla de inicio de sesión de la app.
+
+### Problemas comunes
+
+- **La app no carga nada / se queda cargando para siempre**: revisá que Apache y MySQL sigan en verde en XAMPP, y que la IP en `api_config.dart` sea la correcta (las IPs pueden cambiar si te reconectás al Wi-Fi).
+- **"No se pudo crear la junction" en el paso 2**: puede que ya exista una carpeta `C:\xampp\htdocs\hive-backend` de una instalación anterior — borrala primero (asegurate de que esté vacía o que no tenga nada importante) y volvé a correr el comando.
+- **`flutter doctor` marca cosas en rojo**: no sigas hasta resolverlas; casi siempre son instrucciones claras (aceptar licencias de Android, instalar un componente que falta, etc.).
+- Si te trabás en cualquier paso, avisá en el grupo del equipo con el mensaje de error exacto — no hace falta que lo resuelvas solo.
+
+### Regenerar los íconos de la app
+
+Esto solo lo necesitás si cambiaste el logo (`assets/logo/logo.png`):
 
 ```bash
 dart run flutter_launcher_icons
