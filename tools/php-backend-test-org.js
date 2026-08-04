@@ -8,7 +8,7 @@
 // terminar, así que no ensucia los datos reales de hive_db.
 
 const path = require('path');
-const mysql = require(path.join(__dirname, '..', 'backend', 'node_modules', 'mysql2', 'promise'));
+const mysql = require('mysql2/promise');
 
 const BASE = process.env.HIVE_BASE_URL || 'http://127.0.0.1/hive-backend';
 const DB = { host: '127.0.0.1', user: 'hive_user', password: 'HivePass_2026!', database: 'hive_db' };

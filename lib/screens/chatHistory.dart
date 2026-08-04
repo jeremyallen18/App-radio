@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../design/design.dart';
 import '../utils/api_config.dart';
 import 'login.dart';
 
 class ChatScreenfetch extends StatefulWidget {
+  const ChatScreenfetch({super.key});
+
   @override
   _ChatScreenfetchState createState() => _ChatScreenfetchState();
 }
 
 class _ChatScreenfetchState extends State<ChatScreenfetch> {
   List<Map<String, dynamic>> _chats = [];
-  ScrollController _scrollController = ScrollController();
+  final ScrollController _scrollController = ScrollController();
+  bool _loading = true;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -20,102 +25,89 @@ class _ChatScreenfetchState extends State<ChatScreenfetch> {
   }
 
   Future<void> fetchChats() async {
-    
+    setState(() {
+      _loading = true;
+      _hasError = false;
+    });
     final apiUrl = '$kBaseUrl/chat/getAllChats';
-
-
     try {
       final token = await secureStorage.readSecureData(key);
       final response = await http.get(
         Uri.parse(apiUrl),
         headers: <String, String>{'Authorization': token ?? ''},
       );
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
-
         setState(() {
-          _chats = List<Map<String, dynamic>>.from(responseData['chats']);
+          _chats = List<Map<String, dynamic>>.from(responseData['chats'] ?? []);
+          _loading = false;
         });
-
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+          }
+        });
       } else {
-        print('Failed to load chats. Status code: ${response.statusCode}');
+        setState(() {
+          _hasError = true;
+          _loading = false;
+        });
       }
     } catch (e) {
-      print('Error loading chats: $e');
+      if (!mounted) return;
+      setState(() {
+        _hasError = true;
+        _loading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppScaffold(
+      padding: EdgeInsets.zero,
+      appBar: AppBar(title: const Text('Historial de conversaciones')),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Color.fromARGB(255, 22, 46, 101),
-        foregroundColor: Colors.white,
-        elevation: 12,
-        hoverColor: Colors.white,
         onPressed: () {
-          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
+            );
+          }
         },
-        child: Icon(Icons.arrow_downward),
+        child: const Icon(Icons.arrow_downward),
       ),
-      appBar: AppBar(
-        backgroundColor: Color.fromARGB(255, 12, 25, 56),
-        foregroundColor: Colors.white,
-        elevation: 12,
-        shadowColor: Colors.black,
-        title: Text('Historial de conversaciones'),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _chats.isEmpty
-                ? Center(
-                    child: CircularProgressIndicator(),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    itemCount: _chats.length,
-                    itemBuilder: (context, index) {
-                      final chat = _chats[index];
-                      final username = chat['username'];
-                      final message = chat['message'];
+      body: _buildBody(),
+    );
+  }
 
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 8.0, horizontal: 16.0),
-                        child: Card(
-                          color: Color.fromARGB(255, 17, 28, 55),
-                          shadowColor: Colors.black,
-                          elevation: 8.0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.0),
-                          ),
-                          child: ListTile(
-                            title: Text(
-                              '$username:', 
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12.0,
-                                color: Color.fromARGB(255, 254, 254, 254),
-                              ),
-                            ),
-                            subtitle: Text(
-                              message,
-                              style: TextStyle(
-                                fontSize: 18.0,
-                                color: Color.fromARGB(255, 220, 228, 73),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
+  Widget _buildBody() {
+    if (_loading) return const LoadingState();
+    if (_hasError) return ErrorState(onRetry: fetchChats);
+    if (_chats.isEmpty) {
+      return const EmptyState(
+        icon: Icons.forum_outlined,
+        title: 'Todavía no hay mensajes',
+      );
+    }
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      itemCount: _chats.length,
+      itemBuilder: (context, index) {
+        final chat = _chats[index];
+        return ChatBubble(
+          username: chat['username']?.toString() ?? '',
+          message: chat['message']?.toString() ?? '',
+          // Es un historial de solo lectura, sin sesión propia con la que
+          // comparar "quién soy yo": todos los mensajes se muestran igual.
+          isMe: false,
+        );
+      },
     );
   }
 }

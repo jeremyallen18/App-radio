@@ -3,147 +3,112 @@ import 'package:brl_task4/create&join-Team/create-team.dart';
 import 'package:brl_task4/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../design/design.dart';
 import '../utils/api_config.dart';
 
 class TeamDetailsScreen extends StatelessWidget {
-  final List<Domain> selectedDomains; 
+  final List<Domain> selectedDomains;
   final String teamname;
   final String teamId;
-  TeamDetailsScreen(this.teamname, this.selectedDomains, this.teamId);
+
+  const TeamDetailsScreen(this.teamname, this.selectedDomains, this.teamId, {super.key});
+
+  static const List<IconData> _domainIcons = [
+    Icons.code_rounded,
+    Icons.monitor,
+    Icons.model_training_rounded,
+    Icons.developer_board_rounded,
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-
+    return AppScaffold(
+      appBar: AppBar(title: Text(teamname)),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       body: Column(
-
-       
-
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 361,
-            height: 146,
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                alignment: Alignment(1, 0),
-                image: AssetImage('lib/assets/test1.png'),
-                fit: BoxFit.scaleDown,
-              ),
-              gradient: LinearGradient(
-                begin: Alignment(0.98, -0.21),
-                end: Alignment(-0.98, 0.21),
-                colors: [Color(0xFF020918), Color(0xFF38486C)],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x4C000000),
-                  blurRadius: 4,
-                  offset: Offset(0, 4),
-                  spreadRadius: 0,
-                )
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(18.0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '$teamname',
-                  style: const TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
+          const SizedBox(height: AppSpacing.lg),
+          const SectionHeader(title: 'Invita miembros por área'),
+          Text(
+            'Toca un área para enviar invitaciones por correo. Puedes hacerlo ahora o más tarde desde el equipo.',
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
-          const SizedBox(height: 16),
-
-         
-
+          const SizedBox(height: AppSpacing.lg),
           Expanded(
-            child: ListView.builder(
-
-              // using listview builder to show the list of domains selected taaki agar zyada domains select kiye toh scroll kar sake 
-              // halaki aisa hai nhi ki zyada domains select kar paoge kyunki 4 hi domains hai but agar zyada domains hote toh scroll kar paate
-
-              itemCount: selectedDomains.length,  
-              itemBuilder: (context, index) {     
-
-              
-                List<IconData> icons = [
-                  Icons.code_rounded,
-                  Icons.monitor,
-                  Icons.model_training_rounded,
-                  Icons.developer_board_rounded,
-                ];
-
-                return Card(
-                  shadowColor: Colors.black,
-                  surfaceTintColor: Colors.white,
-                  color: const Color.fromARGB(255, 12, 25, 56),
-                  elevation: 3,
-                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: ListTile(
-                    focusColor: Colors.white,
-                    hoverColor: Colors.white,
-                    iconColor: Colors.white,
-                    leading: Icon(
-                      icons[index],
-                      color: Colors.white,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    tileColor: const Color.fromARGB(255, 12, 25, 56),
-                    title: Text(
-                      selectedDomains[index].name,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color.fromARGB(255, 255, 255, 255),
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => InviteMembersScreen(  
-                            selectedDomains[index],                   
-                            teamId: teamId,                           
-                          ),
+            child: selectedDomains.isEmpty
+                ? const EmptyState(
+                    icon: Icons.domain_disabled_outlined,
+                    title: 'Este equipo no tiene áreas',
+                    message: 'Vuelve a crear el equipo y selecciona al menos un área.',
+                  )
+                : ListView.separated(
+                    itemCount: selectedDomains.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                    itemBuilder: (context, index) {
+                      final domain = selectedDomains[index];
+                      final icon = _domainIcons[index % _domainIcons.length];
+                      return AppCard(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => InviteMembersScreen(domain, teamId: teamId),
+                            ),
+                          );
+                        },
+                        child: Row(
+                          children: [
+                            Icon(icon, color: AppColors.accent),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: Text(
+                                domain.name,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right, color: AppColors.textMuted),
+                          ],
                         ),
                       );
                     },
                   ),
-                );
-              },
-            ),
           ),
+          const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );
   }
 }
 
-class InviteMembersScreen extends StatelessWidget {
-  final Domain domain;    
-  final String teamId;    
+class InviteMembersScreen extends StatefulWidget {
+  final Domain domain;
+  final String teamId;
 
-  // InviteMembersScreen(this.domain, {super.key, required this.teamId});
-  
-  InviteMembersScreen(this.domain, {required this.teamId});
+  const InviteMembersScreen(this.domain, {super.key, required this.teamId});
 
-  TextEditingController emailController = TextEditingController();
+  @override
+  State<InviteMembersScreen> createState() => _InviteMembersScreenState();
+}
 
-  Future<void> _sendInvitation(BuildContext context) async {
+class _InviteMembersScreenState extends State<InviteMembersScreen> {
+  final TextEditingController emailController = TextEditingController();
+  bool _sending = false;
 
-    // wahi create team wala code copy karke chote mote changes kiye hai bas
+  Future<void> _sendInvitation() async {
+    final email = emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa un correo')),
+      );
+      return;
+    }
 
+    setState(() => _sending = true);
     dynamic storedValue = await secureStorage.readSecureData(key);
     var headers = <String, String>{
       'Authorization': storedValue,
@@ -152,23 +117,23 @@ class InviteMembersScreen extends StatelessWidget {
 
     var request = http.Request(
       'POST',
-      Uri.parse(
-          '$kBaseUrl/team/sendTeamcode/$teamId/${domain.name}'),
+      Uri.parse('$kBaseUrl/team/sendTeamcode/${widget.teamId}/${widget.domain.name}'),
     );
 
     request.body = json.encode({
-      "recipients": [emailController.text],
+      "recipients": [email],
     });
 
     request.headers.addAll(headers);
 
     try {
       http.StreamedResponse response = await request.send();
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData =
             jsonDecode(await response.stream.bytesToString());
-        if (!context.mounted) return;
+        if (!mounted) return;
         if (responseData['success'] == true) {
           emailController.clear();
           ScaffoldMessenger.of(context).showSnackBar(
@@ -184,278 +149,48 @@ class InviteMembersScreen extends StatelessWidget {
           );
         }
       } else {
-        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('No se pudo enviar la invitación (${response.statusCode})')),
         );
       }
     } catch (error) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Error de red al enviar la invitación')),
       );
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-
+    return AppScaffold(
+      appBar: AppBar(title: Text('Invitar a ${widget.domain.name}')),
+      scrollable: true,
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: 361,
-            height: 146,
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                alignment: Alignment(1, 0),
-                image: AssetImage('lib/assets/amico.png'),
-                fit: BoxFit.scaleDown,
-              ),
-              gradient: LinearGradient(
-                begin: Alignment(0.98, -0.21),
-                end: Alignment(-0.98, 0.21),
-                colors: [Color(0xFF020918), Color(0xFF38486C)],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x4C000000),
-                  blurRadius: 4,
-                  offset: Offset(0, 4),
-                  spreadRadius: 0,
-                )
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(18.0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '${domain.name}\nTeam',  // domain name
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            'La persona invitada recibirá el código para unirse al equipo en esta área.',
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
-          const SizedBox(height: 120),
-          MyTextField(
-              hintText: 'Correo para invitar',
-              inputType: TextInputType.name,
-              labelText2: 'Correo de invitación',
-              secure1: false,
-              capital: TextCapitalization.none,
-              nameController1: emailController),
-          const SizedBox(height: 20),
-          Buttonki(
-            buttonName: 'Send Invite',
-            onTap: () {
-              _sendInvitation(context);
-            },
-            bgColor: const Color.fromARGB(255, 11, 26, 60),
-            textColor: Colors.white,
+          const SizedBox(height: AppSpacing.lg),
+          AppTextField(
+            controller: emailController,
+            prefixIcon: const Icon(Icons.mail_outline, color: AppColors.textMuted),
+            hintText: 'Correo para invitar',
+            textInputType: TextInputType.emailAddress,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          AppButton(
+            label: _sending ? 'Enviando…' : 'Enviar invitación',
+            loading: _sending,
+            onPressed: _sending ? null : _sendInvitation,
           ),
         ],
       ),
     );
   }
 }
-
-
-// fir wahi code uthaya hai create team se lekin chote mote changes kiye hai
-
-
-class Buttonki extends StatelessWidget {
-  const Buttonki({
-    Key? key,
-    required this.buttonName,
-    required this.onTap,
-    required this.bgColor,
-    required this.textColor,
-  }) : super(key: key);
-
-  final String buttonName;
-  final VoidCallback onTap;
-  final Color bgColor;
-  final Color textColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 50,
-      width: 150,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: bgColor,
-      ),
-      child: TextButton(
-        style: ButtonStyle(
-          elevation: MaterialStateProperty.all(12),
-          shadowColor:
-              MaterialStateProperty.all(const Color.fromARGB(255, 12, 28, 64)),
-          overlayColor: MaterialStateProperty.resolveWith(
-            (states) => Colors.transparent,
-          ),
-        ),
-        onPressed: onTap,
-        child: Text(
-          buttonName,
-          style: TextStyle(fontSize: 15, color: textColor),
-        ),
-      ),
-    );
-  }
-}
-
-class MyTextField extends StatelessWidget {
-  const MyTextField({
-    super.key,
-    required this.hintText,
-    required this.inputType,
-    required this.labelText2,
-    required this.secure1,
-    required this.capital,
-    required this.nameController1,
-  });
-
-  final String hintText;
-  final TextInputType inputType;
-  final String labelText2;
-  final bool secure1;
-  final TextCapitalization capital;
-  final TextEditingController nameController1;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: TextFormField(
-        style: const TextStyle(color: Color.fromARGB(255, 10, 20, 42)),
-        controller: nameController1,
-        keyboardType: inputType,
-        obscureText: secure1,
-        textInputAction: TextInputAction.next,
-        textCapitalization: capital,
-        decoration: InputDecoration(
-          contentPadding: const EdgeInsets.all(20),
-          hintText: hintText,
-          hintStyle: const TextStyle(color: Color.fromARGB(255, 10, 20, 42)),
-          enabledBorder: const OutlineInputBorder(
-            borderSide:
-                BorderSide(color: Color.fromARGB(255, 12, 24, 52), width: 1),
-            borderRadius: BorderRadius.all(Radius.circular(16)),
-          ),
-          focusedBorder: const OutlineInputBorder(
-            borderSide:
-                BorderSide(color: Color.fromARGB(255, 13, 26, 56), width: 1),
-            borderRadius: BorderRadius.all(Radius.circular(16)),
-          ),
-          labelText: labelText2,
-          labelStyle: const TextStyle(color: Color.fromARGB(255, 10, 20, 42)),
-        ),
-      ),
-    );
-  }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Invite wale ka test code 
-
-
-/*
-
-
-class InviteMembersScreen extends StatelessWidget {
-  final Domain domain;
-
-  InviteMembersScreen(this.domain);
-
-  TextEditingController emailController = TextEditingController();
-
-  Future<void> _sendInvitation() async {
-    dynamic storedValue = await secureStorage.readSecureData(key);
-    var headers = <String, String>{
-      'Authorization' :storedValue,
-      'Content-Type': 'application/json',
-    };
-
-    var request = http.Request(
-      'POST',
-      Uri.parse('http://ec2-3-7-70-25.ap-south-1.compute.amazonaws.com:8006/team/sendTeamcode/:teamId/${domain.name}'),
-    );
-
-    request.body = json.encode({
-      "recipients": [emailController.text],
-    });
-
-    request.headers.addAll(headers);
-
-    try {
-      http.StreamedResponse response = await request.send();
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = jsonDecode(await response.stream.bytesToString());
-        if (responseData['success'] == true) {
-         
-          print(responseData['message']);
-        } else {
-         
-          print('Error sending invitation: ${responseData['message']}');
-        }
-      } else {
-      
-        print(response.reasonPhrase);
-      }
-    } catch (error) {
-    
-      print('Error sending invitation: $error');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Invitar miembros - Equipo ${domain.name}'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextFormField(
-              controller: emailController,
-              decoration: InputDecoration(
-                labelText: 'Correo del miembro para el equipo ${domain.name}:',
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-
-                _sendInvitation();
-              },
-              child: Text('Enviar código de invitación'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-
-*/
