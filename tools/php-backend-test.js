@@ -9,7 +9,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const mysql = require(path.join(__dirname, '..', 'backend', 'node_modules', 'mysql2', 'promise'));
+const mysql = require('mysql2/promise');
 
 const UPLOAD_DIR = 'C:\\xampp\\htdocs\\hive-backend\\uploads';
 

@@ -2,8 +2,8 @@ import 'package:brl_task4/ResourceM/Resources.dart';
 import 'package:brl_task4/screens/chat.dart';
 import "package:flutter/material.dart";
 import 'package:http/http.dart' as http;
+import '../design/design.dart';
 import '../utils/api_config.dart';
-import '../utils/colors.dart';
 import '../utils/Routes.dart';
 import 'LResign.dart';
 import 'MResign.dart';
@@ -61,27 +61,13 @@ class _t_detailState extends State<t_detail> {
   }
 
   Future<void> _confirmDeleteTeam() async {
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.darkField,
-        title: const Text('Eliminar equipo', style: TextStyle(color: Colors.white)),
-        content: Text(
-          'Se eliminará "$teamName" junto con sus áreas, tareas y recursos. '
+    final bool? confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Eliminar equipo',
+      message: 'Se eliminará "$teamName" junto con sus áreas, tareas y recursos. '
           'Esta acción no se puede deshacer.',
-          style: const TextStyle(color: AppColors.darkMuted),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancelar', style: TextStyle(color: AppColors.darkMuted)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
-          ),
-        ],
-      ),
+      confirmLabel: 'Eliminar',
+      danger: true,
     );
 
     if (confirmed != true) return;
@@ -139,7 +125,7 @@ class _t_detailState extends State<t_detail> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.darkField,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -157,18 +143,18 @@ class _t_detailState extends State<t_detail> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: AppColors.darkMuted,
+                      color: AppColors.textMuted,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                 ),
                 Text(
                   "Elige la tarea a completar",
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
                 ),
                 Text(
                   "Área: ${domain['name']}",
-                  style: const TextStyle(color: AppColors.darkMuted, fontSize: 13),
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                 ),
                 const SizedBox(height: 12),
                 if (pending.isEmpty)
@@ -176,7 +162,7 @@ class _t_detailState extends State<t_detail> {
                     padding: EdgeInsets.symmetric(vertical: 20),
                     child: Text(
                       "No hay tareas pendientes en esta área.",
-                      style: TextStyle(color: Colors.white70),
+                      style: TextStyle(color: AppColors.textMuted),
                     ),
                   )
                 else
@@ -184,23 +170,23 @@ class _t_detailState extends State<t_detail> {
                     child: ListView.separated(
                       shrinkWrap: true,
                       itemCount: pending.length,
-                      separatorBuilder: (_, __) => const Divider(color: AppColors.darkFieldBorder, height: 1),
+                      separatorBuilder: (_, __) => const Divider(color: AppColors.surfaceBorder, height: 1),
                       itemBuilder: (context, i) {
                         final taskIndex = pending[i];
                         final t = tasks[taskIndex];
                         final assignedTo = t['assignedTo'] as String;
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.radio_button_unchecked, color: Colors.redAccent),
+                          leading: const Icon(Icons.radio_button_unchecked, color: AppColors.error),
                           title: Text(
                             t['description'] ?? '',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                            style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
                           ),
                           subtitle: Text(
                             "Para: ${assignedTo.contains('@') ? assignedTo.substring(0, assignedTo.indexOf('@')) : assignedTo}  ·  Vence: ${t['deadline']}",
-                            style: const TextStyle(color: AppColors.darkMuted, fontSize: 12),
+                            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                           ),
-                          trailing: const Icon(Icons.chevron_right, color: AppColors.darkMuted),
+                          trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
                           onTap: () async {
                             Navigator.pop(sheetContext);
                             final success = await _markTaskDone(domain['name'], t['assignedTo'], t['description']);
@@ -233,14 +219,14 @@ class _t_detailState extends State<t_detail> {
       teams = widget.team;
       data(teams);
     });
-    return Scaffold(
-        body: SafeArea(
-          child: Container(
+    return AppScaffold(
+        padding: EdgeInsets.zero,
+        body: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment(0.6, 0.8),
               end: Alignment(0.4, 0.31),
-              colors: [Color(0xFF020918), Color(0xFF38486C)],
+              colors: [AppColors.bgBase, AppColors.brandNavy],
             ),
           ),
           child: Column(
@@ -250,7 +236,7 @@ class _t_detailState extends State<t_detail> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    Text("$teamName",textAlign: TextAlign.center,style: const TextStyle(color:Colors.white,fontSize: 30,fontWeight: FontWeight.w800 ),),
+                    Text("$teamName",textAlign: TextAlign.center,style: const TextStyle(color:AppColors.textPrimary,fontSize: 30,fontWeight: FontWeight.w800 ),),
                     const SizedBox(height: 6,),
                     Wrap(
                       alignment: WrapAlignment.center,
@@ -260,22 +246,22 @@ class _t_detailState extends State<t_detail> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.shield_outlined, size: 15, color: AppColors.darkMuted),
+                            const Icon(Icons.shield_outlined, size: 15, color: AppColors.textMuted),
                             const SizedBox(width: 4),
                             Text(
                               leaderEmail == null ? "" : "Líder: ${leaderEmail!.substring(0,leaderEmail!.indexOf('@'))}",
-                              style: const TextStyle(color: AppColors.darkMuted, fontSize: 14,fontWeight: FontWeight.w600 ),
+                              style: const TextStyle(color: AppColors.textMuted, fontSize: 14,fontWeight: FontWeight.w600 ),
                             ),
                           ],
                         ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.tag, size: 15, color: AppColors.darkMuted),
+                            const Icon(Icons.tag, size: 15, color: AppColors.textMuted),
                             const SizedBox(width: 4),
                             Text(
                               teamCode ?? '',
-                              style: const TextStyle(color: AppColors.darkMuted, fontSize: 14,fontWeight: FontWeight.w600 ),
+                              style: const TextStyle(color: AppColors.textMuted, fontSize: 14,fontWeight: FontWeight.w600 ),
                             ),
                           ],
                         ),
@@ -290,13 +276,11 @@ class _t_detailState extends State<t_detail> {
                   future: _futureData,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color:Colors.white,
-                        ),
-                      );
+                      return const LoadingState();
                     } else if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
+                      return const ErrorState(
+                        message: 'No se pudo cargar la información del equipo.',
+                      );
                     } else {
                       return ListView.builder(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -314,8 +298,7 @@ class _t_detailState extends State<t_detail> {
               ),
             ],
         ),
-              ),
-    ),
+        ),
     );
   }
 
@@ -330,28 +313,28 @@ class _t_detailState extends State<t_detail> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: AppColors.textPrimary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.darkFieldBorder),
+        border: Border.all(color: AppColors.surfaceBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.workspaces_outline, color: AppColors.accentIndigoLight, size: 20),
+              const Icon(Icons.workspaces_outline, color: AppColors.accent, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   domain['name'] ?? '',
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 10),
           if (members.isEmpty)
-            const Text("Sin miembros todavía", style: TextStyle(color: AppColors.darkMuted, fontSize: 13))
+            const Text("Sin miembros todavía", style: TextStyle(color: AppColors.textMuted, fontSize: 13))
           else
             Wrap(
               spacing: 6,
@@ -359,12 +342,12 @@ class _t_detailState extends State<t_detail> {
               children: members.map((m) {
                 final s = m.toString();
                 return Chip(
-                  backgroundColor: AppColors.darkField,
+                  backgroundColor: AppColors.surface,
                   visualDensity: VisualDensity.compact,
-                  avatar: const Icon(Icons.person, size: 14, color: AppColors.darkMuted),
+                  avatar: const Icon(Icons.person, size: 14, color: AppColors.textMuted),
                   label: Text(
                     s.contains('@') ? s.substring(0, s.indexOf('@')) : s,
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
                   ),
                 );
               }).toList(),
@@ -372,14 +355,14 @@ class _t_detailState extends State<t_detail> {
           const SizedBox(height: 14),
           Row(
             children: [
-              _statusPill(Icons.pending_actions, "$pendingCount pendientes", Colors.redAccent),
+              _statusPill(Icons.pending_actions, "$pendingCount pendientes", AppColors.error),
               const SizedBox(width: 8),
-              _statusPill(Icons.check_circle, "$doneCount hechas", Colors.greenAccent),
+              _statusPill(Icons.check_circle, "$doneCount hechas", AppColors.success),
             ],
           ),
           const SizedBox(height: 10),
           if (tasks.isEmpty)
-            const Text("Sin tareas en esta área todavía", style: TextStyle(color: AppColors.darkMuted, fontSize: 13))
+            const Text("Sin tareas en esta área todavía", style: TextStyle(color: AppColors.textMuted, fontSize: 13))
           else
             Column(
               children: tasks.map<Widget>((t) {
@@ -393,7 +376,7 @@ class _t_detailState extends State<t_detail> {
                       Icon(
                         done ? Icons.check_circle : Icons.radio_button_unchecked,
                         size: 18,
-                        color: done ? Colors.greenAccent : Colors.redAccent,
+                        color: done ? AppColors.success : AppColors.error,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -403,14 +386,14 @@ class _t_detailState extends State<t_detail> {
                             Text(
                               t['description'] ?? '',
                               style: TextStyle(
-                                color: done ? AppColors.darkMuted : Colors.white,
+                                color: done ? AppColors.textMuted : AppColors.textPrimary,
                                 fontSize: 14,
                                 decoration: done ? TextDecoration.lineThrough : null,
                               ),
                             ),
                             Text(
                               "Para: ${assignedTo.contains('@') ? assignedTo.substring(0, assignedTo.indexOf('@')) : assignedTo}  ·  Vence: ${t['deadline']}",
-                              style: const TextStyle(color: AppColors.darkMuted, fontSize: 11),
+                              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                             ),
                           ],
                         ),
@@ -426,10 +409,6 @@ class _t_detailState extends State<t_detail> {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () => _openTaskPicker(index),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: AppColors.accentIndigoLight),
-                ),
                 icon: const Icon(Icons.checklist, size: 18),
                 label: const Text("Completar tarea"),
               ),
@@ -462,9 +441,9 @@ class _t_detailState extends State<t_detail> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: AppColors.textPrimary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.darkFieldBorder),
+        border: Border.all(color: AppColors.surfaceBorder),
       ),
       child: !_isLeader
           ? Wrap(
@@ -518,10 +497,12 @@ class _t_detailState extends State<t_detail> {
   Widget _actionButton(String label, IconData icon, VoidCallback onTap, {bool danger = false}) {
     return ElevatedButton.icon(
       onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: danger ? Colors.red.shade700 : Colors.indigo.shade400,
-        foregroundColor: Colors.white,
-      ),
+      style: danger
+          ? ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: AppColors.textPrimary,
+            )
+          : null,
       icon: Icon(icon, size: 18),
       label: Text(label),
     );
