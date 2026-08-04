@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../design/design.dart';
 import '../utils/api_config.dart';
 import 'login.dart';
 
@@ -15,6 +16,7 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   List<dynamic> _notifications = [];
   bool _loading = true;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -23,6 +25,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _fetchNotifications() async {
+    setState(() {
+      _loading = true;
+      _hasError = false;
+    });
     final token = await secureStorage.readSecureData(key);
     try {
       final response = await http.get(
@@ -37,11 +43,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           _loading = false;
         });
       } else {
-        setState(() => _loading = false);
+        setState(() {
+          _hasError = true;
+          _loading = false;
+        });
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _hasError = true;
+        _loading = false;
+      });
     }
   }
 
@@ -61,41 +73,40 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 8, 18, 43),
-        foregroundColor: Colors.white,
-        title: const Text('Notificaciones'),
-      ),
+    return AppScaffold(
+      appBar: AppBar(title: const Text('Notificaciones')),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       body: RefreshIndicator(
         onRefresh: _fetchNotifications,
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _notifications.isEmpty
-                ? ListView(
-                    children: const [
-                      SizedBox(height: 120),
-                      Center(child: Text('No tienes notificaciones')),
-                    ],
-                  )
-                : ListView.builder(
-                    itemCount: _notifications.length,
-                    itemBuilder: (context, index) {
-                      final n = _notifications[index];
-                      final bool unread = n['readAt'] == null;
-                      return ListTile(
-                        leading: Icon(
-                          Icons.notifications,
-                          color: unread ? Colors.indigo : Colors.grey,
-                        ),
-                        title: Text(n['message'] ?? ''),
-                        subtitle: Text(n['createdAt'] ?? ''),
-                        tileColor: unread ? Colors.indigo.withOpacity(0.08) : null,
-                        onTap: () => _markRead(n),
-                      );
-                    },
-                  ),
+        child: _buildBody(),
       ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) return const LoadingState();
+    if (_hasError) return ErrorState(onRetry: _fetchNotifications);
+    if (_notifications.isEmpty) {
+      return const EmptyState(
+        icon: Icons.notifications_none_outlined,
+        title: 'No tienes notificaciones',
+        message: 'Cuando algo requiera tu atención, aparecerá aquí.',
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      itemCount: _notifications.length,
+      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+      itemBuilder: (context, index) {
+        final n = _notifications[index];
+        return NotificationTile(
+          type: n['type']?.toString(),
+          message: n['message']?.toString() ?? '',
+          createdAt: n['createdAt']?.toString(),
+          unread: n['readAt'] == null,
+          onTap: () => _markRead(n),
+        );
+      },
     );
   }
 }

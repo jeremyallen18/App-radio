@@ -13,4 +13,7 @@ class MyRoutes {
   static String DoneTask = "/doneTask";
   static String Reset = "/ResetPass";
   // static String Leave = "/ApplyLeave";
+
+  /// Solo debug: galería de referencia del sistema de diseño (Fase 0).
+  static String ComponentGallery = "/_ComponentGallery";
 }

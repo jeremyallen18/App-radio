@@ -1,10 +1,9 @@
-// Vacía las bases de datos de la app y reinicia los contadores AUTO_INCREMENT
+// Vacía la base de datos de la app y reinicia los contadores AUTO_INCREMENT
 // en 1, dejando el esquema intacto y listo para datos nuevos.
 //
 // DESTRUCTIVO: borra todas las filas. Exige --yes para ejecutarse.
 //
-//   node tools/reset-database.js --yes              (solo hive_db)
-//   node tools/reset-database.js --yes --all        (hive_db + team_management)
+//   node tools/reset-database.js --yes
 //
 // Nota: users, teams y leaves de hive_db usan ids CHAR(24) generados por PHP
 // (generate_id()), no AUTO_INCREMENT — ahí no hay contador que reiniciar; las
@@ -12,14 +11,12 @@
 
 const path = require('path');
 const fs = require('fs');
-const mysql = require(path.join(__dirname, '..', 'backend', 'node_modules', 'mysql2', 'promise'));
-require(path.join(__dirname, '..', 'backend', 'node_modules', 'dotenv'))
-  .config({ path: path.join(__dirname, '..', 'backend', '.env') });
+const mysql = require('mysql2/promise');
 
 const args = process.argv.slice(2);
 if (!args.includes('--yes')) {
   console.log('Esto BORRA todas las filas de la base de datos.');
-  console.log('Si estás seguro, vuelve a ejecutarlo con --yes (añade --all para incluir team_management).');
+  console.log('Si estás seguro, vuelve a ejecutarlo con --yes.');
   process.exit(1);
 }
 
@@ -28,18 +25,6 @@ const UPLOADS = 'C:\\xampp\\htdocs\\hive-backend\\uploads';
 const targets = [
   { label: 'hive_db (backend PHP, el que usa la app)', config: { host: '127.0.0.1', user: 'hive_user', password: 'HivePass_2026!', database: 'hive_db' } },
 ];
-if (args.includes('--all')) {
-  targets.push({
-    label: 'team_management (backend Node, sin uso)',
-    config: {
-      host: process.env.DB_HOST || '127.0.0.1',
-      port: Number(process.env.DB_PORT) || 3306,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME || 'team_management',
-    },
-  });
-}
 
 async function wipe(target) {
   console.log(`\n== ${target.label} ==`);
