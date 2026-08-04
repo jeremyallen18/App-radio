@@ -38,11 +38,17 @@ Aplicación Flutter para gestionar equipos de trabajo: creación y unión a equi
 
 **El backend en producción es el PHP** en [`hive-backend/`](hive-backend/), dentro de este repo, servido localmente por Apache (XAMPP) sobre la base `hive_db`. Es el único que la app consume. El stack completo del proyecto es **Dart (Flutter) + PHP + MySQL**; no hay ningún otro backend en el repo.
 
-En local, `C:\xampp\htdocs\hive-backend` es una **junction** de Windows que apunta a `hive-backend/` dentro de este repo — así Apache lo sigue sirviendo en la misma URL sin duplicar archivos. Si necesitas recrearla (por ejemplo, en otra máquina):
+El proyecto vive en **una única ubicación**, sin copias: `C:\xampp\htdocs\App-radio`. Apache sirve `hive-backend/` directamente desde ahí (`http://<host>/hive-backend`) gracias a un **`Alias`** declarado una sola vez en la configuración de Apache — no hay ninguna carpeta duplicada ni junction, así que todo lo que edites en `hive-backend/` se sirve al instante, sin volver a copiar nada. El bloque de configuración vive en `C:\xampp\apache\conf\extra\httpd-xampp.conf`:
 
-```powershell
-New-Item -ItemType Junction -Path "C:\xampp\htdocs\hive-backend" -Target "C:\xampp\htdocs\App-radio\hive-backend"
+```apacheconf
+Alias /hive-backend "C:/xampp/htdocs/App-radio/hive-backend/"
+<Directory "C:/xampp/htdocs/App-radio/hive-backend">
+    AllowOverride All
+    Require all granted
+</Directory>
 ```
+
+Se agrega una sola vez por máquina (ver el paso 2 de la guía de instalación). Si en algún momento movés el proyecto a otra ruta, hay que actualizar las dos rutas de ese bloque y reiniciar Apache.
 
 Credenciales de DB y la ruta base ya no están hardcodeadas: viven en `hive-backend/.env` (fuera de git, ver `.env.example`). Al desplegar a Hostinger, copia `hive-backend/` completo y crea un `.env` propio con las credenciales de esa base y, si el backend no vive en la raíz del dominio, ajusta `APP_BASE_PATH` ahí **y** `RewriteBase` en `hive-backend/.htaccess` (ese sí es estático, Apache lo lee antes de que corra PHP).
 
@@ -112,8 +118,8 @@ La configuración vive al final de `pubspec.yaml`, bajo la clave `flutter_launch
 ## Estructura del proyecto
 
 ```
-hive-backend/                   # ← BACKEND EN USO. C:\xampp\htdocs\hive-backend es una
-│                                 # junction que apunta aquí (Apache lo sirve igual).
+hive-backend/                   # ← Apache la sirve directo desde acá vía Alias, sin copiarla
+│                                 # a ningún otro lado (ver "Arquitectura general").
 ├── index.php                    # Router + todos los handlers (auth, equipos, tareas,
 │                                 # chat, recursos, permisos, notificaciones).
 ├── helpers.php                  # Respuestas JSON/texto, parseo del body, require_auth,
@@ -245,7 +251,7 @@ Ver [Sistema de diseño](#sistema-de-diseño) arriba y [`Rediseno-Frontend.md`](
 
 ## Backend PHP (`hive-backend`)
 
-Vive en [`hive-backend/`](hive-backend/), dentro de este repo. Localmente, `C:\xampp\htdocs\hive-backend` es una junction que apunta a esta carpeta, así que Apache lo sirve igual que antes. Son cuatro archivos:
+Vive en [`hive-backend/`](hive-backend/), dentro de este repo. Localmente, Apache la sirve directo desde ahí mediante un `Alias` (ver [Arquitectura general](#arquitectura-general)), sin copiarla a ningún otro lado. Son cuatro archivos:
 
 - **`config.php`** — carga `.env` (host/usuario/clave de DB y `APP_BASE_PATH`), conexión PDO a `hive_db` (`ERRMODE_EXCEPTION`, `FETCH_ASSOC`) y constantes de subida (`UPLOAD_DIR`, `UPLOAD_URL_BASE`).
 - **`helpers.php`** — utilidades compartidas: respuestas (`json_response`, `raw_json_response`, `text_response`, `error_response`), generación de ids/tokens/códigos/OTP, `request_body()`, y toda la capa de autorización.
@@ -273,7 +279,7 @@ Vive en [`hive-backend/`](hive-backend/), dentro de este repo. Localmente, `C:\x
 Cargar con:
 
 ```bash
-mysql -u root -p < C:\xampp\htdocs\hive-backend\schema.sql
+mysql -u root -p < C:\xampp\htdocs\App-radio\hive-backend\schema.sql
 ```
 
 | Tabla             | Para qué sirve                                                                | Usada por (pantalla) |
@@ -369,39 +375,47 @@ Esta guía asume que nunca instalaste este proyecto antes. Andá paso por paso, 
 
 Vas a necesitar instalar, en este orden:
 
-1. **[Git](https://git-scm.com/downloads)** — para descargar el código del proyecto.
-2. **[XAMPP](https://www.apachefriends.org/es/download.html)** — un programa que simula, en tu propia computadora, el servidor donde vive el backend (la parte PHP) y la base de datos (MySQL). Instalalo en la ubicación por defecto (`C:\xampp`).
-3. **[Flutter](https://docs.flutter.dev/get-started/install)** — el kit con el que está hecha la app. Seguí la guía oficial para Windows; al final corré `flutter doctor` en una terminal y resolvé cualquier cosa marcada en rojo antes de seguir.
-4. Un editor de código — **[Android Studio](https://developer.android.com/studio)** o **[VS Code](https://code.visualstudio.com/)** funcionan bien. Si vas a probar en un celular Android o en un emulador, necesitás Android Studio igual, aunque después edites el código en VS Code.
+1. **[XAMPP](https://www.apachefriends.org/es/download.html)** — un programa que simula, en tu propia computadora, el servidor donde vive el backend (la parte PHP) y la base de datos (MySQL). Instalalo en la ubicación por defecto (`C:\xampp`).
+2. **[Flutter](https://docs.flutter.dev/get-started/install)** — el kit con el que está hecha la app. Seguí la guía oficial para Windows; al final corré `flutter doctor` en una terminal y resolvé cualquier cosa marcada en rojo antes de seguir.
+3. Un editor de código — **[Android Studio](https://developer.android.com/studio)** o **[VS Code](https://code.visualstudio.com/)** funcionan bien. Si vas a probar en un celular Android o en un emulador, necesitás Android Studio igual, aunque después edites el código en VS Code.
 
 Una vez instalado todo eso:
 
 ### 1. Descargar el proyecto
 
-Abrí una terminal (en Windows, buscá "Git Bash" o "PowerShell") y corré:
+Andá a la página del repositorio en GitHub: [github.com/jeremyallen18/App-radio](https://github.com/jeremyallen18/App-radio). Hacé clic en el botón verde **"Code"** y después en **"Download ZIP"**. Esto descarga un archivo llamado `App-radio-main.zip` (revisá tu carpeta de Descargas).
 
-```bash
-cd C:\xampp\htdocs
-git clone https://github.com/jeremyallen18/App-radio.git
+Descomprimí ese `.zip` (clic derecho → "Extraer todo...") y movés/renombrás la carpeta resultante hasta que quede **exactamente** en esta ruta:
+
+```
+C:\xampp\htdocs\App-radio
 ```
 
-Esto crea la carpeta `C:\xampp\htdocs\App-radio` con todo el código.
+Si `C:\xampp\htdocs` todavía no existe, es porque no instalaste XAMPP en la ubicación por defecto — volvé al paso anterior. Esta ruta es fija: es la única copia del proyecto y de ahí lo sirve Apache directamente (siguiente paso), sin duplicar nada.
 
-### 2. Conectar el backend con XAMPP
+### 2. Decirle a Apache dónde está el backend
 
-El backend (la carpeta `hive-backend/`) vive *dentro* del proyecto que acabás de descargar, pero XAMPP necesita encontrarlo en `C:\xampp\htdocs\hive-backend` (un nivel más arriba) para poder servirlo. Para lograr eso sin duplicar archivos, se crea un **acceso directo especial de Windows** (se llama "junction") que hace que esas dos ubicaciones apunten a la misma carpeta real.
+Apache no sabe todavía que `hive-backend/` existe adentro de tu proyecto. Se lo decís una sola vez agregando un `Alias` a su configuración:
 
-Abrí **PowerShell** (no hace falta ser administrador) y pegá esto tal cual:
+1. Abrí `C:\xampp\apache\conf\extra\httpd-xampp.conf` con un editor de texto (Notepad alcanza).
+2. Pegá este bloque al final del archivo, tal cual:
 
-```powershell
-New-Item -ItemType Junction -Path "C:\xampp\htdocs\hive-backend" -Target "C:\xampp\htdocs\App-radio\hive-backend"
+```apacheconf
+Alias /hive-backend "C:/xampp/htdocs/App-radio/hive-backend/"
+<Directory "C:/xampp/htdocs/App-radio/hive-backend">
+    AllowOverride All
+    Require all granted
+</Directory>
 ```
 
-Si no da ningún error, funcionó. No hace falta entender exactamente qué hace el comando — solo ejecutarlo una vez, la primera vez que instalás el proyecto en tu computadora.
+3. Guardá el archivo.
+4. Abrí el **Panel de Control de XAMPP** y, si Apache ya estaba prendido, hacé clic en **Stop** y después **Start** de nuevo para que tome el cambio (si todavía no lo prendiste, lo hacés directo en el paso 4).
+
+No hace falta volver a tocar este archivo nunca más — es una configuración de una sola vez por computadora, y a partir de ahora Apache sirve `hive-backend/` directo desde el proyecto, sin copias.
 
 ### 3. Configurar las claves de acceso a la base de datos
 
-Dentro de la carpeta `hive-backend`, buscá el archivo `.env.example` y hacé una copia llamada `.env` (sin el `.example` al final). En Windows, lo más fácil es: click derecho sobre `.env.example` → Copiar, click derecho en la misma carpeta → Pegar, y renombrar la copia a `.env`.
+Dentro de `hive-backend/` (adentro de tu proyecto, en `C:\xampp\htdocs\App-radio\hive-backend`), buscá el archivo `.env.example` y hacé una copia llamada `.env` (sin el `.example` al final). En Windows, lo más fácil es: click derecho sobre `.env.example` → Copiar, click derecho en la misma carpeta → Pegar, y renombrar la copia a `.env`.
 
 Si estás usando la configuración estándar de XAMPP (usuario `root`, sin contraseña), no necesitás cambiar nada más adentro de ese archivo.
 
@@ -414,7 +428,7 @@ Abrí el **Panel de Control de XAMPP** y hacé clic en **Start** al lado de **Ap
 Con MySQL ya prendido, abrí una terminal y corré (te va a pedir la contraseña de MySQL; si nunca la cambiaste, apretá Enter sin escribir nada):
 
 ```bash
-mysql -u root -p < C:\xampp\htdocs\hive-backend\schema.sql
+mysql -u root -p < C:\xampp\htdocs\App-radio\hive-backend\schema.sql
 ```
 
 Esto crea todas las tablas que la app necesita. Solo hay que hacerlo una vez.
@@ -455,7 +469,8 @@ Si todo salió bien, deberías ver la pantalla de inicio de sesión de la app.
 ### Problemas comunes
 
 - **La app no carga nada / se queda cargando para siempre**: revisá que Apache y MySQL sigan en verde en XAMPP, y que la IP en `api_config.dart` sea la correcta (las IPs pueden cambiar si te reconectás al Wi-Fi).
-- **"No se pudo crear la junction" en el paso 2**: puede que ya exista una carpeta `C:\xampp\htdocs\hive-backend` de una instalación anterior — borrala primero (asegurate de que esté vacía o que no tenga nada importante) y volvé a correr el comando.
+- **Error 404 al abrir `http://localhost/hive-backend`**: el `Alias` del paso 2 no se guardó bien, apunta a una ruta distinta de `C:\xampp\htdocs\App-radio\hive-backend`, o Apache no se reinició después de guardar `httpd-xampp.conf`. Revisá el bloque y volvé a hacer Stop/Start de Apache.
+- **Apache no arranca después de tocar `httpd-xampp.conf`**: seguramente hay un error de sintaxis en el bloque que pegaste (falta una llave, comilla, etc.) — revisalo contra el bloque del paso 2 tal cual está en esta guía.
 - **`flutter doctor` marca cosas en rojo**: no sigas hasta resolverlas; casi siempre son instrucciones claras (aceptar licencias de Android, instalar un componente que falta, etc.).
 - Si te trabás en cualquier paso, avisá en el grupo del equipo con el mensaje de error exacto — no hace falta que lo resuelvas solo.
 
