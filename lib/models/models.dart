@@ -15,6 +15,20 @@ AppRole appRoleFromString(String? value) {
   }
 }
 
+extension AppRoleLabel on AppRole {
+  /// Nombre del rol para mostrar en la UI (requisito: 100% en español).
+  String get label {
+    switch (this) {
+      case AppRole.director:
+        return 'Director General';
+      case AppRole.manager:
+        return 'Manager de Departamento';
+      case AppRole.employee:
+        return 'Empleado';
+    }
+  }
+}
+
 class DepartmentInfo {
   final String id;
   final String companyId;

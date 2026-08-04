@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:brl_task4/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../design/design.dart';
 import '../utils/api_config.dart';
-import '../utils/colors.dart';
 
 class TaskContainer extends StatefulWidget {
   const TaskContainer({super.key});
@@ -74,26 +74,11 @@ class _TaskContainerState extends State<TaskContainer> {
     final String taskKey = _taskKey(task);
     if (_updating.contains(taskKey)) return;
 
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.darkField,
-        title: const Text('Completar tarea', style: TextStyle(color: Colors.white)),
-        content: Text(
-          '¿Marcar "$description" como hecha?',
-          style: const TextStyle(color: AppColors.darkMuted),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancelar', style: TextStyle(color: AppColors.darkMuted)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Completar', style: TextStyle(color: AppColors.accentIndigoLight)),
-          ),
-        ],
-      ),
+    final bool? confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Completar tarea',
+      message: '¿Marcar "$description" como hecha?',
+      confirmLabel: 'Completar',
     );
     if (confirmed != true) return;
 
@@ -134,52 +119,56 @@ class _TaskContainerState extends State<TaskContainer> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.darkBackground,
-      body: SafeArea(
-        child: RefreshIndicator(
+    return AppScaffold(
+      padding: EdgeInsets.zero,
+      body: RefreshIndicator(
           onRefresh: _loadAll,
           child: _loading
-              ? const Center(child: CircularProgressIndicator(color: AppColors.accentIndigoLight))
+              ? const LoadingState()
               : ListView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   children: [
                     const Text(
                       'Mis tareas',
-                      style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800),
+                      style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 14),
                     Row(
                       children: [
-                        _summaryChip(Icons.pending_actions, '${incompTasks.length} pendientes', Colors.orangeAccent),
+                        _summaryChip(Icons.pending_actions, '${incompTasks.length} pendientes', AppColors.warning),
                         const SizedBox(width: 10),
-                        _summaryChip(Icons.check_circle, '${compTasks.length} completadas', Colors.greenAccent),
+                        _summaryChip(Icons.check_circle, '${compTasks.length} completadas', AppColors.success),
                       ],
                     ),
                     const SizedBox(height: 24),
                     _sectionTitle('Pendientes'),
                     const SizedBox(height: 10),
                     if (incompTasks.isEmpty)
-                      _emptyState('No tienes tareas pendientes')
+                      const EmptyState(
+                        icon: Icons.pending_actions,
+                        title: 'No tienes tareas pendientes',
+                      )
                     else
                       ...incompTasks.map((t) => _taskCard(Map<String, dynamic>.from(t), done: false)),
                     const SizedBox(height: 24),
                     _sectionTitle('Completadas'),
                     const SizedBox(height: 10),
                     if (compTasks.isEmpty)
-                      _emptyState('Todavía no has completado ninguna tarea')
+                      const EmptyState(
+                        icon: Icons.check_circle_outline,
+                        title: 'Todavía no has completado ninguna tarea',
+                      )
                     else
                       ...compTasks.map((t) => _taskCard(Map<String, dynamic>.from(t), done: true)),
                   ],
                 ),
-        ),
       ),
     );
   }
 
   Widget _sectionTitle(String text) => Text(
         text,
-        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+        style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
       );
 
   Widget _summaryChip(IconData icon, String label, Color color) {
@@ -187,9 +176,9 @@ class _TaskContainerState extends State<TaskContainer> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
         decoration: BoxDecoration(
-          color: AppColors.darkField,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.darkFieldBorder),
+          border: Border.all(color: AppColors.surfaceBorder),
         ),
         child: Row(
           children: [
@@ -198,27 +187,13 @@ class _TaskContainerState extends State<TaskContainer> {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _emptyState(String message) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.darkField.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.darkFieldBorder),
-      ),
-      child: Text(message, style: const TextStyle(color: AppColors.darkMuted, fontSize: 13)),
     );
   }
 
@@ -231,66 +206,15 @@ class _TaskContainerState extends State<TaskContainer> {
 
     final String context_ = [teamName, domainName].where((s) => s.isNotEmpty).join(' · ');
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.darkField,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: done ? AppColors.darkFieldBorder : AppColors.accentIndigo.withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  description,
-                  style: TextStyle(
-                    color: done ? AppColors.darkMuted : Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    decoration: done ? TextDecoration.lineThrough : TextDecoration.none,
-                  ),
-                ),
-                if (context_.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(context_, style: const TextStyle(color: AppColors.darkMuted, fontSize: 12)),
-                ],
-                if (deadline.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.event, size: 14, color: AppColors.darkMuted),
-                      const SizedBox(width: 5),
-                      Text(deadline, style: const TextStyle(color: AppColors.darkMuted, fontSize: 12)),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          if (done)
-            const Padding(
-              padding: EdgeInsets.only(top: 2),
-              child: Icon(Icons.check_circle, color: Colors.greenAccent, size: 26),
-            )
-          else if (busy)
-            const SizedBox(
-              width: 26,
-              height: 26,
-              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accentIndigoLight),
-            )
-          else
-            IconButton(
-              tooltip: 'Completar tarea',
-              onPressed: () => _completeTask(task),
-              icon: const Icon(Icons.radio_button_unchecked, color: AppColors.accentIndigoLight, size: 26),
-            ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TaskCard(
+        description: description,
+        context_: context_,
+        deadlineText: deadline,
+        done: done,
+        busy: busy,
+        onComplete: done ? null : () => _completeTask(task),
       ),
     );
   }

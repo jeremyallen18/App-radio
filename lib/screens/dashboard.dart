@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import "login.dart";
 import 'package:brl_task4/models/appbar.dart';
 import 'package:brl_task4/screens/chat.dart';
+import '../design/design.dart';
 import '../utils/api_config.dart';
 
 class dashb_mem extends StatefulWidget {
@@ -33,7 +34,7 @@ class dashb_memState extends State<dashb_mem> {
         Uri.parse(apiUrl),
         headers: <String, String>{
           'Authorization' :storedValue,
-          
+
         },);
 
     // Map<String, dynamic> jsonResponse = jsonDecode(response);
@@ -57,83 +58,82 @@ class dashb_memState extends State<dashb_mem> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.bgBase,
       floatingActionButton: FloatingActionButton(
         onPressed: (){
-          // Navigator.pushNamed(context, ChatScreen(name!) as String);
            Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(name!)));
         },
-        child: Icon(Icons.chat),
+        child: const Icon(Icons.chat),
       ),
-      appBar:MyAppBar(),
+      appBar: const MyAppBar(),
+      body: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+            child: SectionHeader(title: 'Equipos'),
+          ),
+          Expanded(
+            child: FutureBuilder<void>(
+              future: _futureData,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const LoadingState();
+                } else if (snapshot.hasError) {
+                  return ErrorState(
+                    message: 'No se pudieron cargar tus equipos.',
+                    onRetry: () => setState(() => _futureData = showTeamAPI()),
+                  );
+                } else if (teamsData == null || teamsData!.isEmpty) {
+                  return const EmptyState(
+                    icon: Icons.groups_outlined,
+                    title: 'Todavía no perteneces a ningún equipo',
+                    message: 'Crea uno nuevo o únete con un código para empezar.',
+                  );
+                }
+                return ListView.separated(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  itemCount: teamsData!.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+                  itemBuilder: (context, index) {
+                    final team = Map<String, dynamic>.from(teamsData![index]);
+                    final domains = (team['domains'] as List?) ?? [];
 
-      body: Container(
-        child: Column(
-          children:[
-            Container(
-              width: MediaQuery.of(context).size.width,
-                height: MediaQuery.of(context).size.height/20,
-                color: Colors.indigo.shade100,
-                child: const Center(child: Text("EQUIPOS",style: TextStyle(color: Colors.white,fontWeight: FontWeight.w600,fontSize: 18),))),
-            const SizedBox(height: 20,),
-            Expanded(
-              child: Container(
-                child:FutureBuilder<void>(
-                  future: _futureData,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(
-                          child: CircularProgressIndicator(
-                          color:Colors.indigo,
-                          ),
-                      );
-                    } else if (snapshot.hasError) {
-                        return Text('Error: ${snapshot.error}');
-                     } else {
-                        if(teamNames==null){
-                          return const Text("No hay equipos para mostrar");
-                        }
-                      return ListView.builder(
-                       itemCount:teamNames!.length,
-                        itemBuilder: (context,index){
-                            return ListTile(
-                              title: Container(
-                                width: MediaQuery.of(context).size.width/(4/3),
-                                height: MediaQuery.of(context).size.height/10,
-                                color: Colors.grey.shade50,
-                                child: ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(10)
-                                      ),
-                                      side: const BorderSide(color: Colors.indigo, width: 1),
-                                    ),
-                                  onPressed: (){
-                                    Navigator.push(context,  MaterialPageRoute(builder: (context) => t_detail(team:teamsData![index])));
-                                  },
-                                  child: Row(
-                                    children: [
-                                      Container(height: MediaQuery.of(context).size.height/15,width: 2,color: Colors.indigo,),
-                                      const SizedBox(width: 20,),
-                                      Text(teamNames![index].toUpperCase(),style: const TextStyle(color: Colors.black),),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                       },);
+                    final Set<String> members = {};
+                    int pending = 0;
+                    int completed = 0;
+                    for (final domain in domains) {
+                      for (final m in (domain['members'] as List? ?? [])) {
+                        members.add(m.toString());
                       }
+                      for (final t in (domain['tasks'] as List? ?? [])) {
+                        if (t['completed'] == true) {
+                          completed++;
+                        } else {
+                          pending++;
+                        }
+                      }
+                    }
+
+                    final String teamId = team['_id']?.toString() ?? '$index';
+                    return TeamCard(
+                      teamName: team['teamName']?.toString() ?? 'Sin nombre',
+                      teamCode: team['teamCode']?.toString() ?? '',
+                      memberCount: members.length,
+                      pendingCount: pending,
+                      completedCount: completed,
+                      accentColor: TeamCard.colorForId(teamId),
+                      onTap: () {
+                        Navigator.push(context,
+                            MaterialPageRoute(builder: (context) => t_detail(team: teamsData![index])));
+                      },
+                    );
                   },
-                ),
-              ),
+                );
+              },
             ),
-
-
-          ]
-        ),
+          ),
+        ],
       ),
     );
   }
 }
-
-
-
