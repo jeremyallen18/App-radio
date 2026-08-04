@@ -51,7 +51,11 @@ class _LoginState extends State<Login> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Inicio de sesión exitoso"),),);
-      await Navigator.pushNamed(context, MyRoutes.BottomNavBar);
+      await Navigator.pushNamedAndRemoveUntil(
+        context,
+        MyRoutes.BottomNavBar,
+        (route) => false,
+      );
 
     } else {
       print('Failed to join the team. Status Code: ${response.statusCode}');
