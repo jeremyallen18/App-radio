@@ -24,9 +24,9 @@ El proyecto ahora debe evolucionar hacia un sistema de gestión organizacional d
 > Al tomar un módulo: cambiar `Estado` a `En progreso`, poner el nombre del
 > equipo/persona, y actualizar a `Hecho` con un enlace al PR al terminar.
 > **Recordatorio de arquitectura**: el backend que realmente sirve la app es
-> **PHP en `C:\xampp\htdocs\hive-backend`** (no la carpeta `backend/` Node del
-> repo, que es código muerto). Toda la BD real es `hive_db`, no lo que
-> describe `database/schema.sql`.
+> **PHP en [`hive-backend/`](hive-backend/)**, dentro de este repo (servido
+> localmente vía la junction `C:\xampp\htdocs\hive-backend`). Toda la BD real
+> es `hive_db`.
 
 | Módulo | Estado | Equipo | Notas |
 |---|---|---|---|

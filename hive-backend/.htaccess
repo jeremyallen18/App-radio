@@ -1,0 +1,21 @@
+RewriteEngine On
+RewriteBase /hive-backend/
+
+# Let real files/dirs (uploads/, etc.) pass through untouched
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Everything else goes through the front controller
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+<FilesMatch "\.(sql|log|env)$">
+    Require all denied
+</FilesMatch>
+
+<Files ".env">
+    Require all denied
+</Files>
+<Files ".env.example">
+    Require all denied
+</Files>

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:brl_task4/home_page/home_page_home.dart';
 import 'package:brl_task4/home_page/progress.dart';
 import 'package:brl_task4/home_page/profile.dart';
+import '../design/tokens/colors.dart';
 import '../screens/dashboard.dart';
 
 // ignore_for_file: prefer_const_constructors
@@ -20,49 +21,38 @@ class _BottomNavBarState extends State<BottomNavBar> {
     return Scaffold(
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Color.fromARGB(255, 78, 102, 158),
+              color: AppColors.brandNavy.withValues(alpha: 0.5),
               blurRadius: 10,
             ),
           ],
         ),
+        // Sin backgroundColor/color de ícono propios: hereda de
+        // navigationBarTheme (AppTheme.dark) — fondo azul oscuro de marca e
+        // íconos claros, igual que el resto de la app.
         child: NavigationBar(
           onDestinationSelected: (int index) {
             setState(() {
               currentPageIndex = index;
             });
           },
-          backgroundColor: Color.fromARGB(255, 247, 247, 247),
-          // indicatorColor:  Color.fromARGB(255, 56, 72, 108),
           selectedIndex: currentPageIndex,
           destinations: const [
             NavigationDestination(
-              icon: Icon(
-                Icons.pie_chart,
-                color: Color.fromARGB(255, 56, 72, 108),
-              ),
+              icon: Icon(Icons.pie_chart),
               label: 'Progreso',
             ),
             NavigationDestination(
-              icon: Icon(
-                Icons.calendar_month,
-                color: Color.fromARGB(255, 56, 72, 108),
-              ),
+              icon: Icon(Icons.calendar_month),
               label: 'Tablero',
             ),
             NavigationDestination(
-              icon: Icon(
-                Icons.home,
-                color: Color.fromARGB(255, 56, 72, 108),
-              ),
+              icon: Icon(Icons.home),
               label: 'Inicio',
             ),
             NavigationDestination(
-              icon: Icon(
-                Icons.person_rounded,
-                color: Color.fromARGB(255, 56, 72, 108),
-              ),
+              icon: Icon(Icons.person_rounded),
               label: 'Perfil',
             ),
           ],

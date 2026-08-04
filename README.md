@@ -7,6 +7,7 @@ Aplicación Flutter para gestionar equipos de trabajo: creación y unión a equi
 - [Arquitectura general](#arquitectura-general)
 - [Stack técnico](#stack-técnico)
 - [Configuración del backend](#configuración-del-backend)
+- [Sistema de diseño](#sistema-de-diseño)
 - [Ícono de la app](#ícono-de-la-app)
 - [Estructura del proyecto](#estructura-del-proyecto)
 - [Flujo de la aplicación](#flujo-de-la-aplicación)
@@ -14,7 +15,6 @@ Aplicación Flutter para gestionar equipos de trabajo: creación y unión a equi
 - [Esquema de base de datos (`hive_db`)](#esquema-de-base-de-datos-hive_db)
 - [Endpoints](#endpoints)
 - [Herramientas y pruebas](#herramientas-y-pruebas)
-- [Backend Node (alternativo, no en uso)](#backend-node-alternativo-no-en-uso)
 - [Cómo correr el proyecto](#cómo-correr-el-proyecto)
 
 ## Arquitectura general
@@ -36,13 +36,21 @@ Aplicación Flutter para gestionar equipos de trabajo: creación y unión a equi
                                                                        └──────────────────────────┘
 ```
 
-**El backend en producción es el PHP** que vive en `C:\xampp\htdocs\hive-backend` (fuera de este repo, servido por Apache de XAMPP sobre la base `hive_db`). Es el único que la app consume. La carpeta [`backend/`](backend/) de este repositorio es una reimplementación en Node/Express contra otra base (`team_management`) que **no está en uso** — ver la [sección correspondiente](#backend-node-alternativo-no-en-uso) antes de tocar nada ahí.
+**El backend en producción es el PHP** en [`hive-backend/`](hive-backend/), dentro de este repo, servido localmente por Apache (XAMPP) sobre la base `hive_db`. Es el único que la app consume. El stack completo del proyecto es **Dart (Flutter) + PHP + MySQL**; no hay ningún otro backend en el repo.
+
+En local, `C:\xampp\htdocs\hive-backend` es una **junction** de Windows que apunta a `hive-backend/` dentro de este repo — así Apache lo sigue sirviendo en la misma URL sin duplicar archivos. Si necesitas recrearla (por ejemplo, en otra máquina):
+
+```powershell
+New-Item -ItemType Junction -Path "C:\xampp\htdocs\hive-backend" -Target "C:\xampp\htdocs\App-radio\hive-backend"
+```
+
+Credenciales de DB y la ruta base ya no están hardcodeadas: viven en `hive-backend/.env` (fuera de git, ver `.env.example`). Al desplegar a Hostinger, copia `hive-backend/` completo y crea un `.env` propio con las credenciales de esa base y, si el backend no vive en la raíz del dominio, ajusta `APP_BASE_PATH` ahí **y** `RewriteBase` en `hive-backend/.htaccess` (ese sí es estático, Apache lo lee antes de que corra PHP).
 
 ## Stack técnico
 
 **Cliente**
 
-- **Flutter / Dart** (Material 3, `colorSchemeSeed: Colors.blue` como paleta global).
+- **Flutter / Dart** (Material 3, tema oscuro propio en [`lib/design/theme/app_theme.dart`](lib/design/theme/app_theme.dart) — ver [Sistema de diseño](#sistema-de-diseño)).
 - **http** para llamadas REST contra el backend.
 - **flutter_secure_storage** para persistir el token de sesión (`accessToken`).
 - **multi_select_flutter**, **table_calendar**, **fl_chart**, **image_picker**, **socket_io_client**, **audioplayers**, **cached_network_image**, **dio** como dependencias de features puntuales.
@@ -69,6 +77,28 @@ const String kBaseUrl = 'http://192.168.3.44/hive-backend';
 
 Para apuntar la app a otro servidor/IP/dominio, **solo hay que cambiar esta línea** — el resto del código arma cada endpoint como `'$kBaseUrl/user/login'`, `'$kBaseUrl/team/createTeam'`, etc. Como el dispositivo físico y XAMPP están en la misma red local, aquí va la IP LAN del equipo que corre Apache (no `localhost`).
 
+## Sistema de diseño
+
+Toda la app corre sobre un tema oscuro único, anclado a los colores de marca (azul marino/azul medio/blanco extraídos de `assets/logo/logo.png`, con contraste WCAG verificado). Vive en `lib/design/`:
+
+```
+lib/design/
+├── tokens/      colors.dart (AppColors) · spacing.dart (AppSpacing/AppRadius) · typography.dart
+├── theme/       app_theme.dart          # ThemeData único, usado por MyApp en main.dart
+├── components/  app_scaffold.dart · app_button.dart · app_card.dart · app_text_field.dart
+│                state_views.dart (LoadingState/EmptyState/ErrorState) · section_header.dart
+│                stat_tile.dart · app_dialog.dart (showAppConfirmDialog) · app_badge.dart
+└── design.dart  # barrel: import '../design/design.dart' trae todo lo anterior
+```
+
+**Regla de uso de color, no opinable**: `AppColors.brandNavy` y `AppColors.brandBlue` (los azules del logo) solo sirven como **relleno** (fondos, botones sólidos) — su contraste como texto/ícono sobre el fondo oscuro es de 1.48:1 y 1.94:1, muy por debajo del mínimo AA (4.5:1). Para texto, íconos, enlaces y bordes sobre fondo oscuro se usan `AppColors.accent` (5.65:1) o `AppColors.accentStrong` (7.29:1). Nunca uses `Colors.black`, `Colors.white` ni un `Color(0x...)` suelto en una pantalla — todo sale de estos tokens.
+
+⚠️ **Ojo con `elevatedButtonTheme.minimumSize`** (`app_theme.dart`): tiene que ser un `Size` de ancho **finito** (hoy `Size(64, 50)`). `Size.fromHeight(...)` fija un ancho mínimo infinito, que revienta con `BoxConstraints... NOT NORMALIZED` en cualquier `ElevatedButton` que además reciba un `maximumSize` explícito (pasó en `home_page/teams.dart`).
+
+Pantalla de referencia visual (solo debug, no es parte del flujo de usuario): `/_ComponentGallery` — ver `lib/design/gallery/component_gallery_screen.dart`.
+
+El rediseño completo (motivación, fases, qué falta) está documentado en [`Rediseno-Frontend.md`](Rediseno-Frontend.md). Hoy está aplicada la Fase 0 (fundación: tokens, tema, componentes base, `login.dart`/`tasks.dart`/`teamDetail.dart`/`profile.dart`/`bottomnavbar.dart`/`teams.dart` migrados). El resto de las pantallas todavía usa colores sueltos y algo de texto en inglés — hay que migrarlas antes de darlas por terminadas (ver ese documento para el orden y los criterios).
+
 ## Ícono de la app
 
 El logo fuente vive en `assets/logo/logo.png` (no en `lib/assets/`, que es la carpeta de imágenes usadas dentro de las pantallas). Los íconos nativos de cada plataforma (Android `mipmap`/adaptive icon, iOS `AppIcon.appiconset`, Windows `.ico`, macOS `.icns`) se generan a partir de ese archivo con:
@@ -82,82 +112,85 @@ La configuración vive al final de `pubspec.yaml`, bajo la clave `flutter_launch
 ## Estructura del proyecto
 
 ```
-C:\xampp\htdocs\hive-backend\   # ← BACKEND EN USO (fuera del repo, servido por Apache)
+hive-backend/                   # ← BACKEND EN USO. C:\xampp\htdocs\hive-backend es una
+│                                 # junction que apunta aquí (Apache lo sirve igual).
 ├── index.php                    # Router + todos los handlers (auth, equipos, tareas,
 │                                 # chat, recursos, permisos, notificaciones).
 ├── helpers.php                  # Respuestas JSON/texto, parseo del body, require_auth,
 │                                 # require_team_member / require_team_leader, notify_user.
-├── config.php                   # Conexión PDO a hive_db + config de uploads.
+├── config.php                   # Carga .env, conexión PDO a hive_db + config de uploads.
+├── .env                         # Credenciales de DB y APP_BASE_PATH (fuera de git).
+├── .env.example                 # Plantilla de .env.
+├── .htaccess                    # Router + bloquea acceso directo a .sql/.log/.env.
 ├── schema.sql                   # Esquema MySQL de hive_db.
-└── uploads/                     # Imágenes subidas desde ResourceM.
+├── migrations/                  # Cambios incrementales al esquema.
+└── uploads/                     # Imágenes subidas desde ResourceM (fuera de git salvo .gitkeep).
 
 tools/                          # Utilidades Node contra el backend PHP en vivo.
 ├── php-backend-test.js          # Suite de integración end-to-end (crea y limpia sus datos).
+├── php-backend-test-org.js      # Suite de integración de la estructura organizacional.
 └── reset-database.js            # Vacía las tablas y reinicia AUTO_INCREMENT (destructivo).
-
-backend/                        # Reimplementación Node/Express — NO en uso. Ver sección abajo.
-database/schema.sql             # Esquema de esa versión Node (base team_management).
 
 assets/
 └── logo/logo.png               # Logo fuente usado para generar el ícono de la app.
 
 lib/
-├── main.dart                   # Entry point. Decide MyApp (sin sesión) vs MyApp2 (con sesión)
-│                                # según haya un accessToken guardado. Define el theme global
-│                                # (Material 3, seed azul) y el mapa de rutas con nombre.
+├── main.dart                   # Entry point. MyApp único: lee el accessToken guardado para
+│                                # decidir la ruta inicial (BottomNavBar vs SignUp), aplica
+│                                # AppTheme.dark y define el mapa de rutas con nombre.
+│
+├── design/                     # Sistema de diseño (tokens, tema, componentes base).
+│                                 # Ver la sección "Sistema de diseño" arriba.
 │
 ├── utils/
 │   ├── api_config.dart         # kBaseUrl: única fuente de la IP/dominio del backend.
-│   ├── colors.dart              # Paleta azul compartida (AppColors) usada por login y demás.
+│   ├── session.dart             # Session.fetchCurrentUser()/getCachedRole(): perfil y rol
+│   │                             # organizacional (GET /user/me), cacheado tras el login.
 │   └── Routes.dart              # Nombres de ruta (MyRoutes.*) usados con Navigator.pushNamed.
-│
-├── widgets/
-│   ├── custom_text_form_field.dart  # Input de texto reutilizable con estilo oscuro/azul.
-│   └── gradient_button.dart         # Botón "pill" con gradiente, usado en el login.
 │
 ├── models/
 │   ├── storeToken.dart          # SecureStorage: guarda/lee el accessToken cifrado en disco.
-│   └── appbar.dart              # AppBar superior con avatar, saludo, nombre de usuario y
-│                                 # campana de notificaciones con badge de no leídas.
+│   ├── models.dart               # AppRole, DepartmentInfo, UserProfile (estructura organizacional).
+│   ├── join_model.dart            # Modelo de respuesta de join_team.dart.
+│   └── appbar.dart                # AppBar superior con avatar, saludo, nombre de usuario y
+│                                   # campana de notificaciones con badge de no leídas.
 │
 ├── screens/                     # Pantallas de autenticación y flujos de equipo/tarea.
-│   ├── login.dart                # Login (tema oscuro).
+│   ├── login.dart                # Login (migrada al sistema de diseño).
 │   ├── signup.dart                # Registro.
 │   ├── forgot password/           # Recuperación de contraseña (correo → OTP → nueva clave).
 │   ├── join_team.dart              # Unirse a un equipo con un código.
 │   ├── dashboard.dart               # Lista de equipos del usuario (dashb_mem).
-│   ├── teamDetail.dart               # Detalle de un equipo: áreas, miembros, tareas y acciones.
+│   ├── teamDetail.dart               # Detalle de un equipo: áreas, miembros, tareas y acciones
+│   │                                  # (migrada).
 │   ├── addTask.dart                   # Asignar tarea nueva (dropdowns de área/miembro).
 │   ├── notifications.dart              # Bandeja de notificaciones; marcar como leída al tocar.
 │   ├── MarkTaskDone.dart                # Pantalla legacy de completar tarea a mano (ya no
 │   │                                     enlazada desde la UI).
 │   ├── chat.dart / chatHistory.dart      # Chat del equipo con historial.
 │   ├── LResign.dart / MResign.dart        # Renuncia del líder / de un miembro.
-│   └── recaptcha.dart, homescreen.dart     # No usados actualmente por ninguna ruta.
+│   └── recaptcha.dart                      # Import muerto en signup.dart; sin flujo real (stub).
 │
 ├── create&join-Team/
 │   ├── create-team.dart          # Crear equipo + seleccionar áreas (multi-select).
 │   └── Domain-team.dart           # Invitar miembros por correo a cada área tras crear el equipo.
 │
 ├── home_page/                    # Contenido de la BottomNavBar una vez logueado.
-│   ├── bottomnavbar.dart           # Barra inferior: Progreso / Tablero / Inicio / Perfil.
+│   ├── bottomnavbar.dart           # Barra inferior: Progreso / Tablero / Inicio / Perfil
+│   │                                 (migrada; hereda navigationBarTheme, sin colores propios).
 │   ├── home_page_home.dart          # Pestaña "Inicio": alterna entre Tareas y Equipos.
-│   ├── tasks.dart                     # Resumen de tareas pendientes/completadas del usuario.
-│   ├── teams.dart                      # Lista de equipos del usuario dentro de "Inicio".
+│   ├── tasks.dart                     # Resumen de tareas pendientes/completadas (migrada).
+│   ├── teams.dart                      # Lista de equipos del usuario dentro de "Inicio" (migrada).
 │   ├── progress.dart                    # Gráfico de progreso (fl_chart).
-│   └── profile.dart / todo.dart           # Perfil de usuario / lista de tareas legacy sin uso.
+│   └── profile.dart                      # Perfil de usuario (migrada, texto en español).
 │
 ├── leave approval/
 │   └── leave.dart               # Solicitar permiso (leave) y ver el resultado del líder.
 │
-├── ResourceM/                    # Recursos compartidos del equipo (documentos, imágenes, texto).
-│   ├── Resources.dart              # Pantalla contenedora de recursos del equipo.
-│   ├── doc.dart / getR.dart / fetchR.dart / imagecc.dart  # Publicar/leer recursos e imágenes.
-│   └── Leaderassist.dart            # Mensaje directo del miembro al líder.
-│
-└── music/
-    └── music.dart               # "Zona Zen": módulo de audio. No enlazado a ninguna ruta
-                                   (código huérfano, se deja por si se retoma).
+└── ResourceM/                    # Recursos compartidos del equipo (documentos, imágenes, texto).
+    ├── Resources.dart              # Pantalla contenedora de recursos del equipo.
+    ├── doc.dart / getR.dart / fetchR.dart / imagecc.dart  # Publicar/leer recursos e imágenes.
+    └── Leaderassist.dart            # Mensaje directo del miembro al líder.
 ```
 
 > Nota: `lib/assets/` contiene las imágenes usadas dentro de las pantallas (ilustraciones, íconos propios). `assets/logo/` es solo el logo fuente para generar el ícono de la app — son carpetas con propósitos distintos y ambas están declaradas en `pubspec.yaml → flutter → assets`.
@@ -166,9 +199,9 @@ lib/
 
 ### 1. Arranque y sesión
 
-`main.dart` revisa si hay un `accessToken` guardado en `flutter_secure_storage`:
-- **Sin token** → `MyApp`, ruta inicial `/` = `SignUp`.
-- **Con token** → `MyApp2`, ruta inicial `/` = `BottomNavBar` (entra directo a la app).
+`main.dart` revisa si hay un `accessToken` guardado en `flutter_secure_storage` y se lo pasa a `MyApp(hasSession: ...)`, que decide la ruta inicial `/`:
+- **Sin token** → `SignUp`.
+- **Con token** → `BottomNavBar` (entra directo a la app).
 
 ### 2. Autenticación
 
@@ -208,13 +241,13 @@ La campana del `MyAppBar` consulta `GET /notifications` y muestra un badge rojo 
 
 ### Paleta y diseño
 
-Toda la app usa una paleta azul/índigo (`Colors.indigo`, `AppColors` en `lib/utils/colors.dart`, tema global azul en `main.dart`). No quedan referencias a morado en el código.
+Ver [Sistema de diseño](#sistema-de-diseño) arriba y [`Rediseno-Frontend.md`](Rediseno-Frontend.md) para el detalle completo (tokens, regla de contraste, qué pantallas faltan migrar).
 
 ## Backend PHP (`hive-backend`)
 
-Vive en `C:\xampp\htdocs\hive-backend` (fuera de este repositorio, porque Apache lo sirve desde su propio *document root*). Son cuatro archivos:
+Vive en [`hive-backend/`](hive-backend/), dentro de este repo. Localmente, `C:\xampp\htdocs\hive-backend` es una junction que apunta a esta carpeta, así que Apache lo sirve igual que antes. Son cuatro archivos:
 
-- **`config.php`** — conexión PDO a `hive_db` (`ERRMODE_EXCEPTION`, `FETCH_ASSOC`) y constantes de subida (`UPLOAD_DIR`, `UPLOAD_URL_BASE`).
+- **`config.php`** — carga `.env` (host/usuario/clave de DB y `APP_BASE_PATH`), conexión PDO a `hive_db` (`ERRMODE_EXCEPTION`, `FETCH_ASSOC`) y constantes de subida (`UPLOAD_DIR`, `UPLOAD_URL_BASE`).
 - **`helpers.php`** — utilidades compartidas: respuestas (`json_response`, `raw_json_response`, `text_response`, `error_response`), generación de ids/tokens/códigos/OTP, `request_body()`, y toda la capa de autorización.
 - **`index.php`** — tabla de rutas (método + regex + handler) y los handlers.
 - **`schema.sql`** — el esquema de `hive_db`.
@@ -306,7 +339,11 @@ Todos bajo `http://<host>/hive-backend`. 🔒 = requiere header `Authorization`.
 
 ## Herramientas y pruebas
 
-Ambas requieren Apache y MySQL de XAMPP corriendo, y se ejecutan desde la raíz del repo.
+Ambas requieren Apache y MySQL de XAMPP corriendo, y se ejecutan desde la raíz del repo. La primera vez, instala sus dependencias (`mysql2`):
+
+```bash
+cd tools && npm install && cd ..
+```
 
 **Suite de integración contra el backend en vivo** — recorre el flujo completo (signup → login → crear equipo → invitar → asignar tarea → completarla → chat → permiso → recursos → notificaciones) usando correos marcados (`zz_phpit_...@test.invalid`) que borra al terminar, así que no ensucia los datos reales:
 
@@ -326,28 +363,17 @@ Pruebas de widget de Flutter:
 flutter test
 ```
 
-## Backend Node (alternativo, no en uso)
-
-La carpeta [`backend/`](backend/) contiene una reimplementación completa en **Node.js + Express + mysql2**, con JWT, `bcryptjs` y `multer`, sobre el esquema [`database/schema.sql`](database/schema.sql) (base `team_management`). Cubre los mismos endpoints con la misma forma de JSON.
-
-**No es el backend que la app consume hoy.** Difiere del PHP en el modelo de datos (ids enteros con claves foráneas en lugar de correos y `CHAR(24)`) y en la base de datos, así que **un cambio hecho aquí no tiene ningún efecto sobre la app**. Cualquier corrección de backend va a los archivos PHP en `htdocs`. Se conserva por si más adelante se migra el despliegue a Node.
-
-Para levantarlo (solo si se retoma esa vía):
-
-```bash
-cd backend
-npm install
-cp .env.example .env
-mysql -u root -p < ../database/schema.sql
-npm start
-```
-
 ## Cómo correr el proyecto
 
-1. Levantar **Apache** y **MySQL** desde el panel de XAMPP.
-2. Cargar el esquema si es la primera vez: `mysql -u root -p < C:\xampp\htdocs\hive-backend\schema.sql`.
-3. Ajustar `kBaseUrl` en [`lib/utils/api_config.dart`](lib/utils/api_config.dart) con la IP LAN de la máquina que corre Apache.
-4. Correr la app:
+1. Si `C:\xampp\htdocs\hive-backend` no existe todavía (clon nuevo del repo), crear la junction hacia el backend versionado:
+   ```powershell
+   New-Item -ItemType Junction -Path "C:\xampp\htdocs\hive-backend" -Target "C:\xampp\htdocs\App-radio\hive-backend"
+   ```
+2. Copiar `hive-backend\.env.example` a `hive-backend\.env` y ajustar las credenciales de DB.
+3. Levantar **Apache** y **MySQL** desde el panel de XAMPP.
+4. Cargar el esquema si es la primera vez: `mysql -u root -p < C:\xampp\htdocs\hive-backend\schema.sql`.
+5. Ajustar `kBaseUrl` en [`lib/utils/api_config.dart`](lib/utils/api_config.dart) con la IP LAN de la máquina que corre Apache.
+6. Correr la app:
 
 ```bash
 flutter pub get
