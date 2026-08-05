@@ -23,6 +23,17 @@ $DB_PASS = getenv('DB_PASS') ?: '';
 
 define('APP_BASE_PATH', getenv('APP_BASE_PATH') !== false ? getenv('APP_BASE_PATH') : '/hive-backend');
 
+define('SMTP_HOST', getenv('SMTP_HOST') ?: '');
+define('SMTP_PORT', (int) (getenv('SMTP_PORT') ?: 587));
+define('SMTP_USER', getenv('SMTP_USER') ?: '');
+define('SMTP_PASS', getenv('SMTP_PASS') ?: '');
+define('SMTP_FROM', getenv('SMTP_FROM') ?: getenv('SMTP_USER') ?: '');
+define('SMTP_FROM_NAME', getenv('SMTP_FROM_NAME') ?: 'Radio Doliv');
+
+require __DIR__ . '/lib/PHPMailer/Exception.php';
+require __DIR__ . '/lib/PHPMailer/PHPMailer.php';
+require __DIR__ . '/lib/PHPMailer/SMTP.php';
+
 try {
     $pdo = new PDO(
         "mysql:host=$DB_HOST;dbname=$DB_NAME;charset=utf8mb4",

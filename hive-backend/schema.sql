@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS users (
   -- role: 'director' | 'manager' | 'employee' (ver ROLES en helpers.php).
   role VARCHAR(20) NOT NULL DEFAULT 'employee',
   position VARCHAR(150) NULL,
+  photo_path VARCHAR(500) NULL,
   department_id CHAR(24) NULL,
   token VARCHAR(64) NULL,
   otp VARCHAR(10) NULL,
@@ -141,4 +142,20 @@ CREATE TABLE IF NOT EXISTS notifications (
   read_at DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   KEY idx_notifications_email (email, read_at)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
+-- Anuncios del sitio público (RADIODOLIV_PAGINA/pages/anuncios.php). Ambos
+-- proyectos comparten hive_db a partir de la migración 002_anuncios.sql.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS anuncios (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  titulo VARCHAR(255) NOT NULL,
+  descripcion TEXT NULL,
+  imagen_url VARCHAR(500) NULL,
+  link_web VARCHAR(500) NULL,
+  link_facebook VARCHAR(500) NULL,
+  link_whatsapp VARCHAR(500) NULL,
+  fecha_publicacion DATE NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;

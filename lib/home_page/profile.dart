@@ -4,6 +4,7 @@ import 'package:brl_task4/Utils/Routes.dart';
 import 'package:brl_task4/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import '../design/design.dart';
 import '../models/models.dart';
 import '../screens/teamDetail.dart';
@@ -23,6 +24,8 @@ class _ProfileState extends State<Profile> {
   int? _completedCount;
   List<dynamic> _teams = [];
   bool _loading = true;
+  bool _uploadingPhoto = false;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -78,6 +81,55 @@ class _ProfileState extends State<Profile> {
     });
   }
 
+  Future<void> _editProfilePhoto() async {
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (pickedFile == null || !mounted) return;
+
+    setState(() => _uploadingPhoto = true);
+    try {
+      final token = await secureStorage.readSecureData(key);
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$kBaseUrl/user/photo'),
+      );
+      request.headers['Authorization'] = token ?? '';
+      request.files.add(await http.MultipartFile.fromPath('photo', pickedFile.path));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        setState(() => _profile = UserProfile.fromJson(json));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Foto de perfil actualizada')),
+        );
+      } else {
+        String message = 'No se pudo actualizar la foto';
+        try {
+          message = (jsonDecode(response.body)['error'] as String?) ?? message;
+        } catch (_) {}
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.red),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ocurrió un error al subir la foto'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
+  }
+
   void _comingSoon(String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$feature: próximamente')),
@@ -111,9 +163,51 @@ class _ProfileState extends State<Profile> {
           Center(
             child: Column(
               children: [
-                const CircleAvatar(
-                  radius: 56.0,
-                  backgroundImage: AssetImage('lib/assets/prof.png'),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    CircleAvatar(
+                      radius: 56.0,
+                      backgroundImage: (profile?.photoUrl != null)
+                          ? NetworkImage(profile!.photoUrl!) as ImageProvider
+                          : const AssetImage('lib/assets/prof.png'),
+                    ),
+                    if (_uploadingPhoto)
+                      const Positioned.fill(
+                        child: CircleAvatar(
+                          radius: 56.0,
+                          backgroundColor: Color(0x88000000),
+                          child: SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: InkWell(
+                        onTap: _uploadingPhoto ? null : _editProfilePhoto,
+                        customBorder: const CircleBorder(),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(
+                            color: AppColors.textPrimary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            size: 16.0,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
@@ -216,7 +310,7 @@ class _ProfileState extends State<Profile> {
             padding: EdgeInsets.zero,
             child: Column(
               children: [
-                _accountRow('Editar perfil', Icons.edit_square, () => _comingSoon('Editar perfil')),
+                _accountRow('Editar foto de perfil', Icons.edit_square, _editProfilePhoto),
                 const Divider(height: 1, color: AppColors.surfaceBorder),
                 _accountRow('Seguridad', Icons.security, () => _comingSoon('Seguridad')),
                 const Divider(height: 1, color: AppColors.surfaceBorder),

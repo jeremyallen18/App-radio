@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../utils/api_config.dart';
+import '../utils/session.dart';
 
 class MyAppBar extends StatefulWidget implements PreferredSizeWidget {
   const MyAppBar({Key? key}) : super(key: key);
@@ -18,6 +19,7 @@ class MyAppBar extends StatefulWidget implements PreferredSizeWidget {
 class _MyAppBarState extends State<MyAppBar> {
   String userName="";
   int unreadCount = 0;
+  String? _photoUrl;
 
   Future<void> unreadCountAPI() async {
     dynamic storedValue = await secureStorage.readSecureData(key);
@@ -57,11 +59,19 @@ class _MyAppBarState extends State<MyAppBar> {
     }
   }
 
+  Future<void> _loadPhoto() async {
+    final token = await secureStorage.readSecureData(key);
+    final profile = await Session.fetchCurrentUser(token ?? '');
+    if (!mounted) return;
+    setState(() => _photoUrl = profile?.photoUrl);
+  }
+
   @override
   void initState() {
     super.initState();
     nameAPI();
     unreadCountAPI();
+    _loadPhoto();
   }
 
   @override
@@ -82,7 +92,9 @@ class _MyAppBarState extends State<MyAppBar> {
             children: [
               CircleAvatar(
                 radius: 35,
-                backgroundImage: AssetImage('lib/assets/prof.png'),
+                backgroundImage: _photoUrl != null
+                    ? NetworkImage(_photoUrl!) as ImageProvider
+                    : const AssetImage('lib/assets/prof.png'),
               ),
               SizedBox(width: 15),
               Column(

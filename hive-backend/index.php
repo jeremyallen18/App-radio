@@ -46,6 +46,7 @@ $routes = [
     ['GET',  '#^/notifications/?$#',                          'listNotifications'],
     ['POST', '#^/notifications/([^/]+)/read/?$#',             'markNotificationRead'],
     ['GET',  '#^/user/me/?$#',                                'getMe'],
+    ['POST', '#^/user/photo/?$#',                             'updateProfilePhoto'],
     ['POST', '#^/company/create/?$#',                         'createCompany'],
     ['GET',  '#^/company/info/?$#',                           'getCompany'],
     ['POST', '#^/company/update/?$#',                         'updateCompany'],
@@ -144,11 +145,15 @@ function resetPassword(PDO $pdo) {
     $stmt = $pdo->prepare('UPDATE users SET otp = ?, otp_expires = DATE_ADD(NOW(), INTERVAL 10 MINUTE), otp_verified = 0 WHERE id = ?');
     $stmt->execute([$otp, $user['id']]);
 
-    // No mail server is configured on this local backend, so the OTP is
-    // logged instead of emailed -- check Apache's error log to read it.
-    error_log("[hive-backend] Password reset OTP for $email: $otp");
+    $sent = send_otp_email($email, $otp);
 
-    json_response(['message' => 'OTP generated (check the backend log, no mail server is configured)']);
+    // El OTP también se loguea como respaldo: si SMTP no está configurado
+    // (desarrollo local) o el envío falla, se puede leer aquí igualmente.
+    error_log("[hive-backend] Password reset OTP for $email: $otp" . ($sent ? ' (emailed)' : ' (NOT emailed)'));
+
+    json_response(['message' => $sent
+        ? 'OTP enviado a tu correo'
+        : 'OTP generado, pero no se pudo enviar el correo (revisa la configuración SMTP o el log del backend)']);
 }
 
 function verifyOTP(PDO $pdo, string $email) {
@@ -831,6 +836,7 @@ function build_user_profile_payload(PDO $pdo, array $user): array {
         'email'      => $user['email'],
         'role'       => $user['role'],
         'position'   => $user['position'],
+        'photoUrl'   => $user['photo_path'] ? UPLOAD_URL_BASE . $user['photo_path'] : null,
         'department' => $department,
     ];
 }
@@ -839,6 +845,45 @@ function build_user_profile_payload(PDO $pdo, array $user): array {
 // (Director / Manager / Employee) — el token en sí no lleva el rol.
 function getMe(PDO $pdo) {
     $user = require_auth($pdo);
+    json_response(build_user_profile_payload($pdo, $user));
+}
+
+// Sube/reemplaza la foto de perfil del usuario autenticado. Misma validación
+// de tipo de archivo que addImage(); a diferencia de esa, aquí se borra el
+// archivo anterior porque solo tiene sentido conservar una foto por usuario.
+function updateProfilePhoto(PDO $pdo) {
+    $user = require_auth($pdo);
+
+    if (empty($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
+        error_response('photo is required', 400);
+    }
+
+    $tmpPath = $_FILES['photo']['tmp_name'];
+    $originalName = $_FILES['photo']['name'];
+    $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+    $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+    if (!in_array($ext, $allowed, true) || @getimagesize($tmpPath) === false) {
+        error_response('Only image files are allowed', 400);
+    }
+
+    $storedName = bin2hex(random_bytes(16)) . '.' . $ext;
+    if (!move_uploaded_file($tmpPath, UPLOAD_DIR . $storedName)) {
+        error_response('Failed to save the uploaded image', 500);
+    }
+
+    $oldPath = $user['photo_path'];
+    $stmt = $pdo->prepare('UPDATE users SET photo_path = ? WHERE id = ?');
+    $stmt->execute([$storedName, $user['id']]);
+
+    if ($oldPath) {
+        $oldFile = UPLOAD_DIR . basename($oldPath);
+        if (is_file($oldFile)) {
+            @unlink($oldFile);
+        }
+    }
+
+    $user['photo_path'] = $storedName;
     json_response(build_user_profile_payload($pdo, $user));
 }
 
