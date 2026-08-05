@@ -1,6 +1,9 @@
 <?php
 // Shared helpers for the Hive backend
 
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception as PHPMailerException;
+
 function json_response($data, int $status = 200) {
     http_response_code($status);
     header('Content-Type: application/json');
@@ -49,6 +52,45 @@ function generate_team_code(): string {
 
 function generate_otp(): string {
     return (string) random_int(100000, 999999);
+}
+
+// Envía el código OTP de recuperación de contraseña por correo vía SMTP
+// (PHPMailer). Devuelve true si el envío tuvo éxito. Si SMTP no está
+// configurado (.env vacío) o el envío falla, no lanza excepción: se limita
+// a devolver false y quien llame decide qué hacer (aquí, seguir logueando
+// el OTP como respaldo para desarrollo local).
+function send_otp_email(string $toEmail, string $otp): bool {
+    if (SMTP_HOST === '' || SMTP_USER === '' || SMTP_PASS === '') {
+        return false;
+    }
+
+    $mail = new PHPMailer(true);
+    try {
+        $mail->isSMTP();
+        $mail->Host = SMTP_HOST;
+        $mail->SMTPAuth = true;
+        $mail->Username = SMTP_USER;
+        $mail->Password = SMTP_PASS;
+        $mail->SMTPSecure = SMTP_PORT === 465 ? 'ssl' : 'tls';
+        $mail->Port = SMTP_PORT;
+        $mail->CharSet = 'UTF-8';
+
+        $mail->setFrom(SMTP_FROM, SMTP_FROM_NAME);
+        $mail->addAddress($toEmail);
+
+        $mail->isHTML(true);
+        $mail->Subject = 'Código para recuperar tu contraseña';
+        $mail->Body = '<p>Usa este código para restablecer tu contraseña:</p>'
+            . '<p style="font-size:28px;font-weight:bold;letter-spacing:4px;">' . htmlspecialchars($otp) . '</p>'
+            . '<p>El código vence en 10 minutos. Si no solicitaste este cambio, ignora este correo.</p>';
+        $mail->AltBody = "Tu código para restablecer la contraseña es: $otp (vence en 10 minutos).";
+
+        $mail->send();
+        return true;
+    } catch (PHPMailerException $e) {
+        error_log('[hive-backend] Failed to send OTP email to ' . $toEmail . ': ' . $mail->ErrorInfo);
+        return false;
+    }
 }
 
 // The Flutter client sends either application/json or, when it posts a

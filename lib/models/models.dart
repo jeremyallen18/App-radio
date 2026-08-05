@@ -64,6 +64,7 @@ class UserProfile {
   final String email;
   final AppRole role;
   final String? position;
+  final String? photoUrl;
   final DepartmentInfo? department;
 
   UserProfile({
@@ -72,6 +73,7 @@ class UserProfile {
     required this.email,
     required this.role,
     this.position,
+    this.photoUrl,
     this.department,
   });
 
@@ -83,6 +85,7 @@ class UserProfile {
       email: json['email'] as String,
       role: appRoleFromString(json['role'] as String?),
       position: json['position'] as String?,
+      photoUrl: json['photoUrl'] as String?,
       department: deptJson is Map<String, dynamic>
           ? DepartmentInfo.fromJson(deptJson)
           : null,
