@@ -54,6 +54,11 @@ class MyApp extends StatelessWidget {
         MyRoutes.ManagerDashboardRoutes: (context) => const ManagerDashboard(),
         MyRoutes.EmployeeDashboardRoutes: (context) =>
             const EmployeeDashboard(),
+        MyRoutes.DirectorDashboardRoutes: (context) =>
+            const DirectorDashboard(),
+        MyRoutes.ManagerDashboardRoutes: (context) => const ManagerDashboard(),
+        MyRoutes.EmployeeDashboardRoutes: (context) =>
+            const EmployeeDashboard(),
         MyRoutes.DoneTask: (context) => const doneTask(),
         MyRoutes.Reset: (context) => const ResetPass(),
         if (!kReleaseMode)
