@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:brl_task4/home_page/home_page_home.dart';
 import 'package:brl_task4/home_page/progress.dart';
 import 'package:brl_task4/home_page/profile.dart';
 import '../design/tokens/colors.dart';
 import '../screens/dashboard.dart';
+import '../screens/role_dashboard_router.dart';
 
 // ignore_for_file: prefer_const_constructors
 
@@ -71,7 +71,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
         Container(
           // color: Colors.blue,
           alignment: Alignment.center,
-          child: HomeNav(),
+          child: const RoleDashboardRouter(),
         ),
         Container(
           // color: Colors.blue,
