@@ -16,12 +16,10 @@ class MyRoutes {
   static String ManagerDashboardRoutes = "/dashboard/manager";
   static String EmployeeDashboardRoutes = "/dashboard/employee";
 
-  // static String Todo = "/TodoList";
   static String MResign = "/Mresign";
   static String AddTask = "/addTask";
   static String DoneTask = "/doneTask";
   static String Reset = "/ResetPass";
-  // static String Leave = "/ApplyLeave";
 
   /// Solo debug: galería de referencia del sistema de diseño (Fase 0).
   static String ComponentGallery = "/_ComponentGallery";

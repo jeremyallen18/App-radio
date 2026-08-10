@@ -15,13 +15,11 @@ class _doneTaskState extends State<doneTask> {
 
   Future<void> TaskDoneAPI() async {
     dynamic storedValue = await secureStorage.readSecureData(key);
-    // print (storedValue);
     const String apiUrl = '$kBaseUrl/team/taskDone';
     final response = await http.post(
       Uri.parse(apiUrl),
       headers: <String, String>{
         'Authorization' :storedValue,
-        // 'Content-Type': 'application/json'
       },
 
       body: ({
@@ -33,7 +31,6 @@ class _doneTaskState extends State<doneTask> {
     );
 
     if (response.statusCode == 200) {
-      // print('API Response: ${response.body}');
       Navigator.pushReplacementNamed(context, MyRoutes.BottomNavBar);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Tarea marcada como hecha"),),);
@@ -95,10 +92,8 @@ class _doneTaskState extends State<doneTask> {
                               controller: TeamCodeController,
                               decoration: InputDecoration(
                                 prefixIcon:const Icon(Icons.groups_outlined),
-                                // prefixIcon:Image.asset("lib/assets/icon_pass.png",height: 20,),
                                 hintText: "Código de equipo",
                                 contentPadding: const EdgeInsets.symmetric(vertical: 2.0),
-                                // suffixIcon: Icon(Icons.visibility),
                                 border:OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(5.0),
                                 ),
@@ -117,10 +112,8 @@ class _doneTaskState extends State<doneTask> {
                               controller: DomainController,
                               decoration: InputDecoration(
                                 prefixIcon:const Icon(Icons.domain),
-                                // prefixIcon:Image.asset("lib/assets/icon_pass.png",height: 20,),
                                 hintText: "Área",
                                 contentPadding: const EdgeInsets.symmetric(vertical: 2.0),
-                                // suffixIcon: Icon(Icons.visibility),
                                 border:OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(5.0),
                                 ),
@@ -138,10 +131,8 @@ class _doneTaskState extends State<doneTask> {
                               controller: EmailController,
                               decoration: InputDecoration(
                                 prefixIcon:const Icon(Icons.email),
-                                // prefixIcon:Image.asset("lib/assets/icon_pass.png",height: 20,),
                                 hintText: "Correo",
                                 contentPadding: const EdgeInsets.symmetric(vertical: 2.0),
-                                // suffixIcon: Icon(Icons.visibility),
                                 border:OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(5.0),
                                 ),
@@ -160,10 +151,8 @@ class _doneTaskState extends State<doneTask> {
                               controller: TaskController,
                               decoration: InputDecoration(
                                 prefixIcon:const Icon(Icons.add_box_rounded),
-                                // prefixIcon:Image.asset("lib/assets/icon_pass.png",height: 20,),
                                 hintText: "Tarea",
                                 contentPadding: const EdgeInsets.symmetric(vertical: 2.0),
-                                // suffixIcon: Icon(Icons.visibility),
                                 border:OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(5.0),
                                 ),
@@ -174,12 +163,9 @@ class _doneTaskState extends State<doneTask> {
                         const SizedBox(height: 35,),
                         ElevatedButton(onPressed: (){
                           TaskDoneAPI();
-                          // joinTeamAPI();
                         },
                           style:ElevatedButton.styleFrom(
                             backgroundColor:const Color.fromARGB(255, 169, 187, 229),
-                            // padding: EdgeInsets.symmetric(vertical: 15,horizontal: 30),
-
                           ),
                           child:Row(
                             mainAxisSize: MainAxisSize.min,

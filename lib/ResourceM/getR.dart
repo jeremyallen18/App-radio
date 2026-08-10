@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:brl_task4/ResourceM/Leaderassist.dart';
-import 'package:brl_task4/create&join-Team/create-team.dart';
 import 'package:brl_task4/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -241,10 +240,6 @@ class _PostTextScreenState extends State<PostTextScreen> {
                                 ),
                               ),
                         SizedBox(height: 20),
-                        // ElevatedButton(
-                        //   onPressed: getImageGallery,
-                        //   child: Text('Pick Image from Gallery'),
-                        // ),
                         Buttonkii(
                             buttonName: 'Select Image',
                             onTap: getImageGallery,

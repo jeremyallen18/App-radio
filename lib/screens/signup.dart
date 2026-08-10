@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../Utils/Routes.dart';
-import 'package:brl_task4/screens/recaptcha.dart';
 import '../utils/api_config.dart';
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -48,15 +47,10 @@ class _SignUpState extends State<SignUp> {
         height: MediaQuery.of(context).size.height,
         decoration:BoxDecoration(
           color: Colors.indigo.shade50.withOpacity(0.1),
-          // image: DecorationImage(
-            // image:AssetImage('lib/assets/BgAuth.png'),
-            // fit: BoxFit.cover,),
         ),
         child:SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(12.0),
-              // child: Form(
-              //   key: _formKey,
               child: Column(
                 children: [
                   Column(
@@ -126,7 +120,6 @@ class _SignUpState extends State<SignUp> {
                                 controller: passController,
                                 obscureText: obscureText,
                                 decoration: InputDecoration(
-                                  // prefixIcon:Icon(Icons.looks),
                                   prefixIcon:Image.asset("lib/assets/icon_pass.png",height: 20,),
                                   hintText: "Contraseña",
                                   contentPadding: const EdgeInsets.symmetric(vertical: 2.0),
@@ -156,7 +149,6 @@ class _SignUpState extends State<SignUp> {
                                 controller: comfpassController,
                                 obscureText: true,
                                 decoration: InputDecoration(
-                                  // prefixIcon:Icon(Icons.looks),
                                   prefixIcon:Image.asset("lib/assets/icon_pass.png",height: 20,),
                                   hintText: "Confirmar contraseña",
                                   contentPadding: const EdgeInsets.symmetric(vertical: 2.0),
@@ -165,14 +157,6 @@ class _SignUpState extends State<SignUp> {
                                     borderRadius: BorderRadius.circular(30.0),
                                   ),
                                 ),
-                                // validator: (value){
-                                //   if(passController.text==comfpassController.text){
-                                //     return null;
-                                //   }
-                                //   else{
-                                //     return "Las contraseñas no coinciden";
-                                //   }
-                                // },
                               ),
                             ),
                           ),
@@ -195,7 +179,6 @@ class _SignUpState extends State<SignUp> {
                               }
                             },
                               style:ElevatedButton.styleFrom(backgroundColor: Colors.black,
-                                // padding: const EdgeInsets.symmetric(horizontal: 30),
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(30)
                                 ),
@@ -203,7 +186,6 @@ class _SignUpState extends State<SignUp> {
 
                               child: const Text("Registrarse",style:TextStyle(color: Colors.white)),),
                           ),
-                          // Recaptcha(),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [

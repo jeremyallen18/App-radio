@@ -38,4 +38,16 @@ class Session {
     if (stored == null) return null;
     return appRoleFromString(stored as String);
   }
+
+  /// Pide el rol actual a `/user/me` (refresca el caché de paso) y solo si
+  /// la llamada falla (sin red, token vencido) cae al valor cacheado. Usar
+  /// en pantallas que deciden qué UI mostrar según el rol, para que un
+  /// cambio de rol en el backend se refleje sin tener que cerrar sesión.
+  static Future<AppRole?> getFreshRole(String? token) async {
+    if (token != null) {
+      final profile = await fetchCurrentUser(token);
+      if (profile != null) return profile.role;
+    }
+    return getCachedRole();
+  }
 }

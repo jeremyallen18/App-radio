@@ -1,11 +1,8 @@
-//import 'package:create_team/ui/createteam1.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DocumentationPage extends StatefulWidget {
-  // const DocumentationPage({super.key});
-
   @override
   _DocumentationPageState createState() => _DocumentationPageState();
 }

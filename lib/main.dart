@@ -19,7 +19,6 @@ import 'design/gallery/component_gallery_screen.dart';
 import 'create&join-Team/create-team.dart';
 import 'home_page/bottomnavbar.dart';
 import 'package:brl_task4/screens/forgot%20password/forgot_pass.dart';
-import 'package:brl_task4/leave approval/leave.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

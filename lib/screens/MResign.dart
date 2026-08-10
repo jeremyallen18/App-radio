@@ -15,14 +15,11 @@ class Mresign extends StatefulWidget {
 class _MresignState extends State<Mresign> {
   Future<void> MresignApi(String? teamId, String? email) async {
     dynamic storedValue = await secureStorage.readSecureData(key);
-    // print(teamId);
-    // print (storedValue);
     final String apiUrl = '$kBaseUrl/user/sendMessage/$teamId';
     final response = await http.post(
       Uri.parse(apiUrl),
       headers: <String, String>{
         'Authorization' :storedValue,
-        // 'Content-Type': 'application/json'
       },
 
       body: ({
@@ -32,7 +29,6 @@ class _MresignState extends State<Mresign> {
     );
 
     if (response.statusCode == 200) {
-      // print('API Response: ${response.body}');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Correo enviado"),),);
       Navigator.pushReplacementNamed(context, MyRoutes.BottomNavBar);
@@ -80,7 +76,6 @@ class _MresignState extends State<Mresign> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ClipRRect(
-                          // borderRadius: BorderRadiusDirectional.all(Radius.circular(30)),
                           child: Container(
                             height: 200,
                             width: 270,
@@ -91,11 +86,8 @@ class _MresignState extends State<Mresign> {
                                 maxLines: 10,
                                 controller: MessageController,
                                 decoration: InputDecoration(
-                                  // prefixIcon:Icon(Icons.group),
-                                  // prefixIcon:Image.asset("lib/assets/icon_pass.png",height: 20,),
                                   hintText: "Mensaje para el líder",
                                   contentPadding: const EdgeInsets.symmetric(vertical: 2.0),
-                                  // suffixIcon: Icon(Icons.visibility),
                                   border:OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(5.0),
                                   ),
@@ -107,19 +99,15 @@ class _MresignState extends State<Mresign> {
                         const SizedBox(height: 25,),
                         ElevatedButton(onPressed: (){
                           MresignApi(widget.teamId, widget.emailId);
-                          // joinTeamAPI();
                         },
                           style:ElevatedButton.styleFrom(
                             backgroundColor:const Color.fromARGB(255, 169, 187, 229),
-                            // padding: EdgeInsets.symmetric(vertical: 15,horizontal: 30),
-
                           ),
                           child:const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text("Enviar renuncia"),
                               SizedBox(width:5),
-// /                              IconButton(onPressed: joinTeamAPI, icon: Icon(Icons.arrow_circle_right_outlined))
                             ],
                           ),),
 
