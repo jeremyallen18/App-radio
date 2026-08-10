@@ -59,7 +59,6 @@ class _OTPVerifyState extends State<OTPVerify> {
       }
     } catch (e) {
       print('Error: $e');
-      // return 'An error occurred';
     }
     return null;
   }
@@ -76,19 +75,6 @@ class _OTPVerifyState extends State<OTPVerify> {
             backgroundColor: Colors.red,
           ),
         );
-      } else {
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   SnackBar(
-        //     content: Text('OTP verified successfully!'),
-        //     backgroundColor: Colors.green,
-        //   ),
-        // );
-        //   Navigator.push(
-        //   context,
-        //   MaterialPageRoute(
-        //     builder: (context) => ChangePassword(email: widget.email,),
-        //   ),
-        // );
       }
     }
   }

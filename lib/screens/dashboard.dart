@@ -25,7 +25,6 @@ class dashb_memState extends State<dashb_mem> {
   }
   List<dynamic>? teamsData;
   List<String>? teamNames;
-  // String ? name ;
   Future<void> showTeamAPI() async {
     dynamic storedValue = await secureStorage.readSecureData(key);
 
@@ -37,12 +36,6 @@ class dashb_memState extends State<dashb_mem> {
 
         },);
 
-    // Map<String, dynamic> jsonResponse = jsonDecode(response);
-    //
-    // teamNames = jsonResponse['teams']
-    //     .map<String>((team) => team['teamName'].toString())
-    //     .toList();
-
     if (response.statusCode == 200) {
       teamsData = jsonDecode(response.body)['teams'];
       name = jsonDecode(response.body)['email'];
@@ -52,7 +45,6 @@ class dashb_memState extends State<dashb_mem> {
       print(' ${response.statusCode}');
       print('Error Message: ${response.body}');
     }
-    // print(teamNames);
   }
 
   @override

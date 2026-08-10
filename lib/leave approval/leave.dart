@@ -70,7 +70,6 @@ class _ApplyLeaveState extends State<ApplyLeave> {
       }
     } catch (e) {
       print('Error: $e');
-      // return 'An error occurred';
     }
   }
 
@@ -209,20 +208,6 @@ class _ApplyLeaveState extends State<ApplyLeave> {
       String reason = reasonController.text;
 
       await applyLeaveAPI(startDate, endDate, reason);
-
-      // if (result == null) {
-      //   ScaffoldMessenger.of(context).showSnackBar(
-      //     SnackBar(
-      //       content: Text('¡Permiso solicitado con éxito!'),
-      //     ),
-      //   );
-      // } else {
-      //   ScaffoldMessenger.of(context).showSnackBar(
-      //     SnackBar(
-      //       content: Text('Error: $result'),
-      //     ),
-      //   );
-      // }
     }
   }
 }

@@ -7,7 +7,6 @@ import '../utils/api_config.dart';
 class Resign extends StatefulWidget {
   Resign({super.key, required this.teamId});
   String? teamId;
-// print(teamID);
   @override
   State<Resign> createState() => _ResignState();
 }
@@ -24,7 +23,6 @@ class _ResignState extends State<Resign> {
       Uri.parse(apiUrl),
       headers: <String, String>{
         'Authorization' :storedValue,
-        // 'Content-Type': 'application/json'
       },
 
       body: ({
@@ -33,7 +31,6 @@ class _ResignState extends State<Resign> {
     );
 
     if (response.statusCode == 200) {
-      // print('API Response: ${response.body}');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Eliminado"),),);
       Navigator.pushReplacementNamed(context, MyRoutes.BottomNavBar);
@@ -46,13 +43,11 @@ class _ResignState extends State<Resign> {
   Future<void> resignApi(String? teamId) async {
     dynamic storedValue = await secureStorage.readSecureData(key);
     print(teamId);
-    // print (storedValue);
     final String apiUrl = '$kBaseUrl/team/leaderResign/$teamId';
     final response = await http.post(
       Uri.parse(apiUrl),
       headers: <String, String>{
         'Authorization' :storedValue,
-        // 'Content-Type': 'application/json'
       },
 
       body: ({
@@ -61,7 +56,6 @@ class _ResignState extends State<Resign> {
     );
 
     if (response.statusCode == 200) {
-      // print('API Response: ${response.body}');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Asignado"),),);
       Navigator.pushReplacementNamed(context, MyRoutes.BottomNavBar);
@@ -90,10 +84,6 @@ class _ResignState extends State<Resign> {
             child: Form(
               child: Column(
                 children: [
-                  //
-                  // SizedBox(height: 30,),
-                  //
-                  // // Text("Eliminar",style:TextStyle(color: Colors.white,fontSize:40,fontWeight: FontWeight.w700),),
                   const SizedBox(height: 70,),
                   Container(
                     width: 303,
@@ -119,10 +109,8 @@ class _ResignState extends State<Resign> {
                               controller: MEmailController,
                               decoration: InputDecoration(
                                 prefixIcon:const Icon(Icons.email),
-                                // prefixIcon:Image.asset("lib/assets/icon_pass.png",height: 20,),
                                 hintText: "Correo",
                                 contentPadding: const EdgeInsets.symmetric(vertical: 2.0),
-                                // suffixIcon: Icon(Icons.visibility),
                                 border:OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(5.0),
                                 ),
@@ -136,15 +124,12 @@ class _ResignState extends State<Resign> {
                         },
                           style:ElevatedButton.styleFrom(
                             backgroundColor:const Color.fromARGB(255, 169, 187, 229),
-                            // padding: EdgeInsets.symmetric(vertical: 15,horizontal: 30),
-
                           ),
                           child:const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text("Eliminar"),
                               SizedBox(width:5),
-                              // IconButton(onPressed: joinTeamAPI, icon: Icon(Icons.arrow_circle_right_outlined))
                             ],
                           ),),
 
@@ -162,7 +147,6 @@ class _ResignState extends State<Resign> {
                     ],
                   ),
 
-                  // Text("Renunciar",style:TextStyle(color: Colors.white,fontSize:40,fontWeight: FontWeight.w700),),
                   const SizedBox(height: 40,),
 
 
@@ -190,10 +174,8 @@ class _ResignState extends State<Resign> {
                               controller: EmailController,
                               decoration: InputDecoration(
                                 prefixIcon:const Icon(Icons.email),
-                                // prefixIcon:Image.asset("lib/assets/icon_pass.png",height: 20,),
                                 hintText: "Correo",
                                 contentPadding: const EdgeInsets.symmetric(vertical: 2.0),
-                                // suffixIcon: Icon(Icons.visibility),
                                 border:OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(5.0),
                                 ),
@@ -207,15 +189,12 @@ class _ResignState extends State<Resign> {
                         },
                           style:ElevatedButton.styleFrom(
                             backgroundColor:const Color.fromARGB(255, 169, 187, 229),
-                            // padding: EdgeInsets.symmetric(vertical: 15,horizontal: 30),
-
                           ),
                           child:const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text("Asignar"),
                               SizedBox(width:5),
-                              // IconButton(onPressed: joinTeamAPI, icon: Icon(Icons.arrow_circle_right_outlined))
                             ],
                           ),),
 

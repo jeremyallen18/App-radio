@@ -17,6 +17,36 @@ class TaskContainer extends StatefulWidget {
 int? completedTaskNum = 0;
 int? incompleteTaskNum = 0;
 
+/// Pide los conteos de tareas propias directamente al backend y actualiza
+/// [completedTaskNum]/[incompleteTaskNum]. `progress.dart` la llama al
+/// abrirse: antes esos contadores solo se llenaban si el usuario ya había
+/// visitado "Mis tareas" (`TaskContainer`), así que el gráfico de progreso
+/// podía mostrar "sin tareas" con datos desactualizados o en cero aunque el
+/// usuario sí tuviera tareas asignadas.
+Future<void> refreshTaskCounts() async {
+  final dynamic storedValue = await secureStorage.readSecureData(key);
+  final headers = <String, String>{'Authorization': storedValue ?? ''};
+
+  final responses = await Future.wait([
+    http.get(Uri.parse('$kBaseUrl/team/incompleteTasks'), headers: headers),
+    http.get(Uri.parse('$kBaseUrl/team/completedTasks'), headers: headers),
+  ]);
+
+  final incompleteResponse = responses[0];
+  final completedResponse = responses[1];
+
+  if (incompleteResponse.statusCode == 200) {
+    final List<dynamic> tasks =
+        jsonDecode(incompleteResponse.body)['incompleteTasks'] ?? [];
+    incompleteTaskNum = tasks.length;
+  }
+  if (completedResponse.statusCode == 200) {
+    final List<dynamic> tasks =
+        jsonDecode(completedResponse.body)['completedTasks'] ?? [];
+    completedTaskNum = tasks.length;
+  }
+}
+
 class _TaskContainerState extends State<TaskContainer> {
   List<dynamic> compTasks = [];
   List<dynamic> incompTasks = [];
