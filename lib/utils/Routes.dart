@@ -7,6 +7,15 @@ class MyRoutes {
   static String CreateTeamScreen = "/CreateTeamScreen";
   static String BottomNavBar ="/BottomNavBar";
 
+  /// Dashboards por rol (Director / Manager / Employee). El punto de
+  /// entrada normal es `RoleDashboardRoutes` (lee el rol cacheado y
+  /// enruta); las tres rutas específicas solo son necesarias para
+  /// navegación directa (deep link, back button, debug).
+  static String RoleDashboardRoutes = "/dashboard";
+  static String DirectorDashboardRoutes = "/dashboard/director";
+  static String ManagerDashboardRoutes = "/dashboard/manager";
+  static String EmployeeDashboardRoutes = "/dashboard/employee";
+
   // static String Todo = "/TodoList";
   static String MResign = "/Mresign";
   static String AddTask = "/addTask";
