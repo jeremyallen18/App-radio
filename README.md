@@ -470,3 +470,56 @@ dart run flutter_launcher_icons
 ## Código de conducta y contribución
 
 Ver [Code of Conduct](CODE_OF_CONDUCT.md), [contribution guidelines](CONTRIBUTING.md) y [Security Policy](SECURITY.md). Este proyecto está bajo licencia [MIT](LICENSE).
+
+.........Asignacion de roles........
+   Registrar a cada usuaio desde la aplicacion
+
+En Git bash, segun las credenciales de cada usuario:
+
+   BASE="http://IP/hive-backend"
+
+TOKEN_DIRECTOR=$(curl -s -X POST "$BASE/user/login" \
+  -d "email=admin@DOLIV.com" -d "password=12345678" | tr -d '"')
+
+TOKEN_MANAGER=$(curl -s -X POST "$BASE/user/login" \
+  -d "email=manager@DOLIV.com" -d "password=12345678" | tr -d '"')
+
+TOKEN_EMPLEADO=$(curl -s -X POST "$BASE/user/login" \
+  -d "email=empleado@DOLIV.com" -d "password=12345678" | tr -d '"')
+
+echo "director: $TOKEN_DIRECTOR"
+echo "manager:  $TOKEN_MANAGER"
+echo "empleado: $TOKEN_EMPLEADO"
+
+Guardar los 3 tokens de cada usuario (Estos tokens cambian cada que se cierra la consola de git bash)
+
+crear empresa
+curl -s -X POST "$BASE/company/create" \
+  -H "Authorization: $TOKEN_DIRECTOR" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Radio Doliv"}'
+
+crear departamento
+curl -i -X POST "$BASE/department/create" \
+  -H "Authorization: $TOKEN_DIRECTOR" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Programacion","description":"Produccion de contenido"}'
+---------^genera el id de departamento^---------
+
+guardar en variable el ID de departamento
+DEPARTMENT_ID="colocar id de departamento generado"
+echo "DEPARTMENT_ID=[$DEPARTMENT_ID]"
+
+asignar manager
+curl -i -X POST "$BASE/department/assignManager/$DEPARTMENT_ID" \
+  -H "Authorization: $TOKEN_DIRECTOR" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"manager@DOLIV.com"}'
+
+asignar empleado
+curl -i -X POST "$BASE/department/assignEmployee/$DEPARTMENT_ID" \
+  -H "Authorization: $TOKEN_DIRECTOR" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"empleado@DOLIV.com","position":"Radio Host"}'
+
+Loguearse en cada usuario y verificar el cambio de roles respectivamente 

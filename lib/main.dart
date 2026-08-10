@@ -4,6 +4,10 @@
 
 import 'package:brl_task4/screens/MarkTaskDone.dart';
 import 'package:brl_task4/screens/dashboard.dart';
+import 'package:brl_task4/screens/dashboard_director.dart';
+import 'package:brl_task4/screens/dashboard_employee.dart';
+import 'package:brl_task4/screens/dashboard_manager.dart';
+import 'package:brl_task4/screens/role_dashboard_router.dart';
 import 'package:brl_task4/screens/join_team.dart';
 import 'package:brl_task4/screens/signup.dart';
 import 'package:brl_task4/screens/login.dart';
@@ -44,6 +48,10 @@ class MyApp extends StatelessWidget {
         MyRoutes.jointeamRoutes: (context) => const join_team(),
         MyRoutes.CreateTeamScreen: (context) => const CreateTeamScreen(),
         MyRoutes.BottomNavBar: (context) => const BottomNavBar(),
+        MyRoutes.RoleDashboardRoutes: (context) => const RoleDashboardRouter(),
+        MyRoutes.DirectorDashboardRoutes: (context) => const DirectorDashboard(),
+        MyRoutes.ManagerDashboardRoutes: (context) => const ManagerDashboard(),
+        MyRoutes.EmployeeDashboardRoutes: (context) => const EmployeeDashboard(),
         MyRoutes.DoneTask: (context) => const doneTask(),
         MyRoutes.Reset: (context) => const ResetPass(),
         if (!kReleaseMode)
