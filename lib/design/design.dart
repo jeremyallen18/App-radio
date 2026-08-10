@@ -10,6 +10,7 @@ export 'components/app_button.dart';
 export 'components/app_card.dart';
 export 'components/app_text_field.dart';
 export 'components/state_views.dart';
+export 'components/coming_soon_card.dart';
 export 'components/section_header.dart';
 export 'components/stat_tile.dart';
 export 'components/app_dialog.dart';
