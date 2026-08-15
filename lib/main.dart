@@ -8,6 +8,7 @@ import 'package:doliv_social/screens/dashboard_director.dart';
 import 'package:doliv_social/screens/dashboard_employee.dart';
 import 'package:doliv_social/screens/dashboard_manager.dart';
 import 'package:doliv_social/screens/role_dashboard_router.dart';
+import 'package:doliv_social/screens/site_content/site_content_hub.dart';
 import 'package:doliv_social/screens/join_team.dart';
 import 'package:doliv_social/screens/signup.dart';
 import 'package:doliv_social/screens/login.dart';
@@ -66,6 +67,7 @@ class MyApp extends StatelessWidget {
         MyRoutes.ManagerDashboardRoutes: (context) => const ManagerDashboard(),
         MyRoutes.EmployeeDashboardRoutes: (context) =>
             const EmployeeDashboard(),
+        MyRoutes.SiteContentHubRoutes: (context) => const SiteContentHubScreen(),
         MyRoutes.DoneTask: (context) => const doneTask(),
         MyRoutes.Reset: (context) => const ResetPass(),
         if (!kReleaseMode)

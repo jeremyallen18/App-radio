@@ -13,6 +13,11 @@ class MyRoutes {
   /// navegación directa (deep link, back button, debug).
   static String RoleDashboardRoutes = "/dashboard";
   static String DirectorDashboardRoutes = "/dashboard/director";
+
+  /// Gestión de contenido del sitio público (RADIODOLIV_PAGINA), exclusiva
+  /// del director. La navegación interna (lista -> formulario) no usa
+  /// rutas nombradas, solo esta pantalla de entrada.
+  static String SiteContentHubRoutes = "/dashboard/director/site-content";
   static String ManagerDashboardRoutes = "/dashboard/manager";
   static String EmployeeDashboardRoutes = "/dashboard/employee";
 

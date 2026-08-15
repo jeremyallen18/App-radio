@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../utils/api_config.dart';
 import '../utils/session.dart';
 import 'login.dart';
+import 'site_content/site_content_hub.dart';
 
 /// Dashboard para usuarios con rol [AppRole.director]: vista general de la
 /// empresa completa (todos los departamentos), no solo la propia.
@@ -235,6 +236,28 @@ class _DirectorDashboardState extends State<DirectorDashboard> {
                 const ComingSoonCard(
                   icon: Icons.campaign_outlined,
                   message: 'Estará disponible junto con el módulo de anuncios.',
+                ),
+                const SizedBox(height: AppSpacing.lg),
+
+                const SectionHeader(title: 'Contenido del sitio web'),
+                AppCard(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SiteContentHubScreen()),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.language_outlined, color: AppColors.accent),
+                      SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Text(
+                          'Gestiona anuncios, eventos, patrocinadores, podcasts, '
+                          'servicios, equipo y programas de radiodoliv.com',
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: AppColors.textMuted),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
 
