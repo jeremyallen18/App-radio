@@ -150,12 +150,19 @@ class _SignUpState extends State<SignUp> {
                               color: Colors.grey,
                               child: TextFormField(
                                 controller: comfpassController,
-                                obscureText: true,
+                                obscureText: obscureText,
                                 decoration: InputDecoration(
                                   prefixIcon:Image.asset("lib/assets/icon_pass.png",height: 20,),
                                   hintText: "Confirmar contraseña",
                                   contentPadding: const EdgeInsets.symmetric(vertical: 2.0),
-                                  suffixIcon:  const Icon(Icons.visibility_off),
+                                  suffixIcon:  IconButton(
+                                    icon: Icon(obscureText? Icons.visibility_off : Icons.visibility),
+                                    onPressed:(){
+                                      setState(() {
+                                        obscureText = !obscureText;
+                                      });
+                                    },
+                                  ),
                                   border:OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(30.0),
                                   ),
