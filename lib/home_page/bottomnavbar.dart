@@ -32,6 +32,7 @@ class _NavDestination {
 
 class _BottomNavBarState extends State<BottomNavBar> {
   int currentPageIndex = 2;
+  bool _isDesktopSidebarVisible = true;
 
   // IndexedStack en vez de indexar una lista: cada pestaña se construye una
   // sola vez y mantiene su estado (scroll, datos ya cargados) al cambiar de
@@ -44,6 +45,12 @@ class _BottomNavBarState extends State<BottomNavBar> {
   ];
 
   void _onSelect(int index) => setState(() => currentPageIndex = index);
+
+  void hideSidebar() => setState(() => _isDesktopSidebarVisible = false);
+
+  void showSidebar() => setState(() => _isDesktopSidebarVisible = true);
+
+  void toggleSidebar() => setState(() => _isDesktopSidebarVisible = !_isDesktopSidebarVisible);
 
   @override
   Widget build(BuildContext context) {
@@ -58,27 +65,42 @@ class _BottomNavBarState extends State<BottomNavBar> {
       return Scaffold(
         body: Row(
           children: [
-            NavigationRail(
-              extended: true,
-              minExtendedWidth: AppBreakpoints.sidebarWidth,
-              selectedIndex: currentPageIndex,
-              onDestinationSelected: _onSelect,
-              labelType: NavigationRailLabelType.none,
-              leading: const Padding(
-                padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                child: Icon(Icons.hub_outlined, color: AppColors.accentStrong, size: 28),
+            if (_isDesktopSidebarVisible) ...[
+              NavigationRail(
+                extended: true,
+                minExtendedWidth: AppBreakpoints.sidebarWidth,
+                selectedIndex: currentPageIndex,
+                onDestinationSelected: _onSelect,
+                labelType: NavigationRailLabelType.none,
+                leading: _DesktopSidebarHeader(onHide: hideSidebar),
+                destinations: [
+                  for (final d in _destinations)
+                    NavigationRailDestination(
+                      icon: Icon(d.icon),
+                      selectedIcon: Icon(d.selectedIcon),
+                      label: Text(d.label),
+                    ),
+                ],
               ),
-              destinations: [
-                for (final d in _destinations)
-                  NavigationRailDestination(
-                    icon: Icon(d.icon),
-                    selectedIcon: Icon(d.selectedIcon),
-                    label: Text(d.label),
-                  ),
-              ],
+              const VerticalDivider(width: 1, color: AppColors.surfaceBorder),
+            ],
+            Expanded(
+              child: Stack(
+                children: [
+                  content,
+                  if (!_isDesktopSidebarVisible)
+                    Positioned(
+                      top: AppSpacing.md,
+                      left: AppSpacing.md,
+                      child: _SidebarToggleButton(
+                        icon: Icons.menu_open_rounded,
+                        tooltip: 'Mostrar barra lateral',
+                        onPressed: showSidebar,
+                      ),
+                    ),
+                ],
+              ),
             ),
-            const VerticalDivider(width: 1, color: AppColors.surfaceBorder),
-            Expanded(child: content),
           ],
         ),
       );
@@ -109,6 +131,92 @@ class _BottomNavBarState extends State<BottomNavBar> {
         child: navBar,
       ),
       body: content,
+    );
+  }
+}
+
+class _DesktopSidebarHeader extends StatelessWidget {
+  const _DesktopSidebarHeader({required this.onHide});
+
+  final VoidCallback onHide;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const _AppRailLogo(),
+        _SidebarToggleButton(
+          icon: Icons.keyboard_double_arrow_left_rounded,
+          tooltip: 'Ocultar barra lateral',
+          onPressed: onHide,
+        ),
+      ],
+    );
+  }
+}
+
+class _AppRailLogo extends StatelessWidget {
+  const _AppRailLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      child: Container(
+        width: 48,
+        height: 48,
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: AppColors.textPrimary,
+          borderRadius: BorderRadius.circular(AppRadius.chip),
+          border: Border.all(color: AppColors.surfaceBorder),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.brandNavy.withValues(alpha: 0.32),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Image.asset(
+          'assets/logo/logo.png',
+          fit: BoxFit.contain,
+          semanticLabel: 'Doliv Social',
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarToggleButton extends StatelessWidget {
+  const _SidebarToggleButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon),
+        color: AppColors.accentStrong,
+        style: IconButton.styleFrom(
+          backgroundColor: AppColors.surface,
+          fixedSize: const Size(40, 40),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.chip),
+            side: const BorderSide(color: AppColors.surfaceBorder),
+          ),
+        ),
+      ),
     );
   }
 }
