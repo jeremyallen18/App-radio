@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../Utils/Routes.dart';
 import 'login.dart';
 import '../utils/api_config.dart';
+import '../design/design.dart';
 
 class Resign extends StatefulWidget {
   Resign({super.key, required this.teamId});
@@ -68,7 +69,9 @@ class _ResignState extends State<Resign> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
+      body: Stack(
+        children: [
+        Container(
         height: MediaQuery.of(context).size.height,
         width: MediaQuery.of(context).size.width,
         decoration: const BoxDecoration(
@@ -78,6 +81,7 @@ class _ResignState extends State<Resign> {
             colors: [Color(0xFF020918), Color(0xFF38486C)],
           ),
         ),
+        child: DesktopCenter(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: SingleChildScrollView(
@@ -206,7 +210,11 @@ class _ResignState extends State<Resign> {
             ),
           ),
         ),
+        ),
 
+      ),
+          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
+        ],
       ),
     );
   }

@@ -1,8 +1,9 @@
 import 'dart:convert';
-import 'package:brl_task4/screens/login.dart';
+import 'package:doliv_social/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../utils/api_config.dart';
+import '../design/design.dart';
 
 class ShowTextScreen extends StatefulWidget {
   final String teamId;
@@ -92,7 +93,11 @@ class _ShowTextScreenState extends State<ShowTextScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      body: Stack(
+        children: [
+        DesktopCenter(
+      maxWidth: 480,
+      child: Column(
         children: [
           Container(
             width: 361,
@@ -192,6 +197,10 @@ class _ShowTextScreenState extends State<ShowTextScreen> {
                         },
                       ),
                     ),
+        ],
+      ),
+      ),
+          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
         ],
       ),
     );

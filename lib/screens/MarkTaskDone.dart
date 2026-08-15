@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import "../Utils/Routes.dart";
 import "login.dart";
 import '../utils/api_config.dart';
+import '../design/design.dart';
 
 class doneTask extends StatefulWidget {
   const doneTask({super.key});
@@ -48,7 +49,9 @@ class _doneTaskState extends State<doneTask> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
+      body: Stack(
+        children: [
+        Container(
         height: MediaQuery.of(context).size.height,
         width: MediaQuery.of(context).size.width,
         decoration: const BoxDecoration(
@@ -58,6 +61,7 @@ class _doneTaskState extends State<doneTask> {
             colors: [Color(0xFF020918), Color(0xFF38486C)],
           ),
         ),
+        child: DesktopCenter(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: SingleChildScrollView(
@@ -185,7 +189,11 @@ class _doneTaskState extends State<doneTask> {
             ),
           ),
         ),
+        ),
 
+      ),
+          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
+        ],
       ),
     );
   }

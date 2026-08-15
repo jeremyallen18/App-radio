@@ -5,8 +5,8 @@ import 'teamDetail.dart';
 import "package:flutter/material.dart";
 import 'package:http/http.dart' as http;
 import "login.dart";
-import 'package:brl_task4/models/appbar.dart';
-import 'package:brl_task4/screens/chat.dart';
+import 'package:doliv_social/models/appbar.dart';
+import 'package:doliv_social/screens/chat.dart';
 import '../design/design.dart';
 import '../utils/api_config.dart';
 
@@ -82,44 +82,47 @@ class dashb_memState extends State<dashb_mem> {
                     message: 'Crea uno nuevo o únete con un código para empezar.',
                   );
                 }
-                return ListView.separated(
+                return SingleChildScrollView(
                   padding: const EdgeInsets.all(AppSpacing.lg),
-                  itemCount: teamsData!.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
-                  itemBuilder: (context, index) {
-                    final team = Map<String, dynamic>.from(teamsData![index]);
-                    final domains = (team['domains'] as List?) ?? [];
+                  child: ResponsiveCardGrid(
+                    children: [
+                      for (int index = 0; index < teamsData!.length; index++)
+                        Builder(builder: (context) {
+                          final team = Map<String, dynamic>.from(teamsData![index]);
+                          final domains = (team['domains'] as List?) ?? [];
 
-                    final Set<String> members = {};
-                    int pending = 0;
-                    int completed = 0;
-                    for (final domain in domains) {
-                      for (final m in (domain['members'] as List? ?? [])) {
-                        members.add(m.toString());
-                      }
-                      for (final t in (domain['tasks'] as List? ?? [])) {
-                        if (t['completed'] == true) {
-                          completed++;
-                        } else {
-                          pending++;
-                        }
-                      }
-                    }
+                          final Set<String> members = {};
+                          int pending = 0;
+                          int completed = 0;
+                          for (final domain in domains) {
+                            for (final m in (domain['members'] as List? ?? [])) {
+                              members.add(m.toString());
+                            }
+                            for (final t in (domain['tasks'] as List? ?? [])) {
+                              if (t['completed'] == true) {
+                                completed++;
+                              } else {
+                                pending++;
+                              }
+                            }
+                          }
 
-                    final String teamId = team['_id']?.toString() ?? '$index';
-                    return TeamCard(
-                      teamName: team['teamName']?.toString() ?? 'Sin nombre',
-                      teamCode: team['teamCode']?.toString() ?? '',
-                      memberCount: members.length,
-                      pendingCount: pending,
-                      completedCount: completed,
-                      accentColor: TeamCard.colorForId(teamId),
-                      onTap: () {
-                        Navigator.push(context,
-                            MaterialPageRoute(builder: (context) => t_detail(team: teamsData![index])));
-                      },
-                    );
-                  },
+                          final String teamId = team['_id']?.toString() ?? '$index';
+                          return TeamCard(
+                            teamName: team['teamName']?.toString() ?? 'Sin nombre',
+                            teamCode: team['teamCode']?.toString() ?? '',
+                            memberCount: members.length,
+                            pendingCount: pending,
+                            completedCount: completed,
+                            accentColor: TeamCard.colorForId(teamId),
+                            onTap: () {
+                              Navigator.push(context,
+                                  MaterialPageRoute(builder: (context) => t_detail(team: teamsData![index])));
+                            },
+                          );
+                        }),
+                    ],
+                  ),
                 );
               },
             ),

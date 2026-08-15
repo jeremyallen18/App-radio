@@ -202,10 +202,11 @@ class _DirectorDashboardState extends State<DirectorDashboard> {
                     message: 'Créalos desde el módulo de gestión de departamentos.',
                   )
                 else
-                  ..._departments.map((d) => Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                        child: _DepartmentCard(department: d),
-                      )),
+                  ResponsiveCardGrid(
+                    children: [
+                      for (final d in _departments) _DepartmentCard(department: d),
+                    ],
+                  ),
                 const SizedBox(height: AppSpacing.xl),
 
                 const SectionHeader(title: 'Tareas activas'),

@@ -1,11 +1,16 @@
 /// Barrel: importa esto para tener tokens, tema y componentes base de una vez.
 library;
 
+export 'tokens/breakpoints.dart';
 export 'tokens/colors.dart';
 export 'tokens/spacing.dart';
 export 'tokens/typography.dart';
 export 'theme/app_theme.dart';
 export 'components/app_scaffold.dart';
+export 'components/app_back_button.dart';
+export 'components/desktop_center.dart';
+export 'components/offline_view.dart';
+export 'components/responsive_card_grid.dart';
 export 'components/app_button.dart';
 export 'components/app_card.dart';
 export 'components/app_text_field.dart';

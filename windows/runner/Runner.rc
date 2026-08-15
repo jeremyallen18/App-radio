@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "brl_task4" "\0"
+            VALUE "FileDescription", "Doliv Social" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "brl_task4" "\0"
+            VALUE "InternalName", "doliv_social" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2023 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "brl_task4.exe" "\0"
-            VALUE "ProductName", "brl_task4" "\0"
+            VALUE "OriginalFilename", "doliv_social.exe" "\0"
+            VALUE "ProductName", "Doliv Social" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

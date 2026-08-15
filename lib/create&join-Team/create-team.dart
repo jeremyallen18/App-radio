@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:brl_task4/create&join-Team/Domain-team.dart';
+import 'package:doliv_social/create&join-Team/Domain-team.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
@@ -37,7 +37,11 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      appBar: AppBar(title: const Text('Crear equipo')),
+      appBar: AppBar(
+        title: const Text('Crear equipo'),
+        leading: AppBackButton.leadingFor(context),
+        automaticallyImplyLeading: false,
+      ),
       scrollable: true,
       body: Form(
         child: Column(

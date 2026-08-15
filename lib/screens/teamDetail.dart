@@ -1,5 +1,5 @@
-import 'package:brl_task4/ResourceM/Resources.dart';
-import 'package:brl_task4/screens/chat.dart';
+import 'package:doliv_social/ResourceM/Resources.dart';
+import 'package:doliv_social/screens/chat.dart';
 import "package:flutter/material.dart";
 import 'package:http/http.dart' as http;
 import '../design/design.dart';
@@ -10,7 +10,7 @@ import 'MResign.dart';
 import 'addTask.dart';
 import 'dashboard.dart';
 import 'login.dart';
-import 'package:brl_task4/leave approval/leave.dart';
+import 'package:doliv_social/leave approval/leave.dart';
 class t_detail extends StatefulWidget {
    t_detail({super.key, required this.team});
   dynamic team;
@@ -282,15 +282,20 @@ class _t_detailState extends State<t_detail> {
                         message: 'No se pudo cargar la información del equipo.',
                       );
                     } else {
-                      return ListView.builder(
+                      return SingleChildScrollView(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        itemCount: domains!.length + 1,
-                        itemBuilder: (context, index) {
-                          if (index == domains!.length) {
-                            return _buildActionsCard(context);
-                          }
-                          return _buildDomainCard(context, index);
-                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            ResponsiveCardGrid(
+                              children: [
+                                for (int i = 0; i < domains!.length; i++)
+                                  _buildDomainCard(context, i),
+                              ],
+                            ),
+                            _buildActionsCard(context),
+                          ],
+                        ),
                       );
                     }
                   },

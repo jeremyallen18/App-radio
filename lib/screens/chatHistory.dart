@@ -68,7 +68,11 @@ class _ChatScreenfetchState extends State<ChatScreenfetch> {
   Widget build(BuildContext context) {
     return AppScaffold(
       padding: EdgeInsets.zero,
-      appBar: AppBar(title: const Text('Historial de conversaciones')),
+      appBar: AppBar(
+        title: const Text('Historial de conversaciones'),
+        leading: AppBackButton.leadingFor(context),
+        automaticallyImplyLeading: false,
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           if (_scrollController.hasClients) {

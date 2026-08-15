@@ -1,11 +1,11 @@
 import 'dart:convert';
 
-import 'package:brl_task4/models/appbar.dart';
+import 'package:doliv_social/models/appbar.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:brl_task4/home_page/teams.dart';
-import 'package:brl_task4/home_page/tasks.dart';
-import 'package:brl_task4/screens/login.dart';
+import 'package:doliv_social/home_page/teams.dart';
+import 'package:doliv_social/home_page/tasks.dart';
+import 'package:doliv_social/screens/login.dart';
 import '../design/design.dart';
 import '../utils/Routes.dart';
 import '../utils/api_config.dart';

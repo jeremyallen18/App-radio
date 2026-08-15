@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:brl_task4/screens/login.dart';
+import 'package:doliv_social/screens/login.dart';
 import '../../utils/api_config.dart';
+import '../../design/design.dart';
 
 class ChangePassword extends StatefulWidget {
   final String email;
@@ -97,6 +98,7 @@ class _ChangePasswordState extends State<ChangePassword> {
           ),
         ),
           Center(
+            child: DesktopCenter(
             child: SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -200,7 +202,9 @@ class _ChangePasswordState extends State<ChangePassword> {
                 ),
               ),
             ),
+            ),
           ),
+          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
         ],
       ),
     );

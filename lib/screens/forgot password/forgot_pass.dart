@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'otp_verify.dart';
+import '../../design/design.dart';
 import '../../utils/api_config.dart';
 
 class ResetPass extends StatefulWidget {
@@ -171,6 +172,7 @@ class _ResetPassState extends State<ResetPass> {
               ),
             ),
           ),
+          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
         ],
       ),
     );

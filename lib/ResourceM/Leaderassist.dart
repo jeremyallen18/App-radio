@@ -1,9 +1,10 @@
 import 'dart:convert';
-import 'package:brl_task4/ResourceM/doc.dart';
-import 'package:brl_task4/screens/login.dart';
+import 'package:doliv_social/ResourceM/doc.dart';
+import 'package:doliv_social/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../utils/api_config.dart';
+import '../design/design.dart';
 
 class LeaderResource extends StatefulWidget {
   final String teamId;
@@ -69,8 +70,12 @@ class _LeaderResourceState extends State<LeaderResource> {
         foregroundColor: Colors.white,
         elevation: 12,
         surfaceTintColor: Colors.black,
+        leading: AppBackButton.leadingFor(context),
+        automaticallyImplyLeading: false,
       ),
-      body: Padding(
+      body: DesktopCenter(
+      maxWidth: 480,
+      child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -98,6 +103,7 @@ class _LeaderResourceState extends State<LeaderResource> {
             
           ],
         ),
+      ),
       ),
     );
   }

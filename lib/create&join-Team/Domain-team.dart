@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'package:brl_task4/create&join-Team/create-team.dart';
-import 'package:brl_task4/screens/login.dart';
+import 'package:doliv_social/create&join-Team/create-team.dart';
+import 'package:doliv_social/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../design/design.dart';
@@ -23,7 +23,11 @@ class TeamDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      appBar: AppBar(title: Text(teamname)),
+      appBar: AppBar(
+        title: Text(teamname),
+        leading: AppBackButton.leadingFor(context),
+        automaticallyImplyLeading: false,
+      ),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,7 +170,11 @@ class _InviteMembersScreenState extends State<InviteMembersScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      appBar: AppBar(title: Text('Invitar a ${widget.domain.name}')),
+      appBar: AppBar(
+        title: Text('Invitar a ${widget.domain.name}'),
+        leading: AppBackButton.leadingFor(context),
+        automaticallyImplyLeading: false,
+      ),
       scrollable: true,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

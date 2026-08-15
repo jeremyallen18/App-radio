@@ -1,5 +1,5 @@
-import 'package:brl_task4/screens/login.dart';
-import 'package:brl_task4/screens/notifications.dart';
+import 'package:doliv_social/screens/login.dart';
+import 'package:doliv_social/screens/notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -98,9 +98,10 @@ class _MyAppBarState extends State<MyAppBar> {
               ),
               SizedBox(width: 15),
               Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height: 20),
                   Text(
                     '¡Hola!',
                     style: TextStyle(

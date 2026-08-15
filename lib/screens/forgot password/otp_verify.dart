@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'new_password.dart';
 import '../../utils/api_config.dart';
+import '../../design/design.dart';
 
 class OTPVerify extends StatefulWidget {
   final String email;
@@ -93,6 +94,7 @@ class _OTPVerifyState extends State<OTPVerify> {
           ),
         ),
         Center(
+          child: DesktopCenter(
           child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -152,7 +154,9 @@ class _OTPVerifyState extends State<OTPVerify> {
               ),
             ),
           ),
+          ),
         ),
+        const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
       ]),
     );
   }

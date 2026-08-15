@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:brl_task4/ResourceM/Leaderassist.dart';
-import 'package:brl_task4/screens/login.dart';
+import 'package:doliv_social/ResourceM/Leaderassist.dart';
+import 'package:doliv_social/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import '../utils/api_config.dart';
+import '../design/design.dart';
 
 class PostTextScreen extends StatefulWidget {
   final String teamId;
@@ -129,7 +130,11 @@ class _PostTextScreenState extends State<PostTextScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
+      body: Stack(
+        children: [
+        DesktopCenter(
+      maxWidth: 480,
+      child: SingleChildScrollView(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -259,6 +264,10 @@ class _PostTextScreenState extends State<PostTextScreen> {
             ),
           ],
         ),
+      ),
+      ),
+          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
+        ],
       ),
     );
   }

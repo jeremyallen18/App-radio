@@ -78,11 +78,33 @@ function send_otp_email(string $toEmail, string $otp): bool {
         $mail->setFrom(SMTP_FROM, SMTP_FROM_NAME);
         $mail->addAddress($toEmail);
 
+        $logoPath = __DIR__ . '/../assets/logo/logo.png';
+        $hasLogo = file_exists($logoPath);
+        if ($hasLogo) {
+            $mail->addEmbeddedImage($logoPath, 'app-logo');
+        }
+
         $mail->isHTML(true);
         $mail->Subject = 'Código para recuperar tu contraseña';
-        $mail->Body = '<p>Usa este código para restablecer tu contraseña:</p>'
-            . '<p style="font-size:28px;font-weight:bold;letter-spacing:4px;">' . htmlspecialchars($otp) . '</p>'
-            . '<p>El código vence en 10 minutos. Si no solicitaste este cambio, ignora este correo.</p>';
+        $logoHtml = $hasLogo
+            ? '<img src="cid:app-logo" alt="' . htmlspecialchars(SMTP_FROM_NAME) . '" width="72" height="72" style="display:block;margin:0 auto 16px;border-radius:16px;">'
+            : '';
+        $mail->Body = '<div style="background:#f2f3f7;padding:32px 16px;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;">'
+            . '<div style="max-width:420px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">'
+            . '<div style="background:#1a1a2e;padding:28px 24px;text-align:center;">'
+            . $logoHtml
+            . '<h1 style="margin:0;color:#ffffff;font-size:18px;font-weight:600;">' . htmlspecialchars(SMTP_FROM_NAME) . '</h1>'
+            . '</div>'
+            . '<div style="padding:32px 28px;text-align:center;color:#1f1f1f;">'
+            . '<p style="margin:0 0 8px;font-size:15px;color:#3a3a3a;">Recuperación de contraseña</p>'
+            . '<p style="margin:0 0 24px;font-size:14px;color:#6b6b6b;">Usa este código para restablecer tu contraseña:</p>'
+            . '<div style="display:inline-block;padding:14px 28px;background:#f2f3f7;border-radius:10px;font-size:32px;font-weight:700;letter-spacing:8px;color:#1a1a2e;">'
+            . htmlspecialchars($otp) . '</div>'
+            . '<p style="margin:24px 0 0;font-size:13px;color:#8a8a8a;">El código vence en 10 minutos.</p>'
+            . '<p style="margin:8px 0 0;font-size:13px;color:#8a8a8a;">Si no solicitaste este cambio, ignora este correo.</p>'
+            . '</div>'
+            . '</div>'
+            . '</div>';
         $mail->AltBody = "Tu código para restablecer la contraseña es: $otp (vence en 10 minutos).";
 
         $mail->send();

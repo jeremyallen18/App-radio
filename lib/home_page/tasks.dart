@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:brl_task4/screens/login.dart';
+import 'package:doliv_social/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../design/design.dart';
@@ -179,7 +179,12 @@ class _TaskContainerState extends State<TaskContainer> {
                         title: 'No tienes tareas pendientes',
                       )
                     else
-                      ...incompTasks.map((t) => _taskCard(Map<String, dynamic>.from(t), done: false)),
+                      ResponsiveCardGrid(
+                        children: [
+                          for (final t in incompTasks)
+                            _taskCard(Map<String, dynamic>.from(t), done: false),
+                        ],
+                      ),
                     const SizedBox(height: 24),
                     _sectionTitle('Completadas'),
                     const SizedBox(height: 10),
@@ -189,7 +194,12 @@ class _TaskContainerState extends State<TaskContainer> {
                         title: 'Todavía no has completado ninguna tarea',
                       )
                     else
-                      ...compTasks.map((t) => _taskCard(Map<String, dynamic>.from(t), done: true)),
+                      ResponsiveCardGrid(
+                        children: [
+                          for (final t in compTasks)
+                            _taskCard(Map<String, dynamic>.from(t), done: true),
+                        ],
+                      ),
                   ],
                 ),
       ),
