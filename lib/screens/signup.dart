@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../Utils/Routes.dart';
 import '../utils/api_config.dart';
+import '../design/design.dart';
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
 
@@ -42,8 +43,10 @@ class _SignUpState extends State<SignUp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body:
-      Container(
+      body: Stack(
+        children: [
+        DesktopCenter(
+      child: Container(
         height: MediaQuery.of(context).size.height,
         decoration:BoxDecoration(
           color: Colors.indigo.shade50.withOpacity(0.1),
@@ -201,6 +204,10 @@ class _SignUpState extends State<SignUp> {
               ),
             ),
           ),
+      ),
+      ),
+          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
+        ],
       ),
 
     );

@@ -60,28 +60,33 @@ class _TeamPageState extends State<TeamPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Stack(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
-          child: Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              QuickActionChip(
-                icon: Icons.add_circle_outline,
-                label: 'Crear equipo',
-                onTap: () => Navigator.pushNamed(context, MyRoutes.CreateTeamScreen),
+        Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+              child: Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  QuickActionChip(
+                    icon: Icons.add_circle_outline,
+                    label: 'Crear equipo',
+                    onTap: () => Navigator.pushNamed(context, MyRoutes.CreateTeamScreen),
+                  ),
+                  QuickActionChip(
+                    icon: Icons.group_add_outlined,
+                    label: 'Unirse a un equipo',
+                    onTap: () => Navigator.pushNamed(context, MyRoutes.jointeamRoutes),
+                  ),
+                ],
               ),
-              QuickActionChip(
-                icon: Icons.group_add_outlined,
-                label: 'Unirse a un equipo',
-                onTap: () => Navigator.pushNamed(context, MyRoutes.jointeamRoutes),
-              ),
-            ],
-          ),
+            ),
+            Expanded(child: _buildBody()),
+          ],
         ),
-        Expanded(child: _buildBody()),
+        const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
       ],
     );
   }

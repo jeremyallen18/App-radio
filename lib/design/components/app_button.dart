@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import '../tokens/breakpoints.dart';
 import '../tokens/colors.dart';
 import '../tokens/spacing.dart';
 
 /// Botón primario con el degradado de marca (`brandBlue → brandNavy`).
 /// Reemplaza a `widgets/gradient_button.dart`.
+///
+/// En móvil ocupa todo el ancho disponible; en escritorio se limita a
+/// [AppBreakpoints.maxButtonWidth] para que no se estire de borde a borde.
 class AppButton extends StatelessWidget {
   const AppButton({
     super.key,
@@ -21,8 +25,10 @@ class AppButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool enabled = onPressed != null && !loading;
+    final bool isDesktop = AppBreakpoints.isDesktop(context);
     return Container(
       height: height,
+      width: isDesktop ? AppBreakpoints.maxButtonWidth : null,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.pill),
         gradient: AppColors.buttonGradient,

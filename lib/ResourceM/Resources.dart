@@ -1,9 +1,10 @@
-import 'package:brl_task4/ResourceM/Leaderassist.dart';
-import 'package:brl_task4/ResourceM/doc.dart';
-import 'package:brl_task4/ResourceM/fetchR.dart';
-import 'package:brl_task4/ResourceM/getR.dart';
-import 'package:brl_task4/ResourceM/imagecc.dart';
+import 'package:doliv_social/ResourceM/Leaderassist.dart';
+import 'package:doliv_social/ResourceM/doc.dart';
+import 'package:doliv_social/ResourceM/fetchR.dart';
+import 'package:doliv_social/ResourceM/getR.dart';
+import 'package:doliv_social/ResourceM/imagecc.dart';
 import 'package:flutter/material.dart';
+import '../design/design.dart';
 
 class ResourceM extends StatelessWidget {
   final String teamId;
@@ -12,7 +13,11 @@ class ResourceM extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      body: Stack(
+        children: [
+        DesktopCenter(
+      maxWidth: 720,
+      child: Column(
         children: [
           Container(
             width: 420,
@@ -99,6 +104,10 @@ class ResourceM extends StatelessWidget {
               ),
             ),
           )
+        ],
+      ),
+      ),
+          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
         ],
       ),
     );

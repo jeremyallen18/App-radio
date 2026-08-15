@@ -113,7 +113,11 @@ class _addTaskState extends State<addTask> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      appBar: AppBar(title: const Text('Agregar tarea')),
+      appBar: AppBar(
+        title: const Text('Agregar tarea'),
+        leading: AppBackButton.leadingFor(context),
+        automaticallyImplyLeading: false,
+      ),
       scrollable: true,
       body: Form(
         child: Column(

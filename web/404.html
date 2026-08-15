@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 · Se cortó la señal — Radiodoliv</title>
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <style>
+    :root {
+      --bg-base: #0A1730;
+      --surface: #122240;
+      --surface-border: #1E3355;
+      --brand-navy: #00356F;
+      --brand-blue: #004691;
+      --accent: #4D93E8;
+      --accent-strong: #6FA9EE;
+      --text-primary: #F2F2F2;
+      --text-muted: #9FB0CC;
+      --warning: #E8B84D;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 0%, var(--surface) 0%, var(--bg-base) 60%);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      overflow-x: hidden;
+    }
+
+    .card {
+      max-width: 480px;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 24px;
+      padding: 40px 32px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      position: relative;
+    }
+
+    .dial {
+      width: 96px;
+      height: 96px;
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand-blue), var(--brand-navy));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      box-shadow: 0 8px 24px rgba(0, 70, 145, 0.45);
+    }
+
+    .dial::before {
+      content: "";
+      position: absolute;
+      inset: 14px;
+      border-radius: 50%;
+      border: 2px dashed var(--accent-strong);
+      animation: spin 6s linear infinite;
+    }
+
+    .dial svg {
+      width: 40px;
+      height: 40px;
+      position: relative;
+      z-index: 1;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .freq {
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 2px;
+      color: var(--warning);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: 72px;
+      line-height: 1;
+      margin: 8px 0 4px;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--accent-strong), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    h2 {
+      font-size: 20px;
+      margin: 0 0 12px;
+      font-weight: 700;
+    }
+
+    p {
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1.6;
+      margin: 0 0 8px;
+    }
+
+    .static-bar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 3px;
+      height: 28px;
+      margin: 24px 0;
+    }
+
+    .static-bar span {
+      width: 4px;
+      border-radius: 2px;
+      background: var(--accent);
+      opacity: 0.5;
+      animation: bounce 1.1s ease-in-out infinite;
+    }
+
+    .static-bar span:nth-child(1) { animation-delay: 0s; }
+    .static-bar span:nth-child(2) { animation-delay: 0.1s; }
+    .static-bar span:nth-child(3) { animation-delay: 0.2s; }
+    .static-bar span:nth-child(4) { animation-delay: 0.3s; }
+    .static-bar span:nth-child(5) { animation-delay: 0.4s; }
+    .static-bar span:nth-child(6) { animation-delay: 0.5s; }
+    .static-bar span:nth-child(7) { animation-delay: 0.6s; }
+
+    @keyframes bounce {
+      0%, 100% { height: 6px; opacity: 0.35; }
+      50% { height: 28px; opacity: 1; }
+    }
+
+    .joke {
+      background: var(--bg-base);
+      border: 1px solid var(--surface-border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 16px 0 28px;
+      font-style: italic;
+    }
+
+    a.button {
+      display: inline-block;
+      padding: 14px 32px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--brand-blue), var(--brand-navy));
+      color: var(--text-primary);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 15px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 6px 20px rgba(0, 70, 145, 0.4);
+    }
+
+    a.button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 26px rgba(0, 70, 145, 0.5);
+    }
+
+    .footer {
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="dial">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 12a8 8 0 0 1 8-8m8 8a8 8 0 0 1-8 8M4 12a8 8 0 0 0 8 8m8-8a8 8 0 0 0-8-8"
+          stroke="#F2F2F2" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="12" cy="12" r="2.4" fill="#F2F2F2"/>
+      </svg>
+    </div>
+
+    <div class="freq">88.4 FM — SIN SEÑAL</div>
+    <h1>404</h1>
+    <h2>¡Se nos cortó la transmisión!</h2>
+    <p>
+      Estabas buscando algo, pero te quedaste en el dial equivocado.
+      Aquí en <strong>Radiodoliv</strong> solo hay estática, un locutor
+      tomando café y esta página que nunca pidió existir.
+    </p>
+
+    <div class="static-bar">
+      <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <div class="joke">
+      "Estimados oyentes, la página que buscan salió a comprar cigarros
+      y no ha vuelto." — El de sonido, probablemente
+    </div>
+
+    <a class="button" href="./">Volver a sintonizar el inicio</a>
+
+    <div class="footer">Radiodoliv · Doliv Social — donde hasta los errores tienen humor</div>
+  </main>
+</body>
+</html>

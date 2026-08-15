@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../design/design.dart';
 
 class DocumentationPage extends StatefulWidget {
   @override
@@ -28,7 +29,11 @@ class _DocumentationPageState extends State<DocumentationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      body: Stack(
+        children: [
+        DesktopCenter(
+      maxWidth: 480,
+      child: Column(
         children: [
           Container(
             width: 420,
@@ -131,6 +136,10 @@ class _DocumentationPageState extends State<DocumentationPage> {
               ),
             ),
           ),
+        ],
+      ),
+      ),
+          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
         ],
       ),
     );

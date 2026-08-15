@@ -74,7 +74,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      appBar: AppBar(title: const Text('Notificaciones')),
+      appBar: AppBar(
+        title: const Text('Notificaciones'),
+        leading: AppBackButton.leadingFor(context),
+        automaticallyImplyLeading: false,
+      ),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       body: RefreshIndicator(
         onRefresh: _fetchNotifications,

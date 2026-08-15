@@ -149,6 +149,23 @@ class AppTheme {
         }),
       ),
 
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: AppColors.surface,
+        indicatorColor: AppColors.brandBlue,
+        selectedLabelTextStyle: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        ),
+        unselectedLabelTextStyle: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w400,
+          color: AppColors.textMuted,
+        ),
+        selectedIconTheme: const IconThemeData(color: AppColors.textPrimary),
+        unselectedIconTheme: const IconThemeData(color: AppColors.textMuted),
+      ),
+
       switchTheme: SwitchThemeData(
         trackColor: WidgetStateProperty.resolveWith((states) {
           return states.contains(WidgetState.selected)

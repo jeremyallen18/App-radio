@@ -1,8 +1,9 @@
 import 'dart:convert';
-import 'package:brl_task4/screens/login.dart';
+import 'package:doliv_social/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../utils/api_config.dart';
+import '../design/design.dart';
 
 class ApplyLeave extends StatefulWidget {
   final String teamid;
@@ -89,7 +90,9 @@ class _ApplyLeaveState extends State<ApplyLeave> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
+      body: Stack(
+        children: [
+        Container(
         height: MediaQuery.of(context).size.height,
         width: MediaQuery.of(context).size.width,
         decoration: const BoxDecoration(
@@ -100,6 +103,7 @@ class _ApplyLeaveState extends State<ApplyLeave> {
           ),
         ),
         child: Center(
+          child: DesktopCenter(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: SingleChildScrollView(
@@ -196,7 +200,11 @@ class _ApplyLeaveState extends State<ApplyLeave> {
               ),
             ),
           ),
+          ),
         ),
+      ),
+          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
+        ],
       ),
     );
   }

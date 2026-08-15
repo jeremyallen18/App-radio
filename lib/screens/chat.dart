@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:brl_task4/screens/chatHistory.dart';
+import 'package:doliv_social/screens/chatHistory.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../design/design.dart';
@@ -117,6 +117,8 @@ class _ChatScreenState extends State<ChatScreen> {
       safeArea: false,
       appBar: AppBar(
         title: const Text('Chat'),
+        leading: AppBackButton.leadingFor(context),
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             tooltip: 'Historial',

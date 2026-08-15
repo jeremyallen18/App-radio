@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:brl_task4/models/appbar.dart';
-import 'package:brl_task4/home_page/tasks.dart';
+import 'package:doliv_social/models/appbar.dart';
+import 'package:doliv_social/home_page/tasks.dart';
 import '../design/design.dart';
 
 class ProgressChart extends StatefulWidget {
