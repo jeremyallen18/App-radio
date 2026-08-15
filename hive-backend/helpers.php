@@ -240,3 +240,21 @@ function require_department_manager_or_director(PDO $pdo, array $user, string $d
     }
     error_response('Solo el director o el manager del departamento pueden realizar esta acción', 403);
 }
+
+// ---- site_content.php helpers --------------------------------------------
+// Valida que un enlace externo use un protocolo seguro antes de guardarlo.
+// Copiado de RADIODOLIV_PAGINA/inc/helpers/format.php (mismo contrato) para
+// que site_content.php pueda validar los enlaces del sitio público sin
+// depender de un archivo fuera de este proyecto.
+function safe_external_url($url): string {
+    $value = trim((string) $url);
+    if ($value === '' || strtoupper($value) === 'NULL') {
+        return '';
+    }
+    $parts = parse_url($value);
+    if (!isset($parts['scheme'])) {
+        return $value;
+    }
+    $allowed = ['http', 'https', 'mailto', 'tel'];
+    return in_array(strtolower($parts['scheme']), $allowed, true) ? $value : '';
+}

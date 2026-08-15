@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/config.php';
 require __DIR__ . '/helpers.php';
+require __DIR__ . '/site_content.php';
 
 // ---- routing -------------------------------------------------------
 
@@ -54,6 +55,44 @@ $routes = [
     ['GET',  '#^/department/list/?$#',                        'listDepartments'],
     ['POST', '#^/department/assignManager/([^/]+)/?$#',       'assignDepartmentManager'],
     ['POST', '#^/department/assignEmployee/([^/]+)/?$#',      'assignDepartmentEmployee'],
+
+    // ---- Gestión de contenido del sitio público RADIODOLIV_PAGINA -------
+    // Solo director (ver site_content.php). Create/update van como
+    // multipart/form-data porque la imagen es opcional en ambos.
+    ['GET',  '#^/site/anuncios/?$#',                          'siteAnunciosList'],
+    ['POST', '#^/site/anuncios/?$#',                          'siteAnuncioCreate'],
+    ['POST', '#^/site/anuncios/([^/]+)/?$#',                  'siteAnuncioUpdate'],
+    ['POST', '#^/site/anuncios/([^/]+)/delete/?$#',           'siteAnuncioDelete'],
+
+    ['GET',  '#^/site/eventos/?$#',                           'siteEventosList'],
+    ['POST', '#^/site/eventos/?$#',                           'siteEventoCreate'],
+    ['POST', '#^/site/eventos/([^/]+)/?$#',                   'siteEventoUpdate'],
+    ['POST', '#^/site/eventos/([^/]+)/delete/?$#',            'siteEventoDelete'],
+
+    ['GET',  '#^/site/servicios/?$#',                         'siteServiciosList'],
+    ['POST', '#^/site/servicios/?$#',                         'siteServicioCreate'],
+    ['POST', '#^/site/servicios/([^/]+)/?$#',                 'siteServicioUpdate'],
+    ['POST', '#^/site/servicios/([^/]+)/delete/?$#',          'siteServicioDelete'],
+
+    ['GET',  '#^/site/equipo/?$#',                            'siteEquipoList'],
+    ['POST', '#^/site/equipo/?$#',                            'siteEquipoCreate'],
+    ['POST', '#^/site/equipo/([^/]+)/?$#',                    'siteEquipoUpdate'],
+    ['POST', '#^/site/equipo/([^/]+)/delete/?$#',             'siteEquipoDelete'],
+
+    ['GET',  '#^/site/programas/?$#',                         'siteProgramasList'],
+    ['POST', '#^/site/programas/?$#',                         'siteProgramaCreate'],
+    ['POST', '#^/site/programas/([^/]+)/?$#',                 'siteProgramaUpdate'],
+    ['POST', '#^/site/programas/([^/]+)/delete/?$#',          'siteProgramaDelete'],
+
+    ['GET',  '#^/site/patrocinadores/?$#',                    'sitePatrocinadoresList'],
+    ['POST', '#^/site/patrocinadores/?$#',                    'siteSponsorCreate'],
+    ['POST', '#^/site/patrocinadores/([^/]+)/?$#',            'siteSponsorUpdate'],
+    ['POST', '#^/site/patrocinadores/([^/]+)/delete/?$#',     'siteSponsorDelete'],
+
+    ['GET',  '#^/site/podcasts/?$#',                          'sitePodcastsList'],
+    ['POST', '#^/site/podcasts/?$#',                          'sitePodcastCreate'],
+    ['POST', '#^/site/podcasts/([^/]+)/?$#',                  'sitePodcastUpdate'],
+    ['POST', '#^/site/podcasts/([^/]+)/delete/?$#',           'sitePodcastDelete'],
 ];
 
 try {

@@ -56,3 +56,13 @@ define('UPLOAD_URL_BASE', 'http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . A
 if (!is_dir(UPLOAD_DIR)) {
     mkdir(UPLOAD_DIR, 0777, true);
 }
+
+// Ruta al sitio público RADIODOLIV_PAGINA, para que site_content.php pueda
+// guardar ahí las imágenes que sube el director desde la app (misma
+// hive_db, pero es un proyecto PHP aparte). En local ambos proyectos son
+// hermanos bajo htdocs; en producción puede no serlo, así que se puede
+// sobreescribir con RADIODOLIV_PAGINA_PATH en .env.
+define(
+    'RADIODOLIV_PAGINA_PATH',
+    getenv('RADIODOLIV_PAGINA_PATH') ?: dirname(__DIR__, 2) . '/RADIODOLIV_PAGINA'
+);
