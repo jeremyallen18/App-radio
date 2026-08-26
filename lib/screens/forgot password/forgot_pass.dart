@@ -15,6 +15,7 @@ class ResetPass extends StatefulWidget {
 class _ResetPassState extends State<ResetPass> {
   TextEditingController emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
   Future<String?> takeEmailAPI(String email) async {
     const String apiUrl =
@@ -45,134 +46,124 @@ class _ResetPassState extends State<ResetPass> {
   }
 
   void _resetPassword() async {
-    if (_formKey.currentState?.validate() ?? false) {
-      String email = emailController.text.trim();
-      String? error = await takeEmailAPI(email);
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
-      if (error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $error'),
-            backgroundColor: Colors.red,
+    setState(() => _isLoading = true);
+    String email = emailController.text.trim();
+    String? error = await takeEmailAPI(email);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Código OTP enviado a $email'),
+        ),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OTPVerify(
+            email: email,
           ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Código OTP enviado a $email'),
-          ),
-        );
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => OTPVerify(
-              email: email,
-            ),
-          ),
-        );
-      }
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
+    final heightOfScreen = MediaQuery.of(context).size.height;
+
+    return AppScaffold(
+      padding: const EdgeInsets.symmetric(horizontal: 36),
+      scrollable: true,
+      body: Column(
         children: [
-          Opacity(
-            opacity: 0.5,
-            child: Image.asset(
-              "lib/assets/back.png",
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.cover,
-            ),
-          ),
-          Container(
-            height: MediaQuery.of(context).size.height,
-            child: Center(
-              child: SafeArea(
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        alignment: Alignment.center,
-                        child: Form(
-                          key: _formKey,
-                          child: Container(
-                            width: 300,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Center(
-                                  child: Image.asset(
-                                    "lib/assets/reset.png",
-                                    fit: BoxFit.fitWidth,
-                                    height: 200,
-                                  ),
-                                ),
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 20),
-                                  child: Text(
-                                    "E-mail",
-                                    style: TextStyle(
-                                      fontSize: 40,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 20,),
-                                TextFormField(
-                                  keyboardType: TextInputType.emailAddress,
-                                  controller: emailController,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please enter your email';
-                                    }
-                                    return null;
-                                  },
-                                  decoration: InputDecoration(
-                                    prefixIcon: const Icon(Icons.email_outlined),
-                                    hintText: "Correo",
-                                    contentPadding:
-                                        const EdgeInsets.symmetric(vertical: 2.0),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(30.0),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10,),
-                      const Text(
-                        "Enter an email address associated with your account.",
-                        style: TextStyle(fontSize: 14),
-                      ),
-                      SizedBox(height: 30),
-                      ElevatedButton(
-                        onPressed: _resetPassword,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        child: const Text(
-                          'Recover Password',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
+          SizedBox(height: heightOfScreen * 0.06),
+          Center(
+            child: Container(
+              width: 96,
+              height: 96,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.textPrimary,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
                   ),
-                ),
+                ],
+              ),
+              child: Image.asset(
+                "lib/assets/reset.png",
+                fit: BoxFit.contain,
               ),
             ),
           ),
-          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
+          const SizedBox(height: 24),
+          const Text(
+            "Recuperar acceso,",
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontWeight: FontWeight.w400,
+              fontSize: 16,
+            ),
+          ),
+          const Text(
+            "¿Olvidaste tu contraseña?",
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+              fontSize: 26,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "Escribe el correo de tu cuenta y te enviaremos un código para recuperarla.",
+            style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: heightOfScreen * 0.05),
+          Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                AppTextField(
+                  controller: emailController,
+                  textInputType: TextInputType.emailAddress,
+                  prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textMuted),
+                  hintText: "Correo electrónico",
+                  validator: (value) {
+                    final email = value?.trim() ?? '';
+                    if (email.isEmpty) {
+                      return 'Ingresa tu correo';
+                    }
+                    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+                      return 'Correo inválido';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 28),
+                AppButton(
+                  label: _isLoading ? 'Enviando...' : 'Enviar código',
+                  loading: _isLoading,
+                  onPressed: _isLoading ? null : _resetPassword,
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
         ],
       ),
     );

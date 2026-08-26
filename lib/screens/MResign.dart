@@ -4,130 +4,97 @@ import '../Utils/Routes.dart';
 import 'login.dart';
 import '../utils/api_config.dart';
 import '../design/design.dart';
+
 class Mresign extends StatefulWidget {
-   Mresign({super.key, required this.teamId,required this.emailId});
-   String? teamId;
-   String? emailId;
+  Mresign({super.key, required this.teamId, required this.emailId});
+  String? teamId;
+  String? emailId;
 
   @override
   State<Mresign> createState() => _MresignState();
 }
 
 class _MresignState extends State<Mresign> {
+  final _formKey = GlobalKey<FormState>();
+  bool _submitting = false;
+
   Future<void> MresignApi(String? teamId, String? email) async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    setState(() => _submitting = true);
     dynamic storedValue = await secureStorage.readSecureData(key);
     final String apiUrl = '$kBaseUrl/user/sendMessage/$teamId';
-    final response = await http.post(
-      Uri.parse(apiUrl),
-      headers: <String, String>{
-        'Authorization' :storedValue,
-      },
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: <String, String>{
+          'Authorization': storedValue,
+        },
+        body: ({
+          "Correo": email,
+          "message": MessageController.text,
+        }),
+      );
 
-      body: ({
-        "Correo": email,
-        "message":MessageController.text,
-      }),
-    );
-
-    if (response.statusCode == 200) {
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Correo enviado")),
+        );
+        Navigator.pushReplacementNamed(context, MyRoutes.BottomNavBar);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("No se pudo enviar la renuncia (${response.statusCode})")),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Correo enviado"),),);
-      Navigator.pushReplacementNamed(context, MyRoutes.BottomNavBar);
-    } else {
-      print( ' ${response.statusCode}');
-      print('Error Message: ${response.body}');
+        const SnackBar(content: Text("Error de red al enviar la renuncia")),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
-  TextEditingController MessageController=TextEditingController();
+
+  TextEditingController MessageController = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-        Container(
-        height: MediaQuery.of(context).size.height,
-        width: MediaQuery.of(context).size.width,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment(0.6, 0.8),
-            end: Alignment(0.6, 0.21),
-            colors: [Color(0xFF020918), Color(0xFF38486C)],
-          ),
-        ),
-        child: DesktopCenter(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: SingleChildScrollView(
-            child: Form(
-              child: Column(
-                children: [
-                  const SizedBox(height: 100,),
-
-                  const Text("Renunciar",style:TextStyle(color: Colors.white,fontSize:40,fontWeight: FontWeight.w700),),
-                  const SizedBox(height: 30,),
-
-
-                  Container(
-                    width: 303,
-                    height: 300,
-                    decoration: ShapeDecoration(
-                      color: Colors.white.withOpacity(0.15000000596046448),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ClipRRect(
-                          child: Container(
-                            height: 200,
-                            width: 270,
-                            color: Colors.white,
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: TextFormField(
-                                maxLines: 10,
-                                controller: MessageController,
-                                decoration: InputDecoration(
-                                  hintText: "Mensaje para el líder",
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 2.0),
-                                  border:OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(5.0),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 25,),
-                        ElevatedButton(onPressed: (){
-                          MresignApi(widget.teamId, widget.emailId);
-                        },
-                          style:ElevatedButton.styleFrom(
-                            backgroundColor:const Color.fromARGB(255, 169, 187, 229),
-                          ),
-                          child:const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text("Enviar renuncia"),
-                              SizedBox(width:5),
-                            ],
-                          ),),
-
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        ),
-
+    return AppScaffold(
+      appBar: AppBar(
+        title: const Text('Renunciar al equipo'),
+        leading: AppBackButton.leadingFor(context),
+        automaticallyImplyLeading: false,
       ),
-          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
-        ],
+      scrollable: true,
+      body: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: AppSpacing.lg),
+            const Text(
+              'Se le enviará un correo a tu líder de equipo con el mensaje que escribas.',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            AppTextField(
+              controller: MessageController,
+              prefixIcon: const Icon(Icons.edit_note_outlined, color: AppColors.textMuted),
+              hintText: "Mensaje para el líder",
+              maxLines: 5,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? "Escribe un mensaje para el líder" : null,
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            AppButton(
+              label: _submitting ? 'Enviando…' : 'Enviar renuncia',
+              loading: _submitting,
+              onPressed: _submitting ? null : () => MresignApi(widget.teamId, widget.emailId),
+            ),
+          ],
+        ),
       ),
     );
   }

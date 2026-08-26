@@ -6,157 +6,140 @@ import 'package:doliv_social/ResourceM/imagecc.dart';
 import 'package:flutter/material.dart';
 import '../design/design.dart';
 
+/// Punto de entrada de "Recursos" de un equipo: accesos a documentación,
+/// texto/imágenes publicados, publicar nuevos recursos, asistencia del líder
+/// e imágenes del equipo — cada uno como una tarjeta con ícono y descripción,
+/// igual que el resto de los "hub" de la app (ver `SiteContentHubScreen`).
 class ResourceM extends StatelessWidget {
   final String teamId;
   ResourceM(this.teamId);
 
+  List<_ResourceSection> get _sections => [
+        _ResourceSection(
+          icon: Icons.book_outlined,
+          label: 'Documentación',
+          description: 'Notas y avances guardados en este dispositivo.',
+          builder: (context) => DocumentationPage(),
+        ),
+        _ResourceSection(
+          icon: Icons.download_outlined,
+          label: 'Ver recursos publicados',
+          description: 'Textos e imágenes que ya compartió el equipo.',
+          builder: (context) => ShowTextScreen(teamId),
+        ),
+        _ResourceSection(
+          icon: Icons.post_add_outlined,
+          label: 'Publicar recursos',
+          description: 'Comparte un texto o una imagen con el equipo.',
+          builder: (context) => PostTextScreen(teamId),
+        ),
+        _ResourceSection(
+          icon: Icons.support_agent_outlined,
+          label: 'Asistencia del líder',
+          description: 'Envía un mensaje directo a tu líder de equipo.',
+          builder: (context) => LeaderResource(teamId),
+        ),
+        _ResourceSection(
+          icon: Icons.image_outlined,
+          label: 'Imágenes del equipo',
+          description: 'Galería de imágenes publicadas para este equipo.',
+          builder: (context) => ImageListScreen(teamId),
+        ),
+      ];
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
+    return AppScaffold(
+      appBar: AppBar(
+        title: const Text('Recursos del equipo'),
+        leading: AppBackButton.leadingFor(context),
+        automaticallyImplyLeading: false,
+      ),
+      scrollable: true,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-        DesktopCenter(
-      maxWidth: 720,
-      child: Column(
-        children: [
-          Container(
-            width: 420,
-            height: 150,
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                alignment: Alignment(1, 0),
-                image: AssetImage('lib/assets/test1.png'),
-                fit: BoxFit.scaleDown,
-              ),
-              gradient: LinearGradient(
-                begin: Alignment(0.98, -0.21),
-                end: Alignment(-0.98, 0.21),
-                colors: [Color(0xFF020918), Color(0xFF38486C)],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x4C000000),
-                  blurRadius: 4,
-                  offset: Offset(0, 4),
-                  spreadRadius: 0,
-                )
-              ],
-            ),
-            child: const Padding(
-              padding: EdgeInsets.only(left: 16.0, top: 16.0, bottom: 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '\nResource Manager',
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+          const SizedBox(height: AppSpacing.lg),
+          ResponsiveCardGrid(
+            children: [
+              for (final section in _sections)
+                _SectionCard(
+                  section: section,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: section.builder),
                   ),
                 ),
-              ),
-            ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                children: [
-                  _buildGridItem(
-                    context,
-                    'Documentation',
-                    DocumentationPage(),
-                    Icons.book,
-                    Colors.blue,
-                  ),
-                  _buildGridItem(
-                    context,
-                    'Fetch Resources',
-                    ShowTextScreen(teamId),
-                    Icons.get_app,
-                    Colors.green,
-                  ),
-                  _buildGridItem(
-                    context,
-                    'Post Resources',
-                    PostTextScreen(teamId),
-                    Icons.post_add,
-                    Colors.orange,
-                  ),
-                  _buildGridItem(
-                    context,
-                    'Leader assistance ',
-                    LeaderResource(teamId),
-                    Icons.assistant,
-                    const Color.fromARGB(247, 234, 102, 102),
-                  ),
-                  _buildGridItem(
-                    context,
-                    'Recursos de imágenes',
-                    ImageListScreen(teamId),
-                    Icons.image,
-                    Color.fromARGB(247, 49, 55, 12)              ),
-                ],
-              ),
-            ),
-          )
-        ],
-      ),
-      ),
-          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
+          const SizedBox(height: AppSpacing.xxl),
         ],
       ),
     );
   }
 }
 
-Widget _buildGridItem(
-  BuildContext context,
-  String text,
-  Widget destination,
-  IconData icon,
-  Color color,
-) {
-  return GestureDetector(
-    onTap: () {
-      Navigator.push(
-          context, MaterialPageRoute(builder: (context) => destination));
-    },
-    child: Container(
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.section, required this.onTap});
+
+  final _ResourceSection section;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            size: 40,
-            color: Colors.white,
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(section.icon, color: AppColors.accent, size: 20),
           ),
-          const SizedBox(height: 8),
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  section.label,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  section.description,
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                ),
+              ],
             ),
           ),
+          const SizedBox(width: AppSpacing.sm),
+          const Icon(Icons.chevron_right, color: AppColors.textMuted),
         ],
       ),
-    ),
-  );
+    );
+  }
+}
+
+class _ResourceSection {
+  _ResourceSection({
+    required this.icon,
+    required this.label,
+    required this.description,
+    required this.builder,
+  });
+
+  final IconData icon;
+  final String label;
+  final String description;
+  final WidgetBuilder builder;
 }

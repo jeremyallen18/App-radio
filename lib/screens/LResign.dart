@@ -13,210 +13,165 @@ class Resign extends StatefulWidget {
 }
 
 class _ResignState extends State<Resign> {
-  TextEditingController MEmailController =TextEditingController();
-  TextEditingController EmailController =TextEditingController();
+  final _removeFormKey = GlobalKey<FormState>();
+  final _assignFormKey = GlobalKey<FormState>();
+  TextEditingController MEmailController = TextEditingController();
+  TextEditingController EmailController = TextEditingController();
+  bool _removing = false;
+  bool _assigning = false;
+
+  String? _requiredEmail(String? value) {
+    if (value == null || value.trim().isEmpty) return 'Indica un correo';
+    if (!value.contains('@')) return 'Ese correo no parece válido';
+    return null;
+  }
+
   Future<void> removeApi(String? teamId) async {
+    if (!(_removeFormKey.currentState?.validate() ?? false)) return;
+
+    setState(() => _removing = true);
     dynamic storedValue = await secureStorage.readSecureData(key);
-    print(teamId);
-    print (storedValue);
     final String apiUrl = '$kBaseUrl/team/deleteMember/$teamId';
-    final response = await http.post(
-      Uri.parse(apiUrl),
-      headers: <String, String>{
-        'Authorization' :storedValue,
-      },
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: <String, String>{
+          'Authorization': storedValue,
+        },
+        body: ({
+          "memberEmail": MEmailController.text,
+        }),
+      );
 
-      body: ({
-        "memberEmail": MEmailController.text,
-      }),
-    );
-
-    if (response.statusCode == 200) {
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Miembro eliminado")),
+        );
+        Navigator.pushReplacementNamed(context, MyRoutes.BottomNavBar);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("No se pudo eliminar el miembro (${response.statusCode})")),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Eliminado"),),);
-      Navigator.pushReplacementNamed(context, MyRoutes.BottomNavBar);
-    } else {
-      print( ' ${response.statusCode}');
-      print('Error Message: ${response.body}');
+        const SnackBar(content: Text("Error de red al eliminar el miembro")),
+      );
+    } finally {
+      if (mounted) setState(() => _removing = false);
     }
   }
 
   Future<void> resignApi(String? teamId) async {
+    if (!(_assignFormKey.currentState?.validate() ?? false)) return;
+
+    setState(() => _assigning = true);
     dynamic storedValue = await secureStorage.readSecureData(key);
-    print(teamId);
     final String apiUrl = '$kBaseUrl/team/leaderResign/$teamId';
-    final response = await http.post(
-      Uri.parse(apiUrl),
-      headers: <String, String>{
-        'Authorization' :storedValue,
-      },
-
-      body: ({
-        "Correo": EmailController.text,
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: <String, String>{
+          'Authorization': storedValue,
+        },
+        body: ({
+          "Correo": EmailController.text,
         }),
-    );
+      );
 
-    if (response.statusCode == 200) {
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Nuevo líder asignado")),
+        );
+        Navigator.pushReplacementNamed(context, MyRoutes.BottomNavBar);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("No se pudo asignar el nuevo líder (${response.statusCode})")),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Asignado"),),);
-      Navigator.pushReplacementNamed(context, MyRoutes.BottomNavBar);
-    } else {
-      print( ' ${response.statusCode}');
-      print('Error Message: ${response.body}');
+        const SnackBar(content: Text("Error de red al asignar el nuevo líder")),
+      );
+    } finally {
+      if (mounted) setState(() => _assigning = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
+    return AppScaffold(
+      appBar: AppBar(
+        title: const Text('Gestionar miembros'),
+        leading: AppBackButton.leadingFor(context),
+        automaticallyImplyLeading: false,
+      ),
+      scrollable: true,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-        Container(
-        height: MediaQuery.of(context).size.height,
-        width: MediaQuery.of(context).size.width,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment(0.6, 0.8),
-            end: Alignment(0.4, 0.31),
-            colors: [Color(0xFF020918), Color(0xFF38486C)],
-          ),
-        ),
-        child: DesktopCenter(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: SingleChildScrollView(
+          const SizedBox(height: AppSpacing.lg),
+          const SectionHeader(title: 'Eliminar un miembro'),
+          AppCard(
             child: Form(
+              key: _removeFormKey,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 70,),
-                  Container(
-                    width: 303,
-                    height: 200,
-                    decoration: ShapeDecoration(
-                      color: Colors.white.withOpacity(0.15000000596046448),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text("Eliminar miembro",style:TextStyle(color: Colors.white,fontSize:30,fontWeight: FontWeight.w700),),
-                        const SizedBox(height: 10,),
-                        ClipRRect(
-                          borderRadius: const BorderRadiusDirectional.all(Radius.circular(30)),
-                          child: Container(
-                            height: 48,
-                            width: 270,
-                            color: Colors.white,
-                            child: TextFormField(
-                              controller: MEmailController,
-                              decoration: InputDecoration(
-                                prefixIcon:const Icon(Icons.email),
-                                hintText: "Correo",
-                                contentPadding: const EdgeInsets.symmetric(vertical: 2.0),
-                                border:OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(5.0),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 25,),
-                        ElevatedButton(onPressed: (){
-                          removeApi(widget.teamId);
-                        },
-                          style:ElevatedButton.styleFrom(
-                            backgroundColor:const Color.fromARGB(255, 169, 187, 229),
-                          ),
-                          child:const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text("Eliminar"),
-                              SizedBox(width:5),
-                            ],
-                          ),),
-
-                      ],
-                    ),
+                  AppTextField(
+                    controller: MEmailController,
+                    prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textMuted),
+                    hintText: "Correo del miembro a eliminar",
+                    textInputType: TextInputType.emailAddress,
+                    validator: _requiredEmail,
                   ),
-                  const SizedBox(height: 40,),
-
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(height: 2, width: 138,color: Colors.white,),
-                        const Text(" O ",style:TextStyle(color: Colors.white,fontSize:20,fontWeight: FontWeight.w700),),
-                      Container(height: 2,width:138,color: Colors.white,),
-                    ],
-                  ),
-
-                  const SizedBox(height: 40,),
-
-
-                  Container(
-                    width: 303,
-                    height: 200,
-                    decoration: ShapeDecoration(
-                      color: Colors.white.withOpacity(0.15000000596046448),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text("Asignar nuevo líder",style:TextStyle(color: Colors.white,fontSize:30,fontWeight: FontWeight.w700),),
-                        const SizedBox(height: 10,),
-                        ClipRRect(
-                          borderRadius: const BorderRadiusDirectional.all(Radius.circular(30)),
-                          child: Container(
-                            height: 48,
-                            width: 270,
-                            color: Colors.white,
-                            child: TextFormField(
-                              controller: EmailController,
-                              decoration: InputDecoration(
-                                prefixIcon:const Icon(Icons.email),
-                                hintText: "Correo",
-                                contentPadding: const EdgeInsets.symmetric(vertical: 2.0),
-                                border:OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(5.0),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 25,),
-                        ElevatedButton(onPressed: (){
-                          resignApi(widget.teamId);
-                        },
-                          style:ElevatedButton.styleFrom(
-                            backgroundColor:const Color.fromARGB(255, 169, 187, 229),
-                          ),
-                          child:const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text("Asignar"),
-                              SizedBox(width:5),
-                            ],
-                          ),),
-
-                      ],
-                    ),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppButton(
+                    label: _removing ? 'Eliminando…' : 'Eliminar miembro',
+                    loading: _removing,
+                    onPressed: _removing ? null : () => removeApi(widget.teamId),
                   ),
                 ],
               ),
             ),
           ),
-        ),
-        ),
-
-      ),
-          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
+          const SizedBox(height: AppSpacing.xl),
+          const SectionHeader(title: 'Asignar nuevo líder'),
+          AppCard(
+            child: Form(
+              key: _assignFormKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'La persona que indiques pasará a ser la líder de este equipo.',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppTextField(
+                    controller: EmailController,
+                    prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textMuted),
+                    hintText: "Correo del nuevo líder",
+                    textInputType: TextInputType.emailAddress,
+                    validator: _requiredEmail,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppButton(
+                    label: _assigning ? 'Asignando…' : 'Asignar como líder',
+                    loading: _assigning,
+                    onPressed: _assigning ? null : () => resignApi(widget.teamId),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
         ],
       ),
     );
   }
 }
-

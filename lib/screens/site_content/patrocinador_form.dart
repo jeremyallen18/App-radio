@@ -69,6 +69,27 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
     setState(() => _newImage = File(picked.path));
   }
 
+  Future<void> _delete() async {
+    final item = widget.item;
+    if (item == null) return;
+    final confirmed = await confirmSiteDelete(context, _name.text.trim());
+    if (!confirmed) return;
+
+    setState(() => _submitting = true);
+    try {
+      await _api.delete(item['id'].toString());
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (_name.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -119,46 +140,93 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
     final existingImage = siteImageUrl(widget.item?['image']?.toString());
 
     return AppScaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Editar patrocinador' : 'Nuevo patrocinador'),
-        leading: AppBackButton.leadingFor(context),
-        automaticallyImplyLeading: false,
-      ),
       scrollable: true,
+      showBackButton: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _name, hintText: 'Nombre *'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _category, hintText: 'Categoría (clave, ej. escuelas)'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _categoryLabel, hintText: 'Etiqueta de categoría (ej. Escuelas)'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _icon, hintText: 'Ícono (nombre lucide)'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _subtitle, hintText: 'Subtítulo'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _summary, hintText: 'Resumen', maxLines: 3),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(
+          const SizedBox(height: AppSpacing.md),
+          SiteFormHeader(
+            title: _isEditing ? 'Editar patrocinador' : 'Nuevo patrocinador',
+            subtitle: 'Actualiza la información del patrocinador',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          SiteFormField(
+            icon: Icons.storefront_outlined,
+            label: 'Nombre',
+            required: true,
+            controller: _name,
+            hintText: 'Ej. Panadería El Trigo',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.sell_outlined,
+            label: 'Categoría',
+            iconColor: SiteFieldColors.green,
+            controller: _category,
+            hintText: 'Clave, ej. escuelas',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.label_outline,
+            label: 'Etiqueta de categoría',
+            iconColor: SiteFieldColors.green,
+            controller: _categoryLabel,
+            hintText: 'Ej. Escuelas',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.emoji_symbols_outlined,
+            label: 'Ícono',
+            iconColor: SiteFieldColors.purple,
+            controller: _icon,
+            hintText: 'Nombre del ícono',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.short_text,
+            label: 'Subtítulo',
+            iconColor: SiteFieldColors.teal,
+            controller: _subtitle,
+            hintText: 'Subtítulo del patrocinador',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.notes_outlined,
+            label: 'Resumen',
+            iconColor: SiteFieldColors.orange,
+            controller: _summary,
+            hintText: 'Resumen breve',
+            maxLines: 3,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.menu_book_outlined,
+            label: 'Descripción larga',
+            iconColor: SiteFieldColors.orange,
             controller: _description,
-            hintText: 'Descripción larga (separa cada párrafo con una línea en blanco)',
+            hintText: 'Describe al patrocinador…',
+            helperText: 'Separa cada párrafo con una línea en blanco.',
             maxLines: 6,
           ),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _map, hintText: 'Mapa (URL embed de Google Maps)'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.map_outlined,
+            label: 'Mapa',
+            iconColor: SiteFieldColors.teal,
+            controller: _map,
+            hintText: 'URL embed de Google Maps',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.swap_vert,
+            label: 'Orden de aparición',
             controller: _sortOrder,
-            hintText: 'Orden de aparición',
+            hintText: 'Ej. 1',
             textInputType: TextInputType.number,
           ),
           const SizedBox(height: AppSpacing.xl),
-          const Text(
-            'Redes sociales',
-            style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 15),
-          ),
+          const SiteFormSectionTitle('Redes sociales'),
           const SizedBox(height: AppSpacing.sm),
           for (final social in _socials)
             SiteRepeatRow(
@@ -171,14 +239,27 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
             icon: const Icon(Icons.add, color: AppColors.accent),
             label: const Text('Agregar red social', style: TextStyle(color: AppColors.accent)),
           ),
-          const SizedBox(height: AppSpacing.lg),
-          SiteImagePickerField(newImage: _newImage, existingImageUrl: existingImage, onPick: _pickImage),
+          const SizedBox(height: AppSpacing.md),
+          SiteImagePickerField(
+            newImage: _newImage,
+            existingImageUrl: existingImage,
+            onPick: _pickImage,
+            title: 'Imagen del patrocinador',
+          ),
           const SizedBox(height: AppSpacing.xl),
           AppButton(
             label: _submitting ? 'Guardando…' : 'Guardar',
             loading: _submitting,
             onPressed: _submitting ? null : _submit,
           ),
+          if (_isEditing) ...[
+            const SizedBox(height: AppSpacing.md),
+            SiteDeleteButton(
+              label: 'Eliminar patrocinador',
+              onPressed: _submitting ? null : _delete,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );

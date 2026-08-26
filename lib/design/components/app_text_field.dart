@@ -17,6 +17,7 @@ class AppTextField extends StatelessWidget {
     this.maxLines = 1,
     this.readOnly = false,
     this.onTap,
+    this.onChanged,
   });
 
   final TextEditingController? controller;
@@ -30,6 +31,7 @@ class AppTextField extends StatelessWidget {
   final int maxLines;
   final bool readOnly;
   final VoidCallback? onTap;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +45,7 @@ class AppTextField extends StatelessWidget {
       maxLines: obscured ? 1 : maxLines,
       readOnly: readOnly,
       onTap: onTap,
+      onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hintText,
         prefixIcon: prefixIcon,

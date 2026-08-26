@@ -13,6 +13,7 @@ import '../utils/Routes.dart';
 import '../utils/api_config.dart';
 import '../utils/session.dart';
 import 'chat.dart';
+import 'directory/colleague_directory_screen.dart';
 import 'login.dart';
 
 /// Dashboard para usuarios con rol [AppRole.employee] (o cuando el rol no
@@ -138,28 +139,10 @@ class _EmployeeDashboardState extends State<EmployeeDashboard> {
                 AppSpacing.xxl,
               ),
               children: [
-                Text(
-                  'Hola, ${_profile?.name ?? ''}',
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 22,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: [
-                    AppBadge(
-                      label: _profile?.role.label ?? AppRole.employee.label,
-                      variant: AppBadgeVariant.info,
-                    ),
-                    if (_profile?.department != null)
-                      AppBadge(label: _profile!.department!.name),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xl),
+                if (_profile?.department != null) ...[
+                  AppBadge(label: _profile!.department!.name),
+                  const SizedBox(height: AppSpacing.xl),
+                ],
 
                 SectionHeader(
                   title: 'Mis tareas',
@@ -223,17 +206,37 @@ class _EmployeeDashboardState extends State<EmployeeDashboard> {
                 ),
                 const SizedBox(height: AppSpacing.xl),
 
-                const SectionHeader(title: 'Mi calendario'),
-                const ComingSoonCard(
-                  icon: Icons.calendar_month_outlined,
-                  message: 'El calendario de tareas y turnos estará disponible próximamente.',
-                ),
-                const SizedBox(height: AppSpacing.xl),
-
-                const SectionHeader(title: 'Mis anuncios'),
-                const ComingSoonCard(
-                  icon: Icons.campaign_outlined,
-                  message: 'Estará disponible junto con el módulo de anuncios.',
+                const SectionHeader(title: 'Acciones rápidas'),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    QuickActionChip(
+                      icon: Icons.person_search_outlined,
+                      label: 'Buscar compañeros',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ColleagueDirectoryScreen(me: _profile),
+                        ),
+                      ),
+                    ),
+                    QuickActionChip(
+                      icon: Icons.groups_outlined,
+                      label: 'Mis equipos',
+                      onTap: _openTeams,
+                    ),
+                    QuickActionChip(
+                      icon: Icons.add_circle_outline,
+                      label: 'Crear equipo',
+                      onTap: () => Navigator.pushNamed(context, MyRoutes.CreateTeamScreen),
+                    ),
+                    QuickActionChip(
+                      icon: Icons.group_add_outlined,
+                      label: 'Unirse a un equipo',
+                      onTap: () => Navigator.pushNamed(context, MyRoutes.jointeamRoutes),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: AppSpacing.xl),
 
@@ -262,41 +265,26 @@ class _EmployeeDashboardState extends State<EmployeeDashboard> {
                 ),
                 const SizedBox(height: AppSpacing.xl),
 
-                const SectionHeader(title: 'Recursos compartidos'),
-                const ComingSoonCard(
-                  icon: Icons.folder_shared_outlined,
-                  message: 'Estará disponible junto con el módulo de recursos por departamento.',
-                ),
-                const SizedBox(height: AppSpacing.xl),
-
-                const SectionHeader(title: 'Solicitudes de permiso'),
-                const ComingSoonCard(
-                  icon: Icons.event_busy_outlined,
-                  message:
-                      'Estará disponible junto con el módulo de permisos jerárquicos. Mientras '
-                      'tanto, puedes solicitarlo desde el detalle de tu equipo.',
-                ),
-                const SizedBox(height: AppSpacing.xl),
-
-                const SectionHeader(title: 'Acciones rápidas'),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: [
-                    QuickActionChip(
-                      icon: Icons.groups_outlined,
-                      label: 'Mis equipos',
-                      onTap: _openTeams,
+                const SectionHeader(title: 'Próximamente'),
+                const ComingSoonSection(
+                  items: [
+                    ComingSoonItem(
+                      icon: Icons.calendar_month_outlined,
+                      label: 'Mi calendario',
+                      message: 'Tareas y turnos.',
                     ),
-                    QuickActionChip(
-                      icon: Icons.add_circle_outline,
-                      label: 'Crear equipo',
-                      onTap: () => Navigator.pushNamed(context, MyRoutes.CreateTeamScreen),
+                    ComingSoonItem(
+                      icon: Icons.campaign_outlined,
+                      label: 'Mis anuncios',
                     ),
-                    QuickActionChip(
-                      icon: Icons.group_add_outlined,
-                      label: 'Unirse a un equipo',
-                      onTap: () => Navigator.pushNamed(context, MyRoutes.jointeamRoutes),
+                    ComingSoonItem(
+                      icon: Icons.folder_shared_outlined,
+                      label: 'Recursos compartidos',
+                    ),
+                    ComingSoonItem(
+                      icon: Icons.event_busy_outlined,
+                      label: 'Solicitudes de permiso',
+                      message: 'Mientras tanto, pídelo desde el detalle de tu equipo.',
                     ),
                   ],
                 ),

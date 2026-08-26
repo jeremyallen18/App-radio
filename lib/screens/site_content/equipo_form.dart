@@ -43,6 +43,27 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
     setState(() => _newImage = File(picked.path));
   }
 
+  Future<void> _delete() async {
+    final item = widget.item;
+    if (item == null) return;
+    final confirmed = await confirmSiteDelete(context, _name.text.trim());
+    if (!confirmed) return;
+
+    setState(() => _submitting = true);
+    try {
+      await _api.delete(item['id'].toString());
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (_name.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -87,49 +108,117 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
     final existingImage = siteImageUrl(widget.item?['image']?.toString());
 
     return AppScaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Editar integrante' : 'Nuevo integrante'),
-        leading: AppBackButton.leadingFor(context),
-        automaticallyImplyLeading: false,
-      ),
       scrollable: true,
+      showBackButton: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _name, hintText: 'Nombre *'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _role, hintText: 'Rol (ej. Locutora de Rincón Lunar)'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _category, hintText: 'Categoría (ej. locutores)'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _accent, hintText: 'Color de identidad (hex, ej. #3d5afe)'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _shortDesc, hintText: 'Descripción corta'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(
-            controller: _bio,
-            hintText: 'Biografía (separa cada párrafo con una línea en blanco)',
-            maxLines: 6,
+          const SizedBox(height: AppSpacing.md),
+          SiteFormHeader(
+            title: _isEditing ? 'Editar integrante' : 'Nuevo integrante',
+            subtitle: 'Actualiza la información del integrante.',
           ),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _path, hintText: 'Trayectoria (un elemento por línea)', maxLines: 4),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _interests, hintText: 'Intereses (un elemento por línea)', maxLines: 4),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(
+          const SizedBox(height: AppSpacing.xl),
+          SiteFormField(
+            icon: Icons.person_outline,
+            label: 'Nombre',
+            required: true,
+            controller: _name,
+            hintText: 'Ingresa el nombre completo',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.work_outline,
+            label: 'Rol',
+            iconColor: SiteFieldColors.teal,
+            controller: _role,
+            hintText: 'Ej. Locutora de Rincón Lunar',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.sell_outlined,
+            label: 'Categoría',
+            iconColor: SiteFieldColors.green,
+            controller: _category,
+            hintText: 'Ej. locutores',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.palette_outlined,
+            label: 'Color de identidad (HEX)',
+            iconColor: SiteFieldColors.pink,
+            controller: _accent,
+            hintText: 'Ej. #3d5afe',
+            trailing: SiteColorSwatch(controller: _accent),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.description_outlined,
+            label: 'Descripción corta',
+            iconColor: SiteFieldColors.orange,
+            controller: _shortDesc,
+            hintText: 'Breve descripción (máx. 150 caracteres)',
+            maxLength: 150,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.menu_book_outlined,
+            label: 'Biografía',
+            iconColor: SiteFieldColors.purple,
+            controller: _bio,
+            hintText: 'Escribe la biografía del integrante…',
+            helperText: 'Separa cada párrafo con una línea en blanco.',
+            maxLines: 6,
+            maxLength: 1000,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.trending_up,
+            label: 'Trayectoria',
+            iconColor: SiteFieldColors.teal,
+            controller: _path,
+            hintText: 'Añade cada hito o experiencia en una línea',
+            maxLines: 4,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.star_outline,
+            label: 'Intereses',
+            iconColor: SiteFieldColors.orange,
+            controller: _interests,
+            hintText: 'Añade cada interés en una línea',
+            maxLines: 4,
+            maxLength: 500,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.swap_vert,
+            label: 'Orden de aparición',
             controller: _sortOrder,
-            hintText: 'Orden de aparición',
+            hintText: 'Número de orden',
             textInputType: TextInputType.number,
           ),
-          const SizedBox(height: AppSpacing.lg),
-          SiteImagePickerField(newImage: _newImage, existingImageUrl: existingImage, onPick: _pickImage),
+          const SizedBox(height: AppSpacing.md),
+          SiteImagePickerField(
+            newImage: _newImage,
+            existingImageUrl: existingImage,
+            onPick: _pickImage,
+            title: 'Imagen del integrante',
+          ),
           const SizedBox(height: AppSpacing.xl),
           AppButton(
             label: _submitting ? 'Guardando…' : 'Guardar',
             loading: _submitting,
             onPressed: _submitting ? null : _submit,
           ),
+          if (_isEditing) ...[
+            const SizedBox(height: AppSpacing.md),
+            SiteDeleteButton(
+              label: 'Eliminar integrante',
+              onPressed: _submitting ? null : _delete,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );

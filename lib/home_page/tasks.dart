@@ -51,6 +51,7 @@ class _TaskContainerState extends State<TaskContainer> {
   List<dynamic> compTasks = [];
   List<dynamic> incompTasks = [];
   bool _loading = true;
+  bool _hasError = false;
   // tareas que se están marcando ahora mismo; la clave incluye equipo y área
   // porque dos equipos pueden tener tareas con la misma descripción.
   final Set<String> _updating = {};
@@ -65,8 +66,21 @@ class _TaskContainerState extends State<TaskContainer> {
   }
 
   Future<void> _loadAll() async {
-    await Future.wait([incompTaskAPI(), compTaskAPI()]);
-    if (mounted) setState(() => _loading = false);
+    setState(() {
+      _loading = true;
+      _hasError = false;
+    });
+    try {
+      await Future.wait([incompTaskAPI(), compTaskAPI()]);
+      if (mounted) setState(() => _loading = false);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _loading = false;
+        });
+      }
+    }
   }
 
   Future<void> incompTaskAPI() async {
@@ -155,9 +169,14 @@ class _TaskContainerState extends State<TaskContainer> {
           onRefresh: _loadAll,
           child: _loading
               ? const LoadingState()
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                  children: [
+              : _hasError
+                  ? ErrorState(
+                      message: 'No se pudieron cargar tus tareas.',
+                      onRetry: _loadAll,
+                    )
+                  : ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                      children: [
                     const Text(
                       'Mis tareas',
                       style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.w800),

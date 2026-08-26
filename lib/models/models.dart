@@ -1,6 +1,8 @@
-// Modelos de la estructura organizacional (Radio Doliv): rol del usuario
-// autenticado y el departamento al que pertenece. Alimentados por
-// GET /user/me (ver lib/utils/session.dart).
+// Modelos de la estructura organizacional (Radio Doliv): rol de una persona
+// y el departamento al que pertenece. Alimentados por GET /user/me (perfil
+// propio, ver lib/utils/session.dart) y por GET /user/directory y
+// GET /user/profile/{id} (directorio de compañeros, ver
+// lib/screens/directory/directory_api.dart), que devuelven la misma forma.
 
 enum AppRole { director, manager, employee }
 
@@ -89,6 +91,59 @@ class UserProfile {
       department: deptJson is Map<String, dynamic>
           ? DepartmentInfo.fromJson(deptJson)
           : null,
+    );
+  }
+
+  /// Línea que va debajo del nombre en el perfil y en el directorio: el
+  /// puesto concreto si lo tiene y, si no, el rol — nunca vacío.
+  String get headline =>
+      (position ?? '').isNotEmpty ? position! : role.label;
+
+  /// Si esta persona es quien dirige su propio departamento. El backend
+  /// referencia al manager por correo (`departments.manager_email`), así que
+  /// se compara sin distinguir mayúsculas.
+  bool get leadsOwnDepartment =>
+      department != null &&
+      (department!.managerEmail ?? '').toLowerCase() == email.toLowerCase();
+}
+
+/// Equipo al que pertenece un compañero, tal como lo devuelve
+/// GET /user/profile/{id}. No incluye `teamCode`: el código sirve para
+/// unirse al equipo, así que no se expone en la ficha de otra persona.
+class ColleagueTeam {
+  final String id;
+  final String name;
+  final bool isLeader;
+
+  ColleagueTeam({required this.id, required this.name, required this.isLeader});
+
+  factory ColleagueTeam.fromJson(Map<String, dynamic> json) {
+    return ColleagueTeam(
+      id: json['id']?.toString() ?? '',
+      name: json['teamName']?.toString() ?? 'Equipo',
+      isLeader: json['isLeader'] == true,
+    );
+  }
+}
+
+/// Ficha completa de un compañero: su perfil público más lo que solo trae el
+/// detalle (equipos y antigüedad).
+class ColleagueProfile {
+  final UserProfile user;
+  final List<ColleagueTeam> teams;
+  final DateTime? joinedAt;
+
+  ColleagueProfile({required this.user, required this.teams, this.joinedAt});
+
+  factory ColleagueProfile.fromJson(Map<String, dynamic> json) {
+    final teamsJson = (json['teams'] as List?) ?? const [];
+    return ColleagueProfile(
+      user: UserProfile.fromJson(json),
+      teams: teamsJson
+          .whereType<Map>()
+          .map((t) => ColleagueTeam.fromJson(Map<String, dynamic>.from(t)))
+          .toList(),
+      joinedAt: DateTime.tryParse(json['joinedAt']?.toString() ?? ''),
     );
   }
 }

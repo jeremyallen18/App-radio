@@ -20,6 +20,7 @@ class _ApplyLeaveState extends State<ApplyLeave> {
   final TextEditingController reasonController = TextEditingController();
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  bool _submitting = false;
 
   Future<String?> applyLeaveAPI(
       String startDate, String endDate, String reason) async {
@@ -29,7 +30,7 @@ class _ApplyLeaveState extends State<ApplyLeave> {
     final String apiUrl =
         '$kBaseUrl/leave/applyLeave/${widget.teamid}';
 
-    var body = jsonEncode({"leaves": [   
+    var body = jsonEncode({"leaves": [
       {
         "startDate": startDate,
         "endDate": endDate,
@@ -50,6 +51,7 @@ class _ApplyLeaveState extends State<ApplyLeave> {
         print('Leave applied successfully');
         StoreLeaveId = jsonDecode(response.body)['_id'];
         print(jsonDecode(response.body));
+        if (!mounted) return null;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('¡Permiso solicitado con éxito!'),
@@ -61,16 +63,23 @@ class _ApplyLeaveState extends State<ApplyLeave> {
         print('Error: ${response.statusCode}');
         print(jsonDecode(response.body));
         String error = jsonDecode(response.body)['error'];
+        if (!mounted) return error;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $error'),
           ),
         );
         return jsonDecode(response.body)['error'];
-        
+
       }
     } catch (e) {
       print('Error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error de red al solicitar el permiso')),
+        );
+      }
+      return e.toString();
     }
   }
 
@@ -87,124 +96,88 @@ class _ApplyLeaveState extends State<ApplyLeave> {
     http.post(Uri.parse(apiUrl), headers: headers);
   }
 
+  Future<void> _pickDate(TextEditingController controller) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now.subtract(const Duration(days: 1)),
+      lastDate: DateTime(now.year + 2),
+    );
+    if (picked == null) return;
+    final dd = picked.day.toString().padLeft(2, '0');
+    final mm = picked.month.toString().padLeft(2, '0');
+    setState(() => controller.text = '$dd-$mm-${picked.year}');
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-        Container(
-        height: MediaQuery.of(context).size.height,
-        width: MediaQuery.of(context).size.width,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment(0.6, 0.8),
-            end: Alignment(0.6, 0.21),
-            colors: [Color(0xFF020918), Color(0xFF38486C)],
-          ),
-        ),
-        child: Center(
-          child: DesktopCenter(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SingleChildScrollView(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      "Apply for Leave",
-                      style: TextStyle(fontSize: 40, fontWeight: FontWeight.w500, color: Colors.white),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      "Provide the start date, end date, and reason for leave",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 30),
-                    TextFormField(
-                      controller: startDateController,
-                      keyboardType: TextInputType.numberWithOptions(signed: false, decimal: false),
-                      decoration: InputDecoration(
-                        labelText: 'Fecha de inicio: 02-12-2023',
-                        prefixIcon: Icon(Icons.calendar_today, color: Colors.white),
-                        contentPadding: EdgeInsets.symmetric(vertical: 15),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                        ),
-                        labelStyle: TextStyle(color: Colors.white),
-                      ),
-                      style: TextStyle(color: Colors.white),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter the start date';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: endDateController,
-                      keyboardType: TextInputType.numberWithOptions(signed: false, decimal: false),
-                      decoration: InputDecoration(
-                        labelText: 'Fecha de fin: 23-12-2023',
-                        prefixIcon: Icon(Icons.calendar_today, color: Colors.white),
-                        contentPadding: EdgeInsets.symmetric(vertical: 15),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                        ),
-                        labelStyle: TextStyle(color: Colors.white),
-                      ),
-                      style: TextStyle(color: Colors.white),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter the end date';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: reasonController,
-                      decoration: InputDecoration(
-                        labelText: 'Motivo del permiso',
-                        prefixIcon: Icon(Icons.description, color: Colors.white),
-                        contentPadding: EdgeInsets.symmetric(vertical: 15),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                        ),
-                        labelStyle: TextStyle(color: Colors.white),
-                      ),
-                      style: TextStyle(color: Colors.white),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter the reason for leave';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () => _applyLeave(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromARGB(255, 169, 187, 229),
-                      ),
-                      child: Text('Solicitar permiso'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          ),
-        ),
+    return AppScaffold(
+      appBar: AppBar(
+        title: const Text('Solicitar permiso'),
+        leading: AppBackButton.leadingFor(context),
+        automaticallyImplyLeading: false,
       ),
-          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
-        ],
+      scrollable: true,
+      body: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: AppSpacing.lg),
+            const Text(
+              'Indica la fecha de inicio, la fecha de fin y el motivo de tu permiso.',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            AppTextField(
+              controller: startDateController,
+              prefixIcon: const Icon(Icons.calendar_month_outlined, color: AppColors.textMuted),
+              hintText: 'Fecha de inicio',
+              readOnly: true,
+              onTap: () => _pickDate(startDateController),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Indica la fecha de inicio';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            AppTextField(
+              controller: endDateController,
+              prefixIcon: const Icon(Icons.calendar_month_outlined, color: AppColors.textMuted),
+              hintText: 'Fecha de fin',
+              readOnly: true,
+              onTap: () => _pickDate(endDateController),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Indica la fecha de fin';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            AppTextField(
+              controller: reasonController,
+              prefixIcon: const Icon(Icons.description_outlined, color: AppColors.textMuted),
+              hintText: 'Motivo del permiso',
+              maxLines: 3,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Indica el motivo del permiso';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            AppButton(
+              label: _submitting ? 'Enviando…' : 'Solicitar permiso',
+              loading: _submitting,
+              onPressed: _submitting ? null : () => _applyLeave(context),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -215,7 +188,12 @@ class _ApplyLeaveState extends State<ApplyLeave> {
       String endDate = endDateController.text;
       String reason = reasonController.text;
 
-      await applyLeaveAPI(startDate, endDate, reason);
+      setState(() => _submitting = true);
+      try {
+        await applyLeaveAPI(startDate, endDate, reason);
+      } finally {
+        if (mounted) setState(() => _submitting = false);
+      }
     }
   }
 }

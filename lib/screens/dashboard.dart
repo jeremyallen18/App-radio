@@ -62,7 +62,17 @@ class dashb_memState extends State<dashb_mem> {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
-            child: SectionHeader(title: 'Equipos'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeader(title: 'Equipos', padding: EdgeInsets.only(bottom: 4)),
+                Text(
+                  'Consulta el estado de tus equipos y proyectos.',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                ),
+                SizedBox(height: AppSpacing.sm),
+              ],
+            ),
           ),
           Expanded(
             child: FutureBuilder<void>(

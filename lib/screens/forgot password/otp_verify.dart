@@ -18,6 +18,7 @@ class _OTPVerifyState extends State<OTPVerify> {
   final TextEditingController otpController = TextEditingController();
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
   Future<String?> takeOTPAPI(String otp) async {
     final String apiUrl =
@@ -65,99 +66,108 @@ class _OTPVerifyState extends State<OTPVerify> {
   }
 
   void _verifyOTP(BuildContext context) async {
-    if (_formKey.currentState?.validate() ?? false) {
-      String otp = otpController.text.trim();
-      String? error = await takeOTPAPI(otp);
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
-      if (error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $error'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    setState(() => _isLoading = true);
+    String otp = otpController.text.trim();
+    String? error = await takeOTPAPI(otp);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(children: [
-        Opacity(
-          opacity: 0.5,
-          child: Image.asset(
-            "lib/assets/back.png",
-            width: double.infinity,
-            height: MediaQuery.of(context).size.height,
-            fit: BoxFit.cover,
-          ),
-        ),
-        Center(
-          child: DesktopCenter(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Image.asset(
-                      "lib/assets/reset.png",
-                      fit: BoxFit.fitWidth,
-                      height: 200,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Enter OTP',
-                    style: TextStyle(fontSize: 40, fontWeight: FontWeight.w500),
-                  ),
-                  Text(
-                    "Enter OTP sent to ${widget.email}",
-                    style: TextStyle(
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: otpController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: 'Código OTP',
-                            contentPadding: EdgeInsets.symmetric(vertical: 15),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(30.0),
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter OTP';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: () => _verifyOTP(context),
-                          child: const Text('Verificar y continuar'),
-                        ),
-                      ],
-                    ),
+    final heightOfScreen = MediaQuery.of(context).size.height;
+
+    return AppScaffold(
+      padding: const EdgeInsets.symmetric(horizontal: 36),
+      scrollable: true,
+      body: Column(
+        children: [
+          SizedBox(height: heightOfScreen * 0.06),
+          Center(
+            child: Container(
+              width: 96,
+              height: 96,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.textPrimary,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
+              child: Image.asset(
+                "lib/assets/reset.png",
+                fit: BoxFit.contain,
+              ),
             ),
           ),
+          const SizedBox(height: 24),
+          const Text(
+            "Casi listo,",
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontWeight: FontWeight.w400,
+              fontSize: 16,
+            ),
           ),
-        ),
-        const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
-      ]),
+          const Text(
+            "Ingresa el código",
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+              fontSize: 26,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Te enviamos un código OTP a ${widget.email}",
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: heightOfScreen * 0.05),
+          Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                AppTextField(
+                  controller: otpController,
+                  textInputType: TextInputType.number,
+                  prefixIcon: const Icon(Icons.pin_outlined, color: AppColors.textMuted),
+                  hintText: "Código OTP",
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Ingresa el código OTP';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 28),
+                AppButton(
+                  label: _isLoading ? 'Verificando...' : 'Verificar y continuar',
+                  loading: _isLoading,
+                  onPressed: _isLoading ? null : () => _verifyOTP(context),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

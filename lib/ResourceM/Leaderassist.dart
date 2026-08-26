@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:doliv_social/ResourceM/doc.dart';
 import 'package:doliv_social/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -16,10 +15,15 @@ class LeaderResource extends StatefulWidget {
 }
 
 class _LeaderResourceState extends State<LeaderResource> {
+  final _formKey = GlobalKey<FormState>();
   TextEditingController emailController = TextEditingController();
   TextEditingController messageController = TextEditingController();
+  bool _sending = false;
 
   Future<void> sendMessage() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    setState(() => _sending = true);
     String storedValue = await secureStorage.readSecureData(key);
 
     var headers = {
@@ -38,177 +42,79 @@ class _LeaderResourceState extends State<LeaderResource> {
     });
     request.headers.addAll(headers);
 
-    http.StreamedResponse response = await request.send();
+    try {
+      http.StreamedResponse response = await request.send();
 
-    if (response.statusCode == 200) {
-      print(await response.stream.bytesToString());
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        print(await response.stream.bytesToString());
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('¡Mensaje enviado con éxito!'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    } else {
-      print(response.reasonPhrase);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No se pudo enviar el mensaje. Inténtalo de nuevo.'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('¡Mensaje enviado con éxito!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        emailController.clear();
+        messageController.clear();
+      } else {
+        print(response.reasonPhrase);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo enviar el mensaje. Inténtalo de nuevo.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppScaffold(
       appBar: AppBar(
-        shadowColor: Colors.black,
-        backgroundColor: Color.fromARGB(255, 10, 20, 43),
         title: const Text('Asistencia del líder'),
-        foregroundColor: Colors.white,
-        elevation: 12,
-        surfaceTintColor: Colors.black,
         leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
-      body: DesktopCenter(
-      maxWidth: 480,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+      scrollable: true,
+      body: Form(
+        key: _formKey,
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            MyTextField12(
-                hintText: 'Correo para enviar mensaje',
-                inputType: TextInputType.name,
-                labelText2: 'Correo</> ',
-                secure1: false,
-                capital: TextCapitalization.none,
-                nameController1: emailController),
-            const SizedBox(height: 16),
-            MyTextField2(
-                hintText: 'Escribe tu mensaje',
-                inputType: TextInputType.name,
-                labelText2: 'Mensaje</>',
-                secure1: false,
-                capital: TextCapitalization.none,
-                nameController1: messageController),
-            const SizedBox(height: 16),
-
-            Buttonkii(buttonName: 'Send Message', 
-            onTap:  sendMessage,
-            bgColor: Colors.black, textColor: Colors.white),
-            
+            const SizedBox(height: AppSpacing.lg),
+            const Text(
+              'Envía un mensaje directo al líder de tu equipo para pedir ayuda o resolver una duda.',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            AppTextField(
+              controller: emailController,
+              prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textMuted),
+              hintText: 'Correo del líder',
+              textInputType: TextInputType.emailAddress,
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Indica el correo del líder' : null,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            AppTextField(
+              controller: messageController,
+              prefixIcon: const Icon(Icons.message_outlined, color: AppColors.textMuted),
+              hintText: 'Escribe tu mensaje',
+              maxLines: 5,
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Escribe un mensaje' : null,
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            AppButton(
+              label: _sending ? 'Enviando…' : 'Enviar mensaje',
+              loading: _sending,
+              onPressed: _sending ? null : sendMessage,
+            ),
           ],
         ),
       ),
-      ),
     );
   }
 }
-
-class MyTextField2 extends StatelessWidget {
-  const MyTextField2({
-    super.key,
-    required this.hintText,
-    required this.inputType,
-    required this.labelText2,
-    required this.secure1,
-    required this.capital,
-    required this.nameController1,
-  });
-
-  final String hintText;
-  final TextInputType inputType;
-  final String labelText2;
-  final bool secure1;
-  final TextCapitalization capital;
-  final TextEditingController nameController1;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: TextFormField(
-         maxLines: 5,
-        style: const TextStyle(color: Color.fromARGB(255, 0, 0, 0)),
-        controller: nameController1,
-        keyboardType: inputType,
-        obscureText: secure1,
-        textInputAction: TextInputAction.next,
-        textCapitalization: capital,
-        decoration: InputDecoration(
-          contentPadding: const EdgeInsets.all(20),
-          hintText: hintText,
-          hintStyle: const TextStyle(color: Color.fromARGB(255, 10, 18, 38)),
-          enabledBorder: const OutlineInputBorder(
-            borderSide:
-                BorderSide(color: Color.fromARGB(255, 10, 18, 38), width: 1),
-            borderRadius: BorderRadius.all(Radius.circular(16)),
-          ),
-          focusedBorder: const OutlineInputBorder(
-            borderSide:
-                BorderSide(color: Color.fromARGB(255, 10, 18, 38), width: 1),
-            borderRadius: BorderRadius.all(Radius.circular(16)),
-          ),
-          labelText: labelText2,
-          labelStyle: const TextStyle(color: Color.fromARGB(255, 10, 18, 38)),
-        ),
-      ),
-    );
-  }
-}
-class MyTextField12 extends StatelessWidget {
-  const MyTextField12({
-    super.key,
-    required this.hintText,
-    required this.inputType,
-    required this.labelText2,
-    required this.secure1,
-    required this.capital,
-    required this.nameController1,
-  });
-
-  final String hintText;
-  final TextInputType inputType;
-  final String labelText2;
-  final bool secure1;
-  final TextCapitalization capital;
-  final TextEditingController nameController1;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: TextFormField(
-       // maxLines: 5,
-        style: const TextStyle(color: Color.fromARGB(255, 0, 0, 0)),
-        controller: nameController1,
-        keyboardType: inputType,
-        obscureText: secure1,
-        textInputAction: TextInputAction.next,
-        textCapitalization: capital,
-        decoration: InputDecoration(
-          contentPadding: const EdgeInsets.all(20),
-          hintText: hintText,
-          hintStyle: const TextStyle(color: Color.fromARGB(255, 10, 18, 38)),
-          enabledBorder: const OutlineInputBorder(
-            borderSide:
-                BorderSide(color: Color.fromARGB(255, 10, 18, 38), width: 1),
-            borderRadius: BorderRadius.all(Radius.circular(16)),
-          ),
-          focusedBorder: const OutlineInputBorder(
-            borderSide:
-                BorderSide(color: Color.fromARGB(255, 10, 18, 38), width: 1),
-            borderRadius: BorderRadius.all(Radius.circular(16)),
-          ),
-          labelText: labelText2,
-          labelStyle: const TextStyle(color: Color.fromARGB(255, 10, 18, 38)),
-        ),
-      ),
-    );
-  }
-}
-

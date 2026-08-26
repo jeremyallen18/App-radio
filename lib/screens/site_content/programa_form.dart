@@ -51,6 +51,27 @@ class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
     setState(() => _newImage = File(picked.path));
   }
 
+  Future<void> _delete() async {
+    final item = widget.item;
+    if (item == null) return;
+    final confirmed = await confirmSiteDelete(context, _title.text.trim());
+    if (!confirmed) return;
+
+    setState(() => _submitting = true);
+    try {
+      await _api.delete(item['id'].toString());
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (_title.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -103,77 +124,186 @@ class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
     final existingImage = siteImageUrl(widget.item?['image']?.toString());
 
     return AppScaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Editar programa' : 'Nuevo programa'),
-        leading: AppBackButton.leadingFor(context),
-        automaticallyImplyLeading: false,
-      ),
       scrollable: true,
+      showBackButton: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _title, hintText: 'Título *'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _modalTitle, hintText: 'Título del modal'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _host, hintText: 'Conductor(a)'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _schedule, hintText: 'Horario (texto)'),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormHeader(
+            title: _isEditing ? 'Editar programa' : 'Nuevo programa',
+            subtitle: 'Actualiza la información de tu programa',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          SiteFormField(
+            icon: Icons.title,
+            label: 'Título',
+            required: true,
+            controller: _title,
+            hintText: 'Ej. Rincón Lunar',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.web_asset_outlined,
+            label: 'Título del modal',
+            controller: _modalTitle,
+            hintText: 'Título mostrado en el detalle',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.person_outline,
+            label: 'Conductor(a)',
+            iconColor: SiteFieldColors.teal,
+            controller: _host,
+            hintText: 'Nombre del conductor o conductora',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.schedule_outlined,
+            label: 'Horario',
+            iconColor: SiteFieldColors.orange,
+            controller: _schedule,
+            hintText: 'Ej. Lunes a viernes, 4 a 6 pm',
+          ),
+          const SizedBox(height: AppSpacing.md),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: AppTextField(
+                child: SiteFormField(
+                  icon: Icons.schedule_outlined,
+                  label: 'Hora inicio',
+                  iconColor: SiteFieldColors.orange,
                   controller: _slotStart,
-                  hintText: 'Hora inicio (0-23)',
+                  hintText: '0-23',
                   textInputType: TextInputType.number,
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: AppTextField(
+                child: SiteFormField(
+                  icon: Icons.schedule_outlined,
+                  label: 'Hora fin',
+                  iconColor: SiteFieldColors.orange,
                   controller: _slotEnd,
-                  hintText: 'Hora fin (0-23)',
+                  hintText: '0-23',
                   textInputType: TextInputType.number,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _weekdays, hintText: 'Días ISO 1-7 separados por coma (vacío = todos)'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _badgeIcon, hintText: 'Ícono de la insignia'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _badgeTime, hintText: 'Hora de la insignia (texto)'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _badgeLabel, hintText: 'Etiqueta de la insignia'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _accent, hintText: 'Color de identidad (hex)'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _icon, hintText: 'Ícono del programa'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _categories, hintText: 'Categorías (separadas por coma)'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _cardDesc, hintText: 'Descripción de tarjeta', maxLines: 3),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _indexDesc, hintText: 'Descripción de índice', maxLines: 3),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _summary, hintText: 'Resumen', maxLines: 4),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.view_week_outlined,
+            label: 'Días de transmisión',
+            controller: _weekdays,
+            hintText: 'ISO 1-7 separados por coma (vacío = todos)',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.label_outline,
+            label: 'Ícono de la insignia',
+            iconColor: SiteFieldColors.purple,
+            controller: _badgeIcon,
+            hintText: 'Nombre del ícono',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.access_time,
+            label: 'Hora de la insignia',
+            iconColor: SiteFieldColors.purple,
+            controller: _badgeTime,
+            hintText: 'Texto de la hora',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.label_outline,
+            label: 'Etiqueta de la insignia',
+            iconColor: SiteFieldColors.purple,
+            controller: _badgeLabel,
+            hintText: 'Texto de la etiqueta',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.palette_outlined,
+            label: 'Color de identidad (HEX)',
+            iconColor: SiteFieldColors.pink,
+            controller: _accent,
+            hintText: 'Ej. #3d5afe',
+            trailing: SiteColorSwatch(controller: _accent),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.radio_outlined,
+            label: 'Ícono del programa',
+            iconColor: SiteFieldColors.green,
+            controller: _icon,
+            hintText: 'Nombre del ícono',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.sell_outlined,
+            label: 'Categorías',
+            iconColor: SiteFieldColors.green,
+            controller: _categories,
+            hintText: 'Separadas por coma',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.notes_outlined,
+            label: 'Descripción de tarjeta',
+            iconColor: SiteFieldColors.orange,
+            controller: _cardDesc,
+            hintText: 'Descripción corta para la tarjeta',
+            maxLines: 3,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.notes_outlined,
+            label: 'Descripción de índice',
+            iconColor: SiteFieldColors.orange,
+            controller: _indexDesc,
+            hintText: 'Descripción corta para el índice',
+            maxLines: 3,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.menu_book_outlined,
+            label: 'Resumen',
+            iconColor: SiteFieldColors.purple,
+            controller: _summary,
+            hintText: 'Resumen del programa',
+            maxLines: 4,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.swap_vert,
+            label: 'Orden de aparición',
             controller: _sortOrder,
-            hintText: 'Orden de aparición',
+            hintText: 'Ej. 1',
             textInputType: TextInputType.number,
           ),
-          const SizedBox(height: AppSpacing.lg),
-          SiteImagePickerField(newImage: _newImage, existingImageUrl: existingImage, onPick: _pickImage),
+          const SizedBox(height: AppSpacing.md),
+          SiteImagePickerField(
+            newImage: _newImage,
+            existingImageUrl: existingImage,
+            onPick: _pickImage,
+            title: 'Imagen del programa',
+          ),
           const SizedBox(height: AppSpacing.xl),
           AppButton(
             label: _submitting ? 'Guardando…' : 'Guardar',
             loading: _submitting,
             onPressed: _submitting ? null : _submit,
           ),
+          if (_isEditing) ...[
+            const SizedBox(height: AppSpacing.md),
+            SiteDeleteButton(
+              label: 'Eliminar programa',
+              onPressed: _submitting ? null : _delete,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );

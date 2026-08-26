@@ -18,6 +18,10 @@ class Login extends StatefulWidget {
 
  final SecureStorage secureStorage=SecureStorage();
  String key= 'accessToken';
+ // Marca si el usuario pidió mantener la sesión iniciada entre aperturas de
+ // la app. `main.dart` la revisa al arrancar: si quedó en "0", borra el
+ // token guardado y manda a Login en vez de auto-entrar.
+ String rememberMeKey = 'rememberMeFlag';
 class _LoginState extends State<Login> {
 
   TextEditingController emailController =TextEditingController();
@@ -44,6 +48,7 @@ class _LoginState extends State<Login> {
       dynamic generateResponse = jsonDecode(response.body);
       Token.fromJson(generateResponse);
       await secureStorage.writeSecureData(key,generateResponse);
+      await secureStorage.writeSecureData(rememberMeKey, _rememberMe ? '1' : '0');
       // No bloquea el login: si /user/me falla, el rol simplemente queda
       // sin cachear y se puede volver a pedir más adelante.
       unawaited(Session.fetchCurrentUser(generateResponse));

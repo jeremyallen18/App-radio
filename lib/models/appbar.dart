@@ -3,6 +3,8 @@ import 'package:doliv_social/screens/notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../design/design.dart';
+import '../models/models.dart';
 import '../utils/api_config.dart';
 import '../utils/session.dart';
 
@@ -13,13 +15,14 @@ class MyAppBar extends StatefulWidget implements PreferredSizeWidget {
   _MyAppBarState createState() => _MyAppBarState();
 
   @override
-  Size get preferredSize => Size.fromHeight(kToolbarHeight + 40);
+  Size get preferredSize => Size.fromHeight(132);
 }
 
 class _MyAppBarState extends State<MyAppBar> {
   String userName="";
   int unreadCount = 0;
   String? _photoUrl;
+  AppRole? _role;
 
   Future<void> unreadCountAPI() async {
     dynamic storedValue = await secureStorage.readSecureData(key);
@@ -63,7 +66,10 @@ class _MyAppBarState extends State<MyAppBar> {
     final token = await secureStorage.readSecureData(key);
     final profile = await Session.fetchCurrentUser(token ?? '');
     if (!mounted) return;
-    setState(() => _photoUrl = profile?.photoUrl);
+    setState(() {
+      _photoUrl = profile?.photoUrl;
+      _role = profile?.role;
+    });
   }
 
   @override
@@ -77,86 +83,94 @@ class _MyAppBarState extends State<MyAppBar> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: const [Colors.black, Colors.indigo],
-        ),
+      color: AppColors.bgBase,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.md,
       ),
-      padding: EdgeInsets.all(16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 35,
-                backgroundImage: _photoUrl != null
-                    ? NetworkImage(_photoUrl!) as ImageProvider
-                    : const AssetImage('lib/assets/prof.png'),
-              ),
-              SizedBox(width: 15),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
+      child: SafeArea(
+        bottom: false,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 32,
+              backgroundColor: AppColors.surface,
+              backgroundImage: _photoUrl != null
+                  ? NetworkImage(_photoUrl!) as ImageProvider
+                  : const AssetImage('lib/assets/prof.png'),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     '¡Hola!',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white.withOpacity(0.7),
-                    ),
+                    style: TextStyle(fontSize: 14, color: AppColors.textMuted),
                   ),
                   Text(
                     userName,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 24.0,
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  AppBadge(
+                    label: _role?.label ?? AppRole.employee.label,
+                    variant: AppBadgeVariant.info,
                   ),
                 ],
               ),
-            ],
-          ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                icon: Icon(
-                  Icons.notifications,
-                  color: Colors.white,
-                ),
-                onPressed: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const NotificationsScreen()),
-                  );
-                  unreadCountAPI();
-                },
-              ),
-              if (unreadCount > 0)
-                Positioned(
-                  right: 6,
-                  top: 6,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
+            ),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.notifications_outlined,
+                      color: AppColors.textPrimary,
                     ),
-                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                    child: Text(
-                      '$unreadCount',
-                      style: const TextStyle(color: Colors.white, fontSize: 10),
-                      textAlign: TextAlign.center,
-                    ),
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                      );
+                      unreadCountAPI();
+                    },
                   ),
                 ),
-            ],
-          ),
-        ],
+                if (unreadCount > 0)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: AppColors.error,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      child: Text(
+                        '$unreadCount',
+                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 10),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

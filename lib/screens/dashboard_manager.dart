@@ -9,15 +9,16 @@ import '../models/models.dart';
 import '../utils/api_config.dart';
 import '../utils/session.dart';
 import 'chat.dart';
+import 'directory/colleague_directory_screen.dart';
 import 'login.dart';
 
 /// Dashboard para usuarios con rol [AppRole.manager]: resumen del
-/// departamento propio (`UserProfile.department`, ya viene en `/user/me`).
+/// departamento propio (`UserProfile.department`, ya viene en `/user/me`) y
+/// acceso al listado de su gente vía el directorio.
 ///
-/// "Empleados del departamento" (listado), "Recursos" y "Anuncios" del
-/// departamento dependen de módulos que otras áreas todavía están
-/// construyendo — se muestran como "Próximamente" mientras tanto (ver
-/// `actualizaciones/README.md`).
+/// "Recursos" y "Anuncios" del departamento dependen de módulos que otras
+/// áreas todavía están construyendo — se muestran como "Próximamente"
+/// mientras tanto (ver `actualizaciones/README.md`).
 class ManagerDashboard extends StatefulWidget {
   const ManagerDashboard({super.key});
 
@@ -86,6 +87,15 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
     Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(name)));
   }
 
+  void _openTeamDirectory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ColleagueDirectoryScreen(me: _profile),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -115,21 +125,6 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                 AppSpacing.xxl,
               ),
               children: [
-                Text(
-                  'Hola, ${_profile?.name ?? ''}',
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 22,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                AppBadge(
-                  label: _profile?.role.label ?? AppRole.manager.label,
-                  variant: AppBadgeVariant.info,
-                ),
-                const SizedBox(height: AppSpacing.xl),
-
                 const SectionHeader(title: 'Mi departamento'),
                 if (department == null)
                   const EmptyState(
@@ -163,17 +158,15 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                           value: '${department.employeeCount}',
                           label: 'Empleados en el departamento',
                         ),
+                        const SizedBox(height: AppSpacing.md),
+                        QuickActionChip(
+                          icon: Icons.person_search_outlined,
+                          label: 'Ver empleados del departamento',
+                          onTap: _openTeamDirectory,
+                        ),
                       ],
                     ),
                   ),
-                const SizedBox(height: AppSpacing.xl),
-
-                const SectionHeader(title: 'Empleados del departamento'),
-                const ComingSoonCard(
-                  icon: Icons.groups_outlined,
-                  message:
-                      'El listado detallado de empleados llegará con el módulo de gestión de departamentos.',
-                ),
                 const SizedBox(height: AppSpacing.xl),
 
                 SectionHeader(
@@ -209,20 +202,6 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                 ),
                 const SizedBox(height: AppSpacing.xl),
 
-                const SectionHeader(title: 'Recursos del departamento'),
-                const ComingSoonCard(
-                  icon: Icons.folder_shared_outlined,
-                  message: 'Estará disponible junto con el módulo de recursos por departamento.',
-                ),
-                const SizedBox(height: AppSpacing.xl),
-
-                const SectionHeader(title: 'Anuncios del departamento'),
-                const ComingSoonCard(
-                  icon: Icons.campaign_outlined,
-                  message: 'Estará disponible junto con el módulo de anuncios.',
-                ),
-                const SizedBox(height: AppSpacing.xl),
-
                 const SectionHeader(title: 'Chat'),
                 AppCard(
                   onTap: _openChat,
@@ -245,6 +224,21 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                   'Por ahora es el chat general de la empresa; el chat por '
                   'departamento llega con su módulo correspondiente.',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+
+                const SectionHeader(title: 'Próximamente'),
+                const ComingSoonSection(
+                  items: [
+                    ComingSoonItem(
+                      icon: Icons.folder_shared_outlined,
+                      label: 'Recursos del departamento',
+                    ),
+                    ComingSoonItem(
+                      icon: Icons.campaign_outlined,
+                      label: 'Anuncios del departamento',
+                    ),
+                  ],
                 ),
               ],
             );

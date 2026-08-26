@@ -66,6 +66,27 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
     setState(() => _newCover = File(picked.path));
   }
 
+  Future<void> _delete() async {
+    final item = widget.item;
+    if (item == null) return;
+    final confirmed = await confirmSiteDelete(context, _title.text.trim());
+    if (!confirmed) return;
+
+    setState(() => _submitting = true);
+    try {
+      await _api.delete(item['id'].toString());
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (_title.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -115,32 +136,49 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
     final existingCover = siteImageUrl(widget.item?['cover']?.toString());
 
     return AppScaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Editar podcast' : 'Nuevo podcast'),
-        leading: AppBackButton.leadingFor(context),
-        automaticallyImplyLeading: false,
-      ),
       scrollable: true,
+      showBackButton: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _title, hintText: 'Título *'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _filterIcon, hintText: 'Ícono de filtro'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(
+          const SizedBox(height: AppSpacing.md),
+          SiteFormHeader(
+            title: _isEditing ? 'Editar podcast' : 'Nuevo podcast',
+            subtitle: 'Actualiza la información de tu podcast',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          SiteFormField(
+            icon: Icons.title,
+            label: 'Título',
+            required: true,
+            controller: _title,
+            hintText: 'Ej. Voces de la ciudad',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.filter_alt_outlined,
+            label: 'Ícono de filtro',
+            iconColor: SiteFieldColors.purple,
+            controller: _filterIcon,
+            hintText: 'Nombre del ícono',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.swap_vert,
+            label: 'Orden de aparición',
             controller: _sortOrder,
-            hintText: 'Orden de aparición',
+            hintText: 'Ej. 1',
             textInputType: TextInputType.number,
           ),
-          const SizedBox(height: AppSpacing.lg),
-          SiteImagePickerField(newImage: _newCover, existingImageUrl: existingCover, onPick: _pickCover),
-          const SizedBox(height: AppSpacing.xl),
-          const Text(
-            'Episodios',
-            style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 15),
+          const SizedBox(height: AppSpacing.md),
+          SiteImagePickerField(
+            newImage: _newCover,
+            existingImageUrl: existingCover,
+            onPick: _pickCover,
+            title: 'Portada del podcast',
           ),
+          const SizedBox(height: AppSpacing.xl),
+          const SiteFormSectionTitle('Episodios'),
           const SizedBox(height: AppSpacing.sm),
           for (final episode in _episodes) ...[
             SiteRepeatRow(
@@ -170,6 +208,14 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
             loading: _submitting,
             onPressed: _submitting ? null : _submit,
           ),
+          if (_isEditing) ...[
+            const SizedBox(height: AppSpacing.md),
+            SiteDeleteButton(
+              label: 'Eliminar podcast',
+              onPressed: _submitting ? null : _delete,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );

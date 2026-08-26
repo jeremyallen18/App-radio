@@ -40,11 +40,31 @@ class _SiteContentListScreenState extends State<SiteContentListScreen> {
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
   String? _error;
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
 
   @override
   void initState() {
     super.initState();
     _load();
+    _searchController.addListener(() {
+      setState(() => _query = _searchController.text.trim().toLowerCase());
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, dynamic>> get _filteredItems {
+    if (_query.isEmpty) return _items;
+    return _items.where((item) {
+      final title = widget.itemTitle(item).toLowerCase();
+      final subtitle = widget.itemSubtitle?.call(item)?.toLowerCase() ?? '';
+      return title.contains(_query) || subtitle.contains(_query);
+    }).toList();
   }
 
   Future<void> _load() async {
@@ -132,70 +152,106 @@ class _SiteContentListScreenState extends State<SiteContentListScreen> {
                 message: 'Toca el botón + para crear el primero.',
               );
             }
-            return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.lg,
-                AppSpacing.lg,
-                AppSpacing.xxxl,
-              ),
-              itemCount: _items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-              itemBuilder: (context, index) {
-                final item = _items[index];
-                final imageUrl = widget.itemImage != null
-                    ? siteImageUrl(widget.itemImage!(item))
-                    : null;
-                final subtitle = widget.itemSubtitle?.call(item);
-                return AppCard(
-                  onTap: () => _openForm(item: item),
-                  child: Row(
-                    children: [
-                      if (imageUrl != null) ...[
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(AppRadius.chip),
-                          child: Image.network(
-                            imageUrl,
-                            width: 48,
-                            height: 48,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const SizedBox(width: 48, height: 48),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                      ],
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.itemTitle(item),
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                              ),
-                            ),
-                            if (subtitle != null && subtitle.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                subtitle,
-                                style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, color: AppColors.error),
-                        onPressed: () => _confirmDelete(item),
-                      ),
-                    ],
+            final filtered = _filteredItems;
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.lg,
+                    AppSpacing.lg,
+                    0,
                   ),
-                );
-              },
+                  child: AppTextField(
+                    controller: _searchController,
+                    hintText: 'Buscar en ${widget.title.toLowerCase()}…',
+                    prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.close, color: AppColors.textMuted),
+                            onPressed: _searchController.clear,
+                          ),
+                  ),
+                ),
+                Expanded(
+                  child: filtered.isEmpty
+                      ? EmptyState(
+                          icon: Icons.search_off,
+                          title: 'Sin resultados',
+                          message: 'Nada coincide con "${_searchController.text}".',
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.lg,
+                            AppSpacing.lg,
+                            AppSpacing.lg,
+                            AppSpacing.xxxl,
+                          ),
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                          itemBuilder: (context, index) {
+                            final item = filtered[index];
+                            final imageUrl = widget.itemImage != null
+                                ? siteImageUrl(widget.itemImage!(item))
+                                : null;
+                            final subtitle = widget.itemSubtitle?.call(item);
+                            return AppCard(
+                              onTap: () => _openForm(item: item),
+                              child: Row(
+                                children: [
+                                  if (imageUrl != null) ...[
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(AppRadius.chip),
+                                      child: Image.network(
+                                        imageUrl,
+                                        width: 48,
+                                        height: 48,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) =>
+                                            const SizedBox(width: 48, height: 48),
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.md),
+                                  ],
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          widget.itemTitle(item),
+                                          style: const TextStyle(
+                                            color: AppColors.textPrimary,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        if (subtitle != null && subtitle.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            subtitle,
+                                            style: const TextStyle(
+                                              color: AppColors.textMuted,
+                                              fontSize: 12,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                                    onPressed: () => _confirmDelete(item),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
             );
           },
         ),

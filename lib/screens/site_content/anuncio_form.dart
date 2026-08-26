@@ -54,6 +54,27 @@ class _AnuncioFormScreenState extends State<AnuncioFormScreen> {
     });
   }
 
+  Future<void> _delete() async {
+    final item = widget.item;
+    if (item == null) return;
+    final confirmed = await confirmSiteDelete(context, _titulo.text.trim());
+    if (!confirmed) return;
+
+    setState(() => _submitting = true);
+    try {
+      await _api.delete(item['id'].toString());
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (_titulo.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -95,38 +116,72 @@ class _AnuncioFormScreenState extends State<AnuncioFormScreen> {
     final existingImage = siteImageUrl(widget.item?['imagen_url']?.toString());
 
     return AppScaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Editar anuncio' : 'Nuevo anuncio'),
-        leading: AppBackButton.leadingFor(context),
-        automaticallyImplyLeading: false,
-      ),
       scrollable: true,
+      showBackButton: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _titulo, hintText: 'Título *'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _descripcion, hintText: 'Descripción', maxLines: 4),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(
+          const SizedBox(height: AppSpacing.md),
+          SiteFormHeader(
+            title: _isEditing ? 'Editar anuncio' : 'Nuevo anuncio',
+            subtitle: 'Actualiza la información de tu anuncio',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          SiteFormField(
+            icon: Icons.title,
+            label: 'Título',
+            required: true,
+            controller: _titulo,
+            hintText: 'Ej. Nueva promoción',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.notes_outlined,
+            label: 'Descripción',
+            iconColor: SiteFieldColors.orange,
+            controller: _descripcion,
+            hintText: 'Describe el anuncio…',
+            maxLines: 4,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.calendar_month_outlined,
+            label: 'Fecha de publicación',
+            iconColor: SiteFieldColors.teal,
             controller: _fecha,
-            hintText: 'Fecha de publicación',
+            hintText: 'Toca para elegir una fecha',
             readOnly: true,
             onTap: _pickDate,
-            prefixIcon: const Icon(Icons.calendar_month_outlined, color: AppColors.textMuted),
           ),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _linkWeb, hintText: 'Enlace a sitio web'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _linkFacebook, hintText: 'Enlace de Facebook'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _linkWhatsapp, hintText: 'Enlace de WhatsApp'),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.link,
+            label: 'Enlace a sitio web',
+            iconColor: SiteFieldColors.green,
+            controller: _linkWeb,
+            hintText: 'https://...',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.facebook_outlined,
+            label: 'Enlace de Facebook',
+            controller: _linkFacebook,
+            hintText: 'https://facebook.com/...',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.chat_outlined,
+            label: 'Enlace de WhatsApp',
+            iconColor: SiteFieldColors.whatsapp,
+            controller: _linkWhatsapp,
+            hintText: 'https://wa.me/52XXXXXXXXXX',
+          ),
+          const SizedBox(height: AppSpacing.md),
           SiteImagePickerField(
             newImage: _newImage,
             existingImageUrl: existingImage,
             onPick: _pickImage,
+            title: 'Imagen del anuncio',
           ),
           const SizedBox(height: AppSpacing.xl),
           AppButton(
@@ -134,6 +189,14 @@ class _AnuncioFormScreenState extends State<AnuncioFormScreen> {
             loading: _submitting,
             onPressed: _submitting ? null : _submit,
           ),
+          if (_isEditing) ...[
+            const SizedBox(height: AppSpacing.md),
+            SiteDeleteButton(
+              label: 'Eliminar anuncio',
+              onPressed: _submitting ? null : _delete,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );

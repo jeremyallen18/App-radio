@@ -7,7 +7,9 @@ import 'package:doliv_social/screens/dashboard.dart';
 import 'package:doliv_social/screens/dashboard_director.dart';
 import 'package:doliv_social/screens/dashboard_employee.dart';
 import 'package:doliv_social/screens/dashboard_manager.dart';
+import 'package:doliv_social/screens/directory/colleague_directory_screen.dart';
 import 'package:doliv_social/screens/role_dashboard_router.dart';
+import 'package:doliv_social/screens/site_content/site_content_auth_gate.dart';
 import 'package:doliv_social/screens/site_content/site_content_hub.dart';
 import 'package:doliv_social/screens/join_team.dart';
 import 'package:doliv_social/screens/signup.dart';
@@ -25,7 +27,17 @@ import 'utils/connectivity_gate.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final dynamic storedValue = await secureStorage.readSecureData(key);
-  runApp(MyApp(hasSession: storedValue != null));
+  // Si el usuario dejó "Recuérdame" apagado, la sesión no debe sobrevivir a
+  // un reinicio de la app aunque el token siga guardado: se descarta aquí y
+  // se manda a Login. Una bandera ausente (instalaciones previas a este
+  // cambio) se trata como "recordar" para no cerrar sesión a nadie de golpe.
+  final dynamic rememberMe = await secureStorage.readSecureData(rememberMeKey);
+  final bool hasSession = storedValue != null && rememberMe != '0';
+  if (storedValue != null && !hasSession) {
+    await secureStorage.deleteSecureData(key);
+    await secureStorage.deleteSecureData(rememberMeKey);
+  }
+  runApp(MyApp(hasSession: hasSession));
 }
 
 /// Widget de app único: el tema y la tabla de rutas se declaran una sola vez.
@@ -67,7 +79,9 @@ class MyApp extends StatelessWidget {
         MyRoutes.ManagerDashboardRoutes: (context) => const ManagerDashboard(),
         MyRoutes.EmployeeDashboardRoutes: (context) =>
             const EmployeeDashboard(),
-        MyRoutes.SiteContentHubRoutes: (context) => const SiteContentHubScreen(),
+        MyRoutes.SiteContentHubRoutes: (context) =>
+            const SiteContentAuthGate(child: SiteContentHubScreen()),
+        MyRoutes.DirectoryRoutes: (context) => const ColleagueDirectoryScreen(),
         MyRoutes.DoneTask: (context) => const doneTask(),
         MyRoutes.Reset: (context) => const ResetPass(),
         if (!kReleaseMode)

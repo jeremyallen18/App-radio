@@ -21,6 +21,10 @@ class MyRoutes {
   static String ManagerDashboardRoutes = "/dashboard/manager";
   static String EmployeeDashboardRoutes = "/dashboard/employee";
 
+  /// Directorio interno de compañeros (búsqueda por área). La ficha de una
+  /// persona se abre por navegación directa desde el listado, sin ruta propia.
+  static String DirectoryRoutes = "/directory";
+
   static String MResign = "/Mresign";
   static String AddTask = "/addTask";
   static String DoneTask = "/doneTask";

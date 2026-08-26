@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../utils/api_config.dart';
 import '../utils/session.dart';
 import 'login.dart';
+import 'site_content/site_content_auth_gate.dart';
 import 'site_content/site_content_hub.dart';
 
 /// Dashboard para usuarios con rol [AppRole.director]: vista general de la
@@ -27,7 +28,6 @@ class DirectorDashboard extends StatefulWidget {
 }
 
 class _DirectorDashboardState extends State<DirectorDashboard> {
-  UserProfile? _profile;
   Map<String, dynamic>? _company;
   bool _companyChecked = false;
   List<DepartmentInfo> _departments = [];
@@ -86,7 +86,6 @@ class _DirectorDashboardState extends State<DirectorDashboard> {
       ]);
       if (!mounted) return;
       setState(() {
-        _profile = results[0] as UserProfile?;
         _company = results[1] as Map<String, dynamic>?;
         _companyChecked = true;
         _departments = results[2] as List<DepartmentInfo>;
@@ -133,10 +132,6 @@ class _DirectorDashboardState extends State<DirectorDashboard> {
                 AppSpacing.xxl,
               ),
               children: [
-                _Header(profile: _profile),
-                const SizedBox(height: AppSpacing.xl),
-
-                const SectionHeader(title: 'Resumen de la empresa'),
                 if (!_companyChecked)
                   const LoadingState()
                 else if (_company == null)
@@ -146,53 +141,13 @@ class _DirectorDashboardState extends State<DirectorDashboard> {
                     message:
                         'Este paso lo maneja el módulo de gestión de empresa.',
                   )
-                else ...[
-                  Text(
-                    _company!['name']?.toString() ?? '',
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 18,
-                    ),
+                else
+                  _CompanySummaryCard(
+                    company: _company!,
+                    departmentCount: _departments.length,
+                    employeeCount: _totalEmployees,
+                    departmentsWithManager: _departmentsWithManager,
                   ),
-                  if ((_company!['description'] ?? '').toString().isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      _company!['description'].toString(),
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.md),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: StatTile(
-                          icon: Icons.apartment_outlined,
-                          value: '${_departments.length}',
-                          label: 'Departamentos',
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: StatTile(
-                          icon: Icons.groups_outlined,
-                          value: '$_totalEmployees',
-                          label: 'Empleados',
-                          accentColor: AppColors.success,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: StatTile(
-                          icon: Icons.badge_outlined,
-                          value: '$_departmentsWithManager',
-                          label: 'Con manager',
-                          accentColor: AppColors.warning,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
                 const SizedBox(height: AppSpacing.xl),
 
                 const SectionHeader(title: 'Departamentos'),
@@ -210,39 +165,12 @@ class _DirectorDashboardState extends State<DirectorDashboard> {
                   ),
                 const SizedBox(height: AppSpacing.xl),
 
-                const SectionHeader(title: 'Tareas activas'),
-                const ComingSoonCard(
-                  icon: Icons.task_alt,
-                  message:
-                      'El resumen de tareas por departamento llegará con el flujo jerárquico de tareas.',
-                ),
-                const SizedBox(height: AppSpacing.lg),
-
-                const SectionHeader(title: 'Gráficas de desempeño'),
-                const ComingSoonCard(
-                  icon: Icons.insights,
-                  message: 'Estará disponible junto con el módulo de reportes y analítica.',
-                ),
-                const SizedBox(height: AppSpacing.lg),
-
-                const SectionHeader(title: 'Aprobaciones de permisos pendientes'),
-                const ComingSoonCard(
-                  icon: Icons.fact_check_outlined,
-                  message: 'Estará disponible junto con el módulo de permisos jerárquicos.',
-                ),
-                const SizedBox(height: AppSpacing.lg),
-
-                const SectionHeader(title: 'Anuncios de empresa'),
-                const ComingSoonCard(
-                  icon: Icons.campaign_outlined,
-                  message: 'Estará disponible junto con el módulo de anuncios.',
-                ),
-                const SizedBox(height: AppSpacing.lg),
-
                 const SectionHeader(title: 'Contenido del sitio web'),
                 AppCard(
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const SiteContentHubScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const SiteContentAuthGate(child: SiteContentHubScreen()),
+                    ),
                   ),
                   child: const Row(
                     children: [
@@ -259,12 +187,33 @@ class _DirectorDashboardState extends State<DirectorDashboard> {
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.xl),
 
-                const SectionHeader(title: 'Reportes'),
-                const ComingSoonCard(
-                  icon: Icons.bar_chart,
-                  message: 'Estará disponible junto con el módulo de reportes y analítica.',
+                const SectionHeader(title: 'Próximamente'),
+                const ComingSoonSection(
+                  items: [
+                    ComingSoonItem(
+                      icon: Icons.task_alt,
+                      label: 'Tareas activas',
+                      message: 'Resumen por departamento.',
+                    ),
+                    ComingSoonItem(
+                      icon: Icons.insights,
+                      label: 'Gráficas de desempeño',
+                    ),
+                    ComingSoonItem(
+                      icon: Icons.fact_check_outlined,
+                      label: 'Aprobaciones de permisos pendientes',
+                    ),
+                    ComingSoonItem(
+                      icon: Icons.campaign_outlined,
+                      label: 'Anuncios de empresa',
+                    ),
+                    ComingSoonItem(
+                      icon: Icons.bar_chart,
+                      label: 'Reportes',
+                    ),
+                  ],
                 ),
               ],
             );
@@ -275,35 +224,142 @@ class _DirectorDashboardState extends State<DirectorDashboard> {
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.profile});
+class _CompanySummaryCard extends StatelessWidget {
+  const _CompanySummaryCard({
+    required this.company,
+    required this.departmentCount,
+    required this.employeeCount,
+    required this.departmentsWithManager,
+  });
 
-  final UserProfile? profile;
+  final Map<String, dynamic> company;
+  final int departmentCount;
+  final int employeeCount;
+  final int departmentsWithManager;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final String description = (company['description'] ?? '').toString();
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Text(
-                'Hola, ${profile?.name ?? ''}',
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 22,
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                 ),
+                child: const Icon(Icons.apartment_outlined, color: AppColors.accent),
               ),
-              const SizedBox(height: 6),
-              AppBadge(
-                label: profile?.role.label ?? AppRole.director.label,
-                variant: AppBadgeVariant.info,
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Resumen de la empresa',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      description.isNotEmpty
+                          ? description
+                          : (company['name']?.toString() ?? ''),
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: _SummaryStat(
+                  icon: Icons.apartment_outlined,
+                  value: '$departmentCount',
+                  label: 'Departamentos',
+                  color: AppColors.accent,
+                ),
+              ),
+              const _SummaryDivider(),
+              Expanded(
+                child: _SummaryStat(
+                  icon: Icons.groups_outlined,
+                  value: '$employeeCount',
+                  label: 'Empleados',
+                  color: AppColors.success,
+                ),
+              ),
+              const _SummaryDivider(),
+              Expanded(
+                child: _SummaryStat(
+                  icon: Icons.badge_outlined,
+                  value: '$departmentsWithManager',
+                  label: 'Con manager',
+                  color: AppColors.warning,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryDivider extends StatelessWidget {
+  const _SummaryDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 48,
+      child: VerticalDivider(color: AppColors.surfaceBorder, width: AppSpacing.lg),
+    );
+  }
+}
+
+class _SummaryStat extends StatelessWidget {
+  const _SummaryStat({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
         ),
       ],
     );

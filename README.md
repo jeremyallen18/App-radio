@@ -71,17 +71,53 @@ Credenciales de DB y la ruta base ya no están hardcodeadas: viven en `hive-back
 
 ## Configuración del backend
 
-Toda la app apunta a un único backend a través de una variable central:
-
-```
-lib/utils/api_config.dart
-```
+Toda la app apunta a un único backend a través de dos constantes centrales en [`lib/utils/api_config.dart`](lib/utils/api_config.dart):
 
 ```dart
-const String kBaseUrl = 'http://192.168.3.44/hive-backend';
+const String kBaseUrl = String.fromEnvironment(
+  'BASE_URL',
+  defaultValue: 'http://192.168.3.74/hive-backend',
+);
+const String kSiteBaseUrl = String.fromEnvironment(
+  'SITE_BASE_URL',
+  defaultValue: 'http://192.168.3.74/RADIODOLIV_PAGINA/',
+);
 ```
 
-Para apuntar la app a otro servidor/IP/dominio, **solo hay que cambiar esta línea** — el resto del código arma cada endpoint como `'$kBaseUrl/user/login'`, `'$kBaseUrl/team/createTeam'`, etc. Como el dispositivo físico y XAMPP están en la misma red local, aquí va la IP LAN del equipo que corre Apache (no `localhost`).
+El resto del código arma cada endpoint como `'$kBaseUrl/user/login'`, `'$kBaseUrl/team/createTeam'`, etc. Hay dos formas de apuntar a otro servidor/IP/dominio:
+
+- **Sin tocar código** (recomendado para correr contra otra red sin ensuciar el repo): pasar `--dart-define` al compilar o correr:
+
+  ```bash
+  flutter run \
+    --dart-define=BASE_URL=http://TU_IP_AQUI/hive-backend \
+    --dart-define=SITE_BASE_URL=http://TU_IP_AQUI/RADIODOLIV_PAGINA/
+  ```
+
+- **Editando el `defaultValue`** en `api_config.dart` (lo que hace la guía paso a paso más abajo) — sigue funcionando igual que antes para quien no quiera lidiar con flags de línea de comandos.
+
+Como el dispositivo físico y XAMPP están en la misma red local, en cualquiera de los dos casos va la IP LAN del equipo que corre Apache (no `localhost`).
+
+### Producción (`doliv.site`)
+
+El dominio del sitio público ya es **`https://doliv.site/`**. Cuando se migre `hive-backend/` a Hostinger, el plan es servirlo como subcarpeta del mismo dominio (mismo origen que `RADIODOLIV_PAGINA`, sin CORS):
+
+| | Local (hoy) | Producción (`doliv.site`) |
+|---|---|---|
+| `BASE_URL` | `http://<tu IP LAN>/hive-backend` | `https://doliv.site/hive-backend` |
+| `SITE_BASE_URL` | `http://<tu IP LAN>/RADIODOLIV_PAGINA/` | `https://doliv.site/` |
+| `hive-backend/.env` → `APP_BASE_PATH` | `/hive-backend` | `/hive-backend` (sin cambio) |
+| `hive-backend/.env` → `RADIODOLIV_PAGINA_PATH` | vacío (asume hermano bajo `htdocs`) | ruta absoluta real en Hostinger — ver el bloque comentado en [`.env.example`](hive-backend/.env.example) |
+
+Build de producción de referencia:
+
+```bash
+flutter build appbundle --release \
+  --dart-define=BASE_URL=https://doliv.site/hive-backend \
+  --dart-define=SITE_BASE_URL=https://doliv.site/
+```
+
+Este mismo comando (para `apk`) se puede disparar desde GitHub Actions sin tocar nada localmente: pestaña **Actions → Flutter CI → Run workflow** (dispara el job `build-release`, que ya trae `https://doliv.site/...` como default en los inputs). Ese job **no firma para tienda** — usa la keystore de debug de Flutter hasta que se configure `signingConfigs.release` en `android/app/build.gradle` con una keystore real; sirve para validar que el build de producción compila, no para publicar. El resto del checklist de migración (SSL, ruta real de `RADIODOLIV_PAGINA_PATH`, `applicationId`/bundle id, firma de release) no está automatizado todavía — queda pendiente para cuando se decida migrar de verdad.
 
 ## Sistema de diseño
 

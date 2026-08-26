@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:doliv_social/ResourceM/Leaderassist.dart';
 import 'package:doliv_social/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -22,6 +21,8 @@ class _PostTextScreenState extends State<PostTextScreen> {
   String _responseMessage = '';
   final picker = ImagePicker();
   File? _image;
+  bool _postingText = false;
+  bool _postingImage = false;
 
   Future getImageGallery() async {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
@@ -36,6 +37,14 @@ class _PostTextScreenState extends State<PostTextScreen> {
   }
 
   Future<void> postImage() async {
+    if (_image == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona una imagen primero')),
+      );
+      return;
+    }
+
+    setState(() => _postingImage = true);
     String storedValue = await secureStorage.readSecureData(key);
     try {
       var apiUrl =
@@ -52,38 +61,56 @@ class _PostTextScreenState extends State<PostTextScreen> {
       request.fields.addAll({
         'imgName': _imageController.text,
         'teamId': '${widget.teamId}',
-        
+
       });
       print('${widget.teamId}');
 
-      if (_image != null) {
-        request.files
-            .add(await http.MultipartFile.fromPath('photo', _image!.path));
-      } else {
-        print('Image is null');
-        return;
-      }
+      request.files
+          .add(await http.MultipartFile.fromPath('photo', _image!.path));
 
       var response = await request.send();
 
+      if (!mounted) return;
       if (response.statusCode == 200) {
         print('Image uploaded successfully');
         print(await response.stream.bytesToString());
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Imagen publicada')),
+        );
       } else {
         print('Failed to upload image. Status code: ${response.statusCode}');
         print(response.reasonPhrase);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo subir la imagen (${response.statusCode})')),
+        );
       }
     } catch (e) {
       print('Error uploading image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error de red al subir la imagen')),
+        );
+      }
     } finally {
-      setState(() {
-        _image = null;
-        _imageController.clear();
-      });
+      if (mounted) {
+        setState(() {
+          _image = null;
+          _imageController.clear();
+          _postingImage = false;
+        });
+      }
      }
   }
 
   Future<void> postText() async {
+    if (_textController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Escribe algo para publicar')),
+      );
+      return;
+    }
+
+    setState(() => _postingText = true);
     try {
       String storedValue = await secureStorage.readSecureData(key);
 
@@ -113,255 +140,114 @@ class _PostTextScreenState extends State<PostTextScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content:
               Text('Error al publicar el texto. Código: ${response.statusCode}'),
-        
+
         ));
       }
     } catch (e) {
       print('Error posting text: $e');
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Ocurrió un error al publicar el texto.'),
-       
+
       ));
     } finally {
       _textController.clear();
+      if (mounted) setState(() => _postingText = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
+    return AppScaffold(
+      appBar: AppBar(
+        title: const Text('Publicar recursos'),
+        leading: AppBackButton.leadingFor(context),
+        automaticallyImplyLeading: false,
+      ),
+      scrollable: true,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-        DesktopCenter(
-      maxWidth: 480,
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 420,
-              height: 150,
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  alignment: Alignment(1, 0),
-                  image: AssetImage('lib/assets/test1.png'),
-                  fit: BoxFit.scaleDown,
+          const SizedBox(height: AppSpacing.lg),
+          const SectionHeader(title: 'Publicar un texto'),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppTextField(
+                  controller: _textController,
+                  prefixIcon: const Icon(Icons.notes_outlined, color: AppColors.textMuted),
+                  hintText: 'Publica tus recursos',
+                  maxLines: 4,
                 ),
-                gradient: LinearGradient(
-                  begin: Alignment(0.98, -0.21),
-                  end: Alignment(-0.98, 0.21),
-                  colors: [Color(0xFF020918), Color(0xFF38486C)],
+                const SizedBox(height: AppSpacing.md),
+                AppButton(
+                  label: _postingText ? 'Publicando…' : 'Publicar texto',
+                  loading: _postingText,
+                  onPressed: _postingText ? null : postText,
+                  height: 46,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x4C000000),
-                    blurRadius: 4,
-                    offset: Offset(0, 4),
-                    spreadRadius: 0,
-                  )
-                ],
-              ),
-              child: const Padding(
-                padding: EdgeInsets.all(18.0),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '\n\nPost resources',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  MyTextField2(
-                    hintText: 'Publica tus recursos',
-                    inputType: TextInputType.name,
-                    labelText2: 'Recursos</>',
-                    secure1: false,
-                    capital: TextCapitalization.sentences,
-                    nameController1: _textController,
-                  ),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 90.0),
-                    child: Buttonkii(
-                      buttonName: 'Post Data',
-                      onTap: () {
-                        postText();
-                      },
-                      bgColor: const Color.fromARGB(255, 11, 26, 60),
-                      textColor: Colors.white,
-                    ),
-                  ),
+                if (_responseMessage.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
                   Text(
                     _responseMessage,
-                    style: const TextStyle(
-                      color: Color.fromARGB(255, 16, 27, 53),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        MyTextField12(
-                            hintText: 'Nombre de la imagen',
-                            inputType: TextInputType.name,
-                            labelText2: 'Imagen</>',
-                            secure1: false,
-                            capital: TextCapitalization.none,
-                            nameController1: _imageController),
-                        const SizedBox(height: 16),
-                        _image != null
-                            ? Image.file(
-                                _image!,
-                                height: 150,
-                                width: 150,
-                                fit: BoxFit.cover,
-                              )
-                            : Container(
-                                height: 150,
-                                width: 150,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Color(0x4C000000),
-                                      blurRadius: 4,
-                                      offset: Offset(0, 4),
-                                      spreadRadius: 0,
-                                    )
-                                  ],
-                                  color: Colors.grey[200],
-                                ),
-                              ),
-                        SizedBox(height: 20),
-                        Buttonkii(
-                            buttonName: 'Select Image',
-                            onTap: getImageGallery,
-                            bgColor: Colors.black,
-                            textColor: Colors.white),
-                        SizedBox(height: 20),
-                        Buttonkii(
-                            buttonName: 'Post Image',
-                            onTap: postImage,
-                            bgColor: Colors.black,
-                            textColor: Colors.white),
-                      ],
-                    ),
+                    style: const TextStyle(color: AppColors.success, fontSize: 12),
                   ),
                 ],
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
-      ),
-          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          const SectionHeader(title: 'Publicar una imagen'),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppTextField(
+                  controller: _imageController,
+                  prefixIcon: const Icon(Icons.image_outlined, color: AppColors.textMuted),
+                  hintText: 'Nombre de la imagen',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Center(
+                  child: _image != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(AppRadius.card),
+                          child: Image.file(
+                            _image!,
+                            height: 150,
+                            width: 150,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Container(
+                          height: 150,
+                          width: 150,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(AppRadius.card),
+                            border: Border.all(color: AppColors.surfaceBorder),
+                            color: AppColors.bgBase,
+                          ),
+                          child: const Icon(Icons.image_outlined, color: AppColors.textMuted, size: 32),
+                        ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                OutlinedButton.icon(
+                  onPressed: getImageGallery,
+                  icon: const Icon(Icons.photo_library_outlined, size: 18),
+                  label: const Text('Elegir imagen'),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppButton(
+                  label: _postingImage ? 'Publicando…' : 'Publicar imagen',
+                  loading: _postingImage,
+                  onPressed: _postingImage ? null : postImage,
+                  height: 46,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
         ],
-      ),
-    );
-  }
-}
-
-class Buttonkii extends StatelessWidget {
-  const Buttonkii({
-    Key? key,
-    required this.buttonName,
-    required this.onTap,
-    required this.bgColor,
-    required this.textColor,
-  }) : super(key: key);
-
-  final String buttonName;
-  final VoidCallback onTap;
-  final Color bgColor;
-  final Color textColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 50,
-      width: 150,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: bgColor,
-      ),
-      child: TextButton(
-        style: ButtonStyle(
-          elevation: MaterialStateProperty.all(12),
-          shadowColor:
-              MaterialStateProperty.all(const Color.fromARGB(255, 12, 28, 64)),
-          overlayColor: MaterialStateProperty.resolveWith(
-            (states) => Colors.transparent,
-          ),
-        ),
-        onPressed: onTap,
-        child: Text(
-          buttonName,
-          style: TextStyle(fontSize: 15, color: textColor),
-        ),
-      ),
-    );
-  }
-}
-
-class MyTextField2 extends StatelessWidget {
-  const MyTextField2({
-    super.key,
-    required this.hintText,
-    required this.inputType,
-    required this.labelText2,
-    required this.secure1,
-    required this.capital,
-    required this.nameController1,
-  });
-
-  final String hintText;
-  final TextInputType inputType;
-  final String labelText2;
-  final bool secure1;
-  final TextCapitalization capital;
-  final TextEditingController nameController1;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: TextFormField(
-        maxLines: 5,
-        style: const TextStyle(color: Color.fromARGB(255, 0, 0, 0)),
-        controller: nameController1,
-        keyboardType: inputType,
-        obscureText: secure1,
-        textInputAction: TextInputAction.next,
-        textCapitalization: capital,
-        decoration: InputDecoration(
-          contentPadding: const EdgeInsets.all(20),
-          hintText: hintText,
-          hintStyle: const TextStyle(color: Color.fromARGB(255, 10, 18, 38)),
-          enabledBorder: const OutlineInputBorder(
-            borderSide:
-                BorderSide(color: Color.fromARGB(255, 10, 18, 38), width: 1),
-            borderRadius: BorderRadius.all(Radius.circular(16)),
-          ),
-          focusedBorder: const OutlineInputBorder(
-            borderSide:
-                BorderSide(color: Color.fromARGB(255, 10, 18, 38), width: 1),
-            borderRadius: BorderRadius.all(Radius.circular(16)),
-          ),
-          labelText: labelText2,
-          labelStyle: const TextStyle(color: Color.fromARGB(255, 10, 18, 38)),
-        ),
       ),
     );
   }

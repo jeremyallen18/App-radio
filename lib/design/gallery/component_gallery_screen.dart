@@ -96,6 +96,38 @@ class ComponentGalleryScreen extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xxl),
 
+          const SectionHeader(title: 'Perfil y personas'),
+          const ProfileHeader(
+            name: 'Ana Villalobos',
+            headline: 'Locutora matutina',
+            avatarSeed: 'ana@radiodoliv.com',
+            badges: [
+              AppBadge(label: 'Empleado', variant: AppBadgeVariant.info),
+              AppBadge(label: 'Cabina'),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          const PersonCard(
+            name: 'Marco Peña',
+            headline: 'Técnico de audio',
+            subtitle: 'Cabina',
+            avatarSeed: 'marco@radiodoliv.com',
+            badge: AppBadge(label: 'Responsable del área'),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+
+          const SectionHeader(title: 'Chips de filtro'),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              AppFilterChip(label: 'Mi área: Cabina', count: 6, selected: true, onTap: () {}),
+              AppFilterChip(label: 'Toda la empresa', selected: false, onTap: () {}),
+              AppFilterChip(label: 'Ventas', count: 3, selected: false, onTap: () {}),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+
           const SectionHeader(title: 'Estados'),
           const SizedBox(height: 140, child: LoadingState(message: 'Cargando…')),
           const SizedBox(

@@ -7,10 +7,10 @@ import '../../design/design.dart';
 
 class ChangePassword extends StatefulWidget {
   final String email;
-  ChangePassword({required this.email});
+  const ChangePassword({super.key, required this.email});
 
   @override
-  _ChangePasswordState createState() => _ChangePasswordState();
+  State<ChangePassword> createState() => _ChangePasswordState();
 }
 
 class _ChangePasswordState extends State<ChangePassword> {
@@ -19,6 +19,7 @@ class _ChangePasswordState extends State<ChangePassword> {
       TextEditingController();
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
   Future<String?> takePassAPI(String password, String confirmpass) async {
     final String apiUrl =
@@ -52,31 +53,34 @@ class _ChangePasswordState extends State<ChangePassword> {
   }
 
   void _passwordchange(BuildContext context) async {
-    if (_formKey.currentState?.validate() ?? false) {
-      String password = newPasswordController.text;
-      String? error =
-          await takePassAPI(password, confirmPasswordController.text);
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
-      if (error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $error'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('¡Contraseña cambiada con éxito!'),
-          ),
-        );
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Login(),
-          ),
-        );
-      }
+    setState(() => _isLoading = true);
+    String password = newPasswordController.text;
+    String? error =
+        await takePassAPI(password, confirmPasswordController.text);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('¡Contraseña cambiada con éxito!'),
+        ),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const Login(),
+        ),
+      );
     }
   }
 
@@ -85,126 +89,122 @@ class _ChangePasswordState extends State<ChangePassword> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
+    final heightOfScreen = MediaQuery.of(context).size.height;
+
+    return AppScaffold(
+      padding: const EdgeInsets.symmetric(horizontal: 36),
+      scrollable: true,
+      body: Column(
         children: [
-          Opacity(
-          opacity: 0.5,
-          child: Image.asset(
-            "lib/assets/back.png",
-            width: double.infinity,
-            height: MediaQuery.of(context).size.height,
-            fit: BoxFit.cover,
-          ),
-        ),
+          SizedBox(height: heightOfScreen * 0.06),
           Center(
-            child: DesktopCenter(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Center(
-                      child: Image.asset(
-                        "lib/assets/reset.png",
-                        fit: BoxFit.fitWidth,
-                        height: 200,
-                      ),
-                    ),
-                    const Text(
-                      "Re-enter Password",
-                      style: TextStyle(fontSize: 40, fontWeight: FontWeight.w500),
-                    ),
-                    SizedBox(height: 10),
-                    const Text(
-                      "Your new password must be different from previously used",
-                      style: TextStyle(
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 30),
-                    Form(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          TextFormField(
-                            controller: newPasswordController,
-                            obscureText: obscureText,
-                            decoration: InputDecoration(
-                              labelText: 'Nueva contraseña',
-                              prefixIcon: Icon(Icons.lock),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  obscureText
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    obscureText = !obscureText;
-                                  });
-                                },
-                              ),
-                              contentPadding: EdgeInsets.symmetric(vertical: 15),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(30.0),
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter a password';
-                              }
-                              return null;
-                            },
-                          ),
-                          SizedBox(height: 20),
-                          TextFormField(
-                            controller: confirmPasswordController,
-                            obscureText: obscureText2,
-                            decoration: InputDecoration(
-                              labelText: 'Confirm Password',
-                              prefixIcon: Icon(Icons.lock),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  obscureText2
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    obscureText2 = !obscureText2;
-                                  });
-                                },
-                              ),
-                              contentPadding: EdgeInsets.symmetric(vertical: 15),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(30.0),
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value != newPasswordController.text) {
-                                return 'Passwords do not match. Please re-enter the correct password.';
-                              }
-                              return null;
-                            },
-                          ),
-                          SizedBox(height: 20),
-                          ElevatedButton(
-                            onPressed: () => _passwordchange(context),
-                            child: Text('Restablecer contraseña'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+            child: Container(
+              width: 96,
+              height: 96,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.textPrimary,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Image.asset(
+                "lib/assets/reset.png",
+                fit: BoxFit.contain,
               ),
             ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            "Último paso,",
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontWeight: FontWeight.w400,
+              fontSize: 16,
             ),
           ),
-          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
+          const Text(
+            "Crea una nueva contraseña",
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+              fontSize: 26,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "Debe ser distinta a la que usabas antes.",
+            style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: heightOfScreen * 0.05),
+          Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                AppTextField(
+                  controller: newPasswordController,
+                  obscured: obscureText,
+                  prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMuted),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscureText ? Icons.visibility_off : Icons.visibility,
+                      color: AppColors.textMuted,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        obscureText = !obscureText;
+                      });
+                    },
+                  ),
+                  hintText: "Nueva contraseña",
+                  validator: (value) {
+                    if ((value ?? '').length < 6) {
+                      return 'Mínimo 6 caracteres';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                AppTextField(
+                  controller: confirmPasswordController,
+                  obscured: obscureText2,
+                  prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMuted),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscureText2 ? Icons.visibility_off : Icons.visibility,
+                      color: AppColors.textMuted,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        obscureText2 = !obscureText2;
+                      });
+                    },
+                  ),
+                  hintText: "Confirmar contraseña",
+                  validator: (value) {
+                    if (value != newPasswordController.text) {
+                      return 'Las contraseñas no coinciden';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 28),
+                AppButton(
+                  label: _isLoading ? 'Guardando...' : 'Restablecer contraseña',
+                  loading: _isLoading,
+                  onPressed: _isLoading ? null : () => _passwordchange(context),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
         ],
       ),
     );

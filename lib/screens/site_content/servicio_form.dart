@@ -39,6 +39,27 @@ class _ServicioFormScreenState extends State<ServicioFormScreen> {
     setState(() => _newImage = File(picked.path));
   }
 
+  Future<void> _delete() async {
+    final item = widget.item;
+    if (item == null) return;
+    final confirmed = await confirmSiteDelete(context, _title.text.trim());
+    if (!confirmed) return;
+
+    setState(() => _submitting = true);
+    try {
+      await _api.delete(item['id'].toString());
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (_title.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -80,39 +101,86 @@ class _ServicioFormScreenState extends State<ServicioFormScreen> {
     final existingImage = siteImageUrl(widget.item?['image']?.toString());
 
     return AppScaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Editar servicio' : 'Nuevo servicio'),
-        leading: AppBackButton.leadingFor(context),
-        automaticallyImplyLeading: false,
-      ),
       scrollable: true,
+      showBackButton: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _title, hintText: 'Título *'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _category, hintText: 'Categoría'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _icon, hintText: 'Ícono (nombre lucide, ej. megaphone)'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _description, hintText: 'Descripción', maxLines: 4),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _whatsappUrl, hintText: 'Enlace de WhatsApp'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(
+          const SizedBox(height: AppSpacing.md),
+          SiteFormHeader(
+            title: _isEditing ? 'Editar servicio' : 'Nuevo servicio',
+            subtitle: 'Actualiza la información de tu servicio',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          SiteFormField(
+            icon: Icons.title,
+            label: 'Título',
+            required: true,
+            controller: _title,
+            hintText: 'Ej. Transmisión en vivo',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.sell_outlined,
+            label: 'Categoría',
+            iconColor: SiteFieldColors.green,
+            controller: _category,
+            hintText: 'Selecciona una categoría',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.campaign_outlined,
+            label: 'Ícono',
+            iconColor: SiteFieldColors.purple,
+            controller: _icon,
+            hintText: 'Ej. megaphone, music, camera',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.notes_outlined,
+            label: 'Descripción',
+            iconColor: SiteFieldColors.orange,
+            controller: _description,
+            hintText: 'Describe tu servicio…',
+            maxLines: 4,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.chat_outlined,
+            label: 'Enlace de WhatsApp',
+            iconColor: SiteFieldColors.whatsapp,
+            controller: _whatsappUrl,
+            hintText: 'https://wa.me/52XXXXXXXXXX',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.swap_vert,
+            label: 'Orden de aparición',
             controller: _sortOrder,
-            hintText: 'Orden de aparición',
+            hintText: 'Ej. 1',
             textInputType: TextInputType.number,
           ),
-          const SizedBox(height: AppSpacing.lg),
-          SiteImagePickerField(newImage: _newImage, existingImageUrl: existingImage, onPick: _pickImage),
+          const SizedBox(height: AppSpacing.md),
+          SiteImagePickerField(
+            newImage: _newImage,
+            existingImageUrl: existingImage,
+            onPick: _pickImage,
+            title: 'Imagen del servicio',
+          ),
           const SizedBox(height: AppSpacing.xl),
           AppButton(
             label: _submitting ? 'Guardando…' : 'Guardar',
             loading: _submitting,
             onPressed: _submitting ? null : _submit,
           ),
+          if (_isEditing) ...[
+            const SizedBox(height: AppSpacing.md),
+            SiteDeleteButton(
+              label: 'Eliminar servicio',
+              onPressed: _submitting ? null : _delete,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );

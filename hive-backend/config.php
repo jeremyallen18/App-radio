@@ -52,7 +52,16 @@ try {
 }
 
 define('UPLOAD_DIR', __DIR__ . '/uploads/');
-define('UPLOAD_URL_BASE', 'http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . APP_BASE_PATH . '/uploads/');
+
+// Detecta http vs https del request actual en vez de asumir uno fijo: en
+// local (XAMPP) es http, en Hostinger detrás de su proxy/SSL es https. Si
+// se sirve como http y se anuncia https (o viceversa), el navegador/WebView
+// bloquea la imagen como contenido mixto.
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || ($_SERVER['SERVER_PORT'] ?? null) == 443
+    || strcasecmp($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '', 'https') === 0;
+$uploadScheme = $isHttps ? 'https://' : 'http://';
+define('UPLOAD_URL_BASE', $uploadScheme . ($_SERVER['HTTP_HOST'] ?? 'localhost') . APP_BASE_PATH . '/uploads/');
 if (!is_dir(UPLOAD_DIR)) {
     mkdir(UPLOAD_DIR, 0777, true);
 }

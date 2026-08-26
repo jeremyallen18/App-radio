@@ -16,6 +16,7 @@ class ImageListScreen extends StatefulWidget {
 class _ImageListScreenState extends State<ImageListScreen> {
   List<Map<String, String>> images = [];
   bool isLoading = true;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -24,6 +25,10 @@ class _ImageListScreenState extends State<ImageListScreen> {
   }
 
  Future<void> getImage() async {
+   setState(() {
+     isLoading = true;
+     _hasError = false;
+   });
    dynamic storedValue = await secureStorage.readSecureData(key);
   String url = '$kBaseUrl/image/showImage/${widget.teamId}';
   String token = storedValue;
@@ -37,8 +42,9 @@ class _ImageListScreenState extends State<ImageListScreen> {
     );
 
     if (response.statusCode == 200) {
-     
+
       List<dynamic> responseData = json.decode(response.body);
+      if (!mounted) return;
       setState(() {
         images = responseData.map<Map<String, String>>((item) => {
           'imgURL': item['imgURL'],
@@ -47,69 +53,88 @@ class _ImageListScreenState extends State<ImageListScreen> {
         isLoading = false;
       });
     } else {
-      
-      print('Failed to retrieve the image. Status code: ${response.statusCode}');
+      if (!mounted) return;
+      setState(() {
+        _hasError = true;
+        isLoading = false;
+      });
     }
   } catch (error) {
-  
-    print('Error: $error');
+    if (!mounted) return;
+    setState(() {
+      _hasError = true;
+      isLoading = false;
+    });
   }
 }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppScaffold(
+      padding: EdgeInsets.zero,
       appBar: AppBar(
-        title: Text('Recursos de imágenes'),
+        title: const Text('Recursos de imágenes'),
         leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       body: isLoading
-          ? Center(
-            
-              child: CircularProgressIndicator(),
-            )
-          // En escritorio, con más ancho de sobra, entran más columnas en vez
-          // de estirar cada imagen para llenar solo 2.
-          : LayoutBuilder(
-              builder: (context, constraints) {
-                final int crossAxisCount =
-                    (constraints.maxWidth / 180).floor().clamp(2, 6);
-                return GridView.builder(
-                  padding: const EdgeInsets.all(8.0),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    crossAxisSpacing: 8.0,
-                    mainAxisSpacing: 8.0,
-                  ),
-                  itemCount: images.length,
-                  itemBuilder: (context, index) {
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ImageDetailScreen(
-                              imageUrl: images[index]['imgURL']!,
-                            ),
-                          ),
-                        );
-                      },
-                      child: Card(
-                        elevation: 2.0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        child: Image.network(
-                          images[index]['imgURL']!,
-                          fit: BoxFit.cover,
-                        ),
+          ? const LoadingState()
+          : _hasError
+              ? ErrorState(
+                  message: 'No se pudieron cargar las imágenes.',
+                  onRetry: getImage,
+                )
+              : images.isEmpty
+                  ? EmptyState(
+                      icon: Icons.image_outlined,
+                      title: 'Todavía no hay imágenes',
+                      message: 'Las imágenes que se publiquen para este equipo aparecerán aquí.',
+                      action: OutlinedButton(
+                        onPressed: getImage,
+                        child: const Text('Actualizar'),
                       ),
-                    );
-                  },
-                );
-              },
-            ),
+                    )
+                  // En escritorio, con más ancho de sobra, entran más columnas en vez
+                  // de estirar cada imagen para llenar solo 2.
+                  : RefreshIndicator(
+                      onRefresh: getImage,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final int crossAxisCount =
+                              (constraints.maxWidth / 180).floor().clamp(2, 6);
+                          return GridView.builder(
+                            padding: const EdgeInsets.all(AppSpacing.md),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              crossAxisSpacing: AppSpacing.sm,
+                              mainAxisSpacing: AppSpacing.sm,
+                            ),
+                            itemCount: images.length,
+                            itemBuilder: (context, index) {
+                              return GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ImageDetailScreen(
+                                        imageUrl: images[index]['imgURL']!,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(AppRadius.card),
+                                  child: Image.network(
+                                    images[index]['imgURL']!,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
     );
   }
 }
@@ -121,9 +146,10 @@ class ImageDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppScaffold(
+      padding: EdgeInsets.zero,
       appBar: AppBar(
-        title: Text('</>'),
+        title: const Text('Imagen'),
         leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),

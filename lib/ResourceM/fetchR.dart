@@ -92,117 +92,71 @@ class _ShowTextScreenState extends State<ShowTextScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-        DesktopCenter(
-      maxWidth: 480,
-      child: Column(
-        children: [
-          Container(
-            width: 361,
-            height: 146,
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                alignment: Alignment(1, 0),
-                image: AssetImage('lib/assets/amico.png'),
-                fit: BoxFit.scaleDown,
-              ),
-              gradient: LinearGradient(
-                begin: Alignment(0.98, -0.21),
-                end: Alignment(-0.98, 0.21),
-                colors: [Color(0xFF020918), Color(0xFF38486C)],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x4C000000),
-                  blurRadius: 4,
-                  offset: Offset(0, 4),
-                  spreadRadius: 0,
+    return AppScaffold(
+      appBar: AppBar(
+        title: const Text('Recursos publicados'),
+        leading: AppBackButton.leadingFor(context),
+        automaticallyImplyLeading: false,
+      ),
+      padding: EdgeInsets.zero,
+      body: isLoading
+          ? const LoadingState()
+          : messages.isEmpty
+              ? const EmptyState(
+                  icon: Icons.inbox_outlined,
+                  title: 'No hay recursos publicados todavía',
+                  message: 'Los textos que publique el equipo aparecerán aquí.',
                 )
-              ],
-            ),
-            child: const Padding(
-              padding: EdgeInsets.all(18.0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '\nResource Manager',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16.0),
+              : RefreshIndicator(
+                  onRefresh: fetchMessages,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    reverse: true,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final email = messages[index]['email'];
+                      final texts = messages[index]['texts'] as List;
 
-          isLoading
-              ? const CircularProgressIndicator()
-              : messages.isEmpty
-                  ? const Text('No hay mensajes disponibles.')
-                  : Expanded(
-                      child: ListView.builder(
-                        reverse: true,
-                        physics: const ClampingScrollPhysics(),
-                        itemCount: messages.length,
-                        itemBuilder: (context, index) {
-                          final email = messages[index]['email'];
-
-                          return Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Text(
-                                  '   Email: $email',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                                const Icon(Icons.person_outline, size: 16, color: AppColors.textMuted),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    '$email',
+                                    style: const TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 8.0),
-                                ListView.builder(
-                                  shrinkWrap: true,
-                                  physics: const BouncingScrollPhysics(),
-                                  itemCount: messages[index]['texts'].length,
-                                  itemBuilder: (context, index1) {
-                                    final text = messages[index]['texts']
-                                        [index1]['text'];
-                                    return Card(
-                                      elevation: 2.0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(12.0),
-                                      ),
-                                      color: const Color.fromARGB(255, 18, 30, 59),
-                                      child: ListTile(
-                                        title: Text(
-                                          text,
-                                          style: const TextStyle(
-                                            fontSize: 14.0,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const Divider(),
                               ],
                             ),
-                          );
-                        },
-                      ),
-                    ),
-        ],
-      ),
-      ),
-          const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
-        ],
-      ),
+                            const SizedBox(height: AppSpacing.sm),
+                            for (int i = 0; i < texts.length; i++)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                                child: AppCard(
+                                  padding: const EdgeInsets.all(AppSpacing.md),
+                                  child: Text(
+                                    texts[i]['text'] ?? '',
+                                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
     );
   }
 }

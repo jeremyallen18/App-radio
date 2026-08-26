@@ -59,6 +59,27 @@ class _EventoFormScreenState extends State<EventoFormScreen> {
     });
   }
 
+  Future<void> _delete() async {
+    final item = widget.item;
+    if (item == null) return;
+    final confirmed = await confirmSiteDelete(context, _title.text.trim());
+    if (!confirmed) return;
+
+    setState(() => _submitting = true);
+    try {
+      await _api.delete(item['id'].toString());
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (_title.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -105,63 +126,142 @@ class _EventoFormScreenState extends State<EventoFormScreen> {
     final existingImage = siteImageUrl(widget.item?['image']?.toString());
 
     return AppScaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Editar evento' : 'Nuevo evento'),
-        leading: AppBackButton.leadingFor(context),
-        automaticallyImplyLeading: false,
-      ),
       scrollable: true,
+      showBackButton: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _title, hintText: 'Título *'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _artist, hintText: 'Artista / presentador'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _location, hintText: 'Lugar'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(
+          const SizedBox(height: AppSpacing.md),
+          SiteFormHeader(
+            title: _isEditing ? 'Editar evento' : 'Nuevo evento',
+            subtitle: 'Actualiza la información de tu evento',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          SiteFormField(
+            icon: Icons.title,
+            label: 'Título',
+            required: true,
+            controller: _title,
+            hintText: 'Ej. Festival de verano',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.mic_outlined,
+            label: 'Artista / presentador',
+            iconColor: SiteFieldColors.purple,
+            controller: _artist,
+            hintText: 'Ej. DJ Doliv',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.place_outlined,
+            label: 'Lugar',
+            iconColor: SiteFieldColors.teal,
+            controller: _location,
+            hintText: 'Ej. Plaza principal',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.calendar_month_outlined,
+            label: 'Fecha del evento',
+            iconColor: SiteFieldColors.green,
             controller: _eventDate,
-            hintText: 'Fecha del evento (vacío = "Próximamente")',
+            hintText: 'Vacío = "Próximamente"',
             readOnly: true,
             onTap: _pickDate,
-            prefixIcon: const Icon(Icons.calendar_month_outlined, color: AppColors.textMuted),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.md),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: AppTextField(controller: _weekday, hintText: 'Día de semana')),
+              Expanded(
+                child: SiteFormField(
+                  icon: Icons.view_week_outlined,
+                  label: 'Día de semana',
+                  controller: _weekday,
+                  hintText: 'Ej. Sábado',
+                ),
+              ),
               const SizedBox(width: AppSpacing.sm),
-              Expanded(child: AppTextField(controller: _day, hintText: 'Día')),
+              Expanded(
+                child: SiteFormField(
+                  icon: Icons.today_outlined,
+                  label: 'Día',
+                  controller: _day,
+                  hintText: 'Ej. 12',
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.md),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: AppTextField(controller: _month, hintText: 'Mes')),
+              Expanded(
+                child: SiteFormField(
+                  icon: Icons.date_range_outlined,
+                  label: 'Mes',
+                  controller: _month,
+                  hintText: 'Ej. Julio',
+                ),
+              ),
               const SizedBox(width: AppSpacing.sm),
-              Expanded(child: AppTextField(controller: _year, hintText: 'Año')),
+              Expanded(
+                child: SiteFormField(
+                  icon: Icons.event_note_outlined,
+                  label: 'Año',
+                  controller: _year,
+                  hintText: 'Ej. 2026',
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _timeLabel, hintText: 'Hora (texto, ej. 4:00 PM)'),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(controller: _description, hintText: 'Descripción', maxLines: 4),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.schedule_outlined,
+            label: 'Hora',
+            iconColor: SiteFieldColors.orange,
+            controller: _timeLabel,
+            hintText: 'Ej. 4:00 PM',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.notes_outlined,
+            label: 'Descripción',
+            iconColor: SiteFieldColors.orange,
+            controller: _description,
+            hintText: 'Describe el evento…',
+            maxLines: 4,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteFormField(
+            icon: Icons.swap_vert,
+            label: 'Orden de aparición',
             controller: _sortOrder,
-            hintText: 'Orden de aparición',
+            hintText: 'Ej. 1',
             textInputType: TextInputType.number,
           ),
-          const SizedBox(height: AppSpacing.lg),
-          SiteImagePickerField(newImage: _newImage, existingImageUrl: existingImage, onPick: _pickImage),
+          const SizedBox(height: AppSpacing.md),
+          SiteImagePickerField(
+            newImage: _newImage,
+            existingImageUrl: existingImage,
+            onPick: _pickImage,
+            title: 'Imagen del evento',
+          ),
           const SizedBox(height: AppSpacing.xl),
           AppButton(
             label: _submitting ? 'Guardando…' : 'Guardar',
             loading: _submitting,
             onPressed: _submitting ? null : _submit,
           ),
+          if (_isEditing) ...[
+            const SizedBox(height: AppSpacing.md),
+            SiteDeleteButton(
+              label: 'Eliminar evento',
+              onPressed: _submitting ? null : _delete,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );

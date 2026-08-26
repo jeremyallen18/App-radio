@@ -48,6 +48,11 @@ $routes = [
     ['POST', '#^/notifications/([^/]+)/read/?$#',             'markNotificationRead'],
     ['GET',  '#^/user/me/?$#',                                'getMe'],
     ['POST', '#^/user/photo/?$#',                             'updateProfilePhoto'],
+    // Directorio interno de la empresa: buscar compañeros y abrir la ficha
+    // de uno. Van con prefijo propio (/user/directory, /user/profile/{id})
+    // para no chocar con /user/me ni /user/photo.
+    ['GET',  '#^/user/directory/?$#',                          'listColleagues'],
+    ['GET',  '#^/user/profile/([^/]+)/?$#',                    'getColleagueProfile'],
     ['POST', '#^/company/create/?$#',                         'createCompany'],
     ['GET',  '#^/company/info/?$#',                           'getCompany'],
     ['POST', '#^/company/update/?$#',                         'updateCompany'],
@@ -858,6 +863,22 @@ function build_department_payload(PDO $pdo, array $dept): array {
     ];
 }
 
+// Forma pública de un usuario: lo único que se le puede mostrar a otra
+// persona de la empresa. Deliberadamente NO incluye password, token ni otp —
+// todo lo que sale de `users` hacia el cliente pasa por aquí (perfil propio,
+// directorio y ficha de un compañero).
+function build_public_user_payload(array $user, ?array $department): array {
+    return [
+        'id'         => $user['id'],
+        'name'       => $user['name'],
+        'email'      => $user['email'],
+        'role'       => $user['role'],
+        'position'   => $user['position'],
+        'photoUrl'   => $user['photo_path'] ? UPLOAD_URL_BASE . $user['photo_path'] : null,
+        'department' => $department,
+    ];
+}
+
 function build_user_profile_payload(PDO $pdo, array $user): array {
     $department = null;
     if ($user['department_id']) {
@@ -869,15 +890,7 @@ function build_user_profile_payload(PDO $pdo, array $user): array {
         }
     }
 
-    return [
-        'id'         => $user['id'],
-        'name'       => $user['name'],
-        'email'      => $user['email'],
-        'role'       => $user['role'],
-        'position'   => $user['position'],
-        'photoUrl'   => $user['photo_path'] ? UPLOAD_URL_BASE . $user['photo_path'] : null,
-        'department' => $department,
-    ];
+    return build_public_user_payload($user, $department);
 }
 
 // La app llama esto justo después de login para saber qué dashboard mostrar
@@ -924,6 +937,132 @@ function updateProfilePhoto(PDO $pdo) {
 
     $user['photo_path'] = $storedName;
     json_response(build_user_profile_payload($pdo, $user));
+}
+
+// ---- handlers: directorio de compañeros ---------------------------------
+// Directorio interno de Radio Doliv. Cualquier usuario autenticado puede
+// buscar a sus compañeros y abrir su ficha; solo se exponen los datos de
+// contacto de trabajo que ya se comparten dentro de la empresa (nombre,
+// correo, puesto, departamento, foto) — nunca credenciales.
+
+// Todos los departamentos con su número de empleados, indexados por id. El
+// directorio los necesita para adjuntar el departamento de cada persona: se
+// resuelven de una sola vez en vez de una consulta por usuario listado.
+function departments_by_id(PDO $pdo): array {
+    $stmt = $pdo->query(
+        'SELECT d.*, (SELECT COUNT(*) FROM users u WHERE u.department_id = d.id) AS employee_count
+         FROM departments d'
+    );
+    $byId = [];
+    foreach ($stmt->fetchAll() as $dept) {
+        $byId[$dept['id']] = [
+            'id'            => $dept['id'],
+            'companyId'     => $dept['company_id'],
+            'name'          => $dept['name'],
+            'description'   => $dept['description'],
+            'managerEmail'  => $dept['manager_email'],
+            'employeeCount' => (int) $dept['employee_count'],
+        ];
+    }
+    return $byId;
+}
+
+// GET /user/directory?scope=&q=
+//
+// `scope`: 'department' (por defecto, "mi área"), 'company' para toda la
+// empresa, o el id de un departamento concreto. Quien todavía no tiene
+// departamento asignado (el director, o una cuenta recién creada) no tiene
+// "mi área" que filtrar, así que en ese caso el default cae a toda la
+// empresa en vez de devolver una lista vacía.
+//
+// `q`: texto libre; busca en nombre, correo y puesto.
+function listColleagues(PDO $pdo) {
+    $user = require_auth($pdo);
+
+    $scope = trim($_GET['scope'] ?? 'department');
+    $query = trim($_GET['q'] ?? '');
+
+    $where = [];
+    $params = [];
+
+    if ($scope === 'department') {
+        if ($user['department_id']) {
+            $where[] = 'department_id = ?';
+            $params[] = $user['department_id'];
+        }
+    } elseif ($scope !== 'company' && $scope !== '') {
+        $where[] = 'department_id = ?';
+        $params[] = $scope;
+    }
+
+    if ($query !== '') {
+        // Los comodines van escapados para que un "%" tecleado por el usuario
+        // se busque literalmente en vez de traer a toda la empresa.
+        $like = '%' . addcslashes($query, '%_\\') . '%';
+        $where[] = '(name LIKE ? OR email LIKE ? OR position LIKE ?)';
+        array_push($params, $like, $like, $like);
+    }
+
+    $sql = 'SELECT * FROM users';
+    if ($where) {
+        $sql .= ' WHERE ' . implode(' AND ', $where);
+    }
+    // Jerarquía primero (director, manager) y luego alfabético: así el
+    // responsable del área queda arriba, que es a quien más se busca.
+    $sql .= " ORDER BY FIELD(role, 'director', 'manager', 'employee'), name ASC";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll();
+
+    $departments = departments_by_id($pdo);
+    $colleagues = [];
+    foreach ($rows as $row) {
+        $dept = $row['department_id'] ? ($departments[$row['department_id']] ?? null) : null;
+        $colleagues[] = build_public_user_payload($row, $dept);
+    }
+
+    json_response([
+        'colleagues'     => $colleagues,
+        'departments'    => array_values($departments),
+        'scope'          => $scope,
+        'myDepartmentId' => $user['department_id'],
+    ]);
+}
+
+// GET /user/profile/{id} — ficha de un compañero. Sobre el perfil público
+// agrega los equipos a los que pertenece y desde cuándo está en la empresa,
+// que es lo que hace que valga la pena abrir la ficha en vez de quedarse con
+// la fila del listado.
+function getColleagueProfile(PDO $pdo, string $userId) {
+    require_auth($pdo);
+
+    $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
+    $stmt->execute([$userId]);
+    $target = $stmt->fetch();
+    if (!$target) {
+        error_response('No encontramos a esa persona', 404);
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT t.id, t.team_name, t.leader_email
+         FROM teams t
+         LEFT JOIN team_members tm ON tm.team_id = t.id AND tm.email = ?
+         WHERE t.leader_email = ? OR tm.email IS NOT NULL
+         ORDER BY t.team_name ASC'
+    );
+    $stmt->execute([$target['email'], $target['email']]);
+    $teams = array_map(fn($t) => [
+        'id'       => $t['id'],
+        'teamName' => $t['team_name'],
+        'isLeader' => $t['leader_email'] === $target['email'],
+    ], $stmt->fetchAll());
+
+    $payload = build_user_profile_payload($pdo, $target);
+    $payload['teams'] = $teams;
+    $payload['joinedAt'] = $target['created_at'];
+
+    json_response($payload);
 }
 
 function get_the_company(PDO $pdo): ?array {
