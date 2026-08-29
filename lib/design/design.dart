@@ -29,5 +29,6 @@ export 'components/notification_tile.dart';
 export 'components/identity_avatar.dart';
 export 'components/person_card.dart';
 export 'components/profile_header.dart';
+export 'components/radio_player_button.dart';
 export 'components/chat_bubble.dart';
 export 'components/message_composer.dart';

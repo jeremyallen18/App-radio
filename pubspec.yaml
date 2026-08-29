@@ -48,6 +48,27 @@ dependencies:
   cached_network: ^2.0.1
   cached_network_image: ^3.3.0
   audioplayers: ^6.7.1
+  # Reproductor de la radio en vivo (lib/utils/radio_player.dart). Se usa
+  # just_audio (no audioplayers) para la transmisión en vivo porque su
+  # motor en Android (ExoPlayer) sí entiende el protocolo ICY/Icecast que
+  # manda el stream de Zeno.fm; el MediaPlayer nativo que usa audioplayers
+  # lo rechaza con MEDIA_ERROR_UNKNOWN.
+  # Usado directamente en radio_player.dart para el `MediaItem` de los
+  # metadatos de la notificación (dependencia transitiva de
+  # just_audio_background, pero se declara explícita porque se importa).
+  audio_service: ^0.18.15
+  just_audio: ^0.9.40
+  # Complemento de just_audio: mantiene la radio sonando en segundo plano
+  # (app minimizada / pantalla bloqueada) usando un foreground service en
+  # Android con controles en la notificación y en la pantalla de bloqueo.
+  just_audio_background: ^0.0.1-beta.13
+  # just_audio no trae implementación nativa para Windows/Linux (solo
+  # Android/iOS/macOS/Web). just_audio_media_kit le agrega esas dos
+  # plataformas por debajo usando media_kit (libmpv), sin tocar el código
+  # que ya usa la API de just_audio (radio_player.dart no cambia).
+  just_audio_media_kit: ^2.1.0
+  media_kit_libs_windows_audio: any
+  media_kit_libs_linux: any
   # webview_flutter_plus: ^0.3.0+2
   image_picker: ^1.2.3
   dio: ^5.4.0

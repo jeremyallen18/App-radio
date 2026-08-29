@@ -20,6 +20,8 @@ class Profile extends StatefulWidget {
   State<Profile> createState() => _ProfileState();
 }
 
+enum _ProfileTab { equipos, area, cuenta }
+
 class _ProfileState extends State<Profile> {
   UserProfile? _profile;
   int? _pendingCount;
@@ -27,6 +29,7 @@ class _ProfileState extends State<Profile> {
   List<dynamic> _teams = [];
   bool _loading = true;
   bool _uploadingPhoto = false;
+  _ProfileTab _tab = _ProfileTab.equipos;
   final ImagePicker _picker = ImagePicker();
 
   @override
@@ -187,140 +190,166 @@ class _ProfileState extends State<Profile> {
     final profile = _profile;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.lg,
-        AppSpacing.lg,
-        AppSpacing.xxl,
-      ),
+      padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
       children: [
-        ProfileHeader(
+        _ProfileHero(
           name: profile?.name ?? 'Mi perfil',
           headline: profile?.headline ?? 'Cargando tu información…',
           photoUrl: profile?.photoUrl,
           avatarSeed: profile?.email ?? profile?.name ?? '?',
           onEditPhoto: _editProfilePhoto,
           uploadingPhoto: _uploadingPhoto,
-          badges: [
-            if (profile != null)
-              AppBadge(label: profile.role.label, variant: AppBadgeVariant.info),
-            if (profile?.department != null)
-              AppBadge(label: profile!.department!.name),
-            if (profile?.leadsOwnDepartment ?? false)
-              const AppBadge(
-                label: 'Responsable del área',
-                variant: AppBadgeVariant.success,
-              ),
-          ],
-          footer: profile == null
-              ? null
-              : _ContactRow(email: profile.email, onCopy: _copyEmail),
         ),
-        const SizedBox(height: AppSpacing.xl),
-
-        const SectionHeader(title: 'Resumen'),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (profile != null)
+                _MetaRow(
+                  icon: Icons.apartment_outlined,
+                  text: profile.department != null
+                      ? '${profile.department!.name} · Radio Doliv'
+                      : 'Radio Doliv',
+                ),
+              const SizedBox(height: AppSpacing.sm),
+              if (profile != null)
+                _MetaRow(
+                  icon: Icons.mail_outline,
+                  text: profile.email,
+                  trailing: IconButton(
+                    onPressed: _copyEmail,
+                    icon: const Icon(Icons.copy_rounded, size: 14),
+                    color: AppColors.accentStrong,
+                    tooltip: 'Copiar correo',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ),
+              if (profile != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    AppBadge(label: profile.role.label, variant: AppBadgeVariant.info),
+                    if (profile.department != null)
+                      AppBadge(label: profile.department!.name),
+                    if (profile.leadsOwnDepartment)
+                      const AppBadge(
+                        label: 'Responsable del área',
+                        variant: AppBadgeVariant.success,
+                      ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: AppSpacing.lg),
+              // Tres columnas de igual ancho: así no se desbordan en pantallas
+              // estrechas ni con el texto a mayor escala.
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatItem(
+                      value: _pendingCount?.toString() ?? '—',
+                      label: 'Pendientes',
+                    ),
+                  ),
+                  Expanded(
+                    child: _StatItem(
+                      value: _completedCount?.toString() ?? '—',
+                      label: 'Completadas',
+                    ),
+                  ),
+                  Expanded(
+                    child: _StatItem(
+                      value: _teams.length.toString(),
+                      label: 'Equipos',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+          ),
+        ),
+        const Divider(height: 1, color: AppColors.surfaceBorder),
         Row(
           children: [
-            Expanded(
-              child: StatTile(
-                icon: Icons.pending_actions,
-                value: _pendingCount?.toString() ?? '—',
-                label: 'Pendientes',
-                accentColor: AppColors.warning,
-              ),
+            _TabButton(
+              label: 'Equipos',
+              selected: _tab == _ProfileTab.equipos,
+              onTap: () => setState(() => _tab = _ProfileTab.equipos),
             ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: StatTile(
-                icon: Icons.check_circle_outline,
-                value: _completedCount?.toString() ?? '—',
-                label: 'Completadas',
-                accentColor: AppColors.success,
-              ),
+            _TabButton(
+              label: 'Mi área',
+              selected: _tab == _ProfileTab.area,
+              onTap: () => setState(() => _tab = _ProfileTab.area),
             ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: StatTile(
-                icon: Icons.groups_outlined,
-                value: _teams.length.toString(),
-                label: 'Equipos',
-              ),
+            _TabButton(
+              label: 'Cuenta',
+              selected: _tab == _ProfileTab.cuenta,
+              onTap: () => setState(() => _tab = _ProfileTab.cuenta),
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.xl),
-
-        const SectionHeader(title: 'Mi área'),
-        _AreaCard(
-          department: profile?.department,
-          onOpenDirectory: _openDirectory,
-        ),
-        const SizedBox(height: AppSpacing.xl),
-
-        const SectionHeader(title: 'Mis equipos'),
-        if (_teams.isEmpty)
-          const Text(
-            'Todavía no perteneces a ningún equipo.',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-          )
-        else
-          SizedBox(
-            height: 48,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _teams.length,
-              separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
-              itemBuilder: (context, index) {
-                final team = Map<String, dynamic>.from(_teams[index]);
-                return QuickActionChip(
-                  icon: Icons.groups,
-                  label: team['teamName']?.toString() ?? 'Equipo',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => t_detail(team: team)),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        const SizedBox(height: AppSpacing.xl),
-
-        const SectionHeader(title: 'Cuenta'),
-        AppCard(
-          padding: EdgeInsets.zero,
-          child: Column(
-            children: [
-              _accountRow('Editar foto de perfil', Icons.edit_square, _editProfilePhoto),
-              const Divider(height: 1, color: AppColors.surfaceBorder),
-              _accountRow('Seguridad', Icons.security, () => _comingSoon('Seguridad')),
-              const Divider(height: 1, color: AppColors.surfaceBorder),
-              _accountRow(
-                'Sugerencias y comentarios',
-                Icons.feedback_outlined,
-                () => _comingSoon('Sugerencias y comentarios'),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        TextButton(
-          onPressed: _confirmLogout,
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.logout, color: AppColors.error),
-              SizedBox(width: 10),
-              Text(
-                "Cerrar sesión",
-                style: TextStyle(color: AppColors.error, fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+          child: _buildTabContent(),
         ),
       ],
     );
+  }
+
+  Widget _buildTabContent() {
+    switch (_tab) {
+      case _ProfileTab.equipos:
+        return _TeamsList(teams: _teams);
+      case _ProfileTab.area:
+        return _AreaCard(
+          department: _profile?.department,
+          onOpenDirectory: _openDirectory,
+        );
+      case _ProfileTab.cuenta:
+        return Column(
+          children: [
+            AppCard(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  _accountRow('Editar foto de perfil', Icons.edit_square, _editProfilePhoto),
+                  const Divider(height: 1, color: AppColors.surfaceBorder),
+                  _accountRow('Seguridad', Icons.security, () => _comingSoon('Seguridad')),
+                  const Divider(height: 1, color: AppColors.surfaceBorder),
+                  _accountRow(
+                    'Sugerencias y comentarios',
+                    Icons.feedback_outlined,
+                    () => _comingSoon('Sugerencias y comentarios'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: _confirmLogout,
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.logout, color: AppColors.error),
+                    SizedBox(width: 10),
+                    Text(
+                      "Cerrar sesión",
+                      style: TextStyle(color: AppColors.error, fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+    }
   }
 
   Widget _accountRow(String label, IconData icon, VoidCallback onTap) {
@@ -349,34 +378,294 @@ class _ProfileState extends State<Profile> {
   }
 }
 
-class _ContactRow extends StatelessWidget {
-  const _ContactRow({required this.email, required this.onCopy});
+/// Banda de marca a todo lo ancho con la foto superpuesta, a la manera de
+/// una cabecera de perfil de X: sin tarjeta, sin bordes — la pantalla misma
+/// es el encabezado.
+class _ProfileHero extends StatelessWidget {
+  const _ProfileHero({
+    required this.name,
+    required this.headline,
+    required this.photoUrl,
+    required this.avatarSeed,
+    required this.onEditPhoto,
+    required this.uploadingPhoto,
+  });
 
-  final String email;
-  final VoidCallback onCopy;
+  final String name;
+  final String headline;
+  final String? photoUrl;
+  final String avatarSeed;
+  final VoidCallback onEditPhoto;
+  final bool uploadingPhoto;
+
+  static const double _bandHeight = 120;
+  static const double _avatarRadius = 44;
+  static const double _ringWidth = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              height: _bandHeight,
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.brandBlue, AppColors.brandNavy],
+                ),
+              ),
+            ),
+            // El avatar se coloca con `Padding` (no `Positioned`) para que el
+            // `Stack` crezca y contenga la parte que sobresale de la banda; si
+            // no, el nombre de abajo se montaría encima de la foto.
+            Padding(
+              padding: const EdgeInsets.only(
+                left: AppSpacing.lg,
+                top: _bandHeight - _avatarRadius - _ringWidth,
+              ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(_ringWidth),
+                    decoration: const BoxDecoration(
+                      color: AppColors.bgBase,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IdentityAvatar(
+                      id: avatarSeed,
+                      label: name,
+                      radius: _avatarRadius,
+                      photoUrl: photoUrl,
+                    ),
+                  ),
+                  if (uploadingPhoto)
+                    Positioned.fill(
+                      child: Container(
+                        margin: const EdgeInsets.all(_ringWidth),
+                        decoration: BoxDecoration(
+                          color: AppColors.bgBase.withValues(alpha: 0.6),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Material(
+                      color: AppColors.bgBase,
+                      shape: const CircleBorder(
+                        side: BorderSide(color: AppColors.surfaceBorder),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: uploadingPhoto ? null : onEditPhoto,
+                        child: const Padding(
+                          padding: EdgeInsets.all(7),
+                          child: Icon(
+                            Icons.photo_camera_outlined,
+                            size: 16,
+                            color: AppColors.accentStrong,
+                            semanticLabel: 'Cambiar foto de perfil',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                headline,
+                style: const TextStyle(fontSize: 14, color: AppColors.textMuted),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MetaRow extends StatelessWidget {
+  const _MetaRow({required this.icon, required this.text, this.trailing});
+
+  final IconData icon;
+  final String text;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.mail_outline, size: 18, color: AppColors.textMuted),
+        Icon(icon, size: 15, color: AppColors.textMuted),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Text(
-            email,
+            text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
         ),
-        IconButton(
-          onPressed: onCopy,
-          icon: const Icon(Icons.copy_rounded, size: 18),
-          color: AppColors.accentStrong,
-          tooltip: 'Copiar correo',
-          visualDensity: VisualDensity.compact,
-        ),
+        if (trailing != null) ...[const SizedBox(width: AppSpacing.sm), trailing!],
       ],
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  const _StatItem({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+        ),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
+      ],
+    );
+  }
+}
+
+/// Pestaña estilo X: subrayado de acento sobre el texto activo, resto
+/// silenciado. Reparte el ancho en partes iguales entre las tres pestañas.
+class _TabButton extends StatelessWidget {
+  const _TabButton({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: selected ? AppColors.accent : Colors.transparent,
+                width: 3,
+              ),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: selected ? AppColors.textPrimary : AppColors.textMuted,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TeamsList extends StatelessWidget {
+  const _TeamsList({required this.teams});
+
+  final List<dynamic> teams;
+
+  @override
+  Widget build(BuildContext context) {
+    if (teams.isEmpty) {
+      return const AppCard(
+        child: Text(
+          'Todavía no perteneces a ningún equipo.',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (int i = 0; i < teams.length; i++) ...[
+          if (i > 0) const SizedBox(height: AppSpacing.sm),
+          _TeamRow(team: Map<String, dynamic>.from(teams[i])),
+        ],
+      ],
+    );
+  }
+}
+
+class _TeamRow extends StatelessWidget {
+  const _TeamRow({required this.team});
+
+  final Map<String, dynamic> team;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => t_detail(team: team)),
+        );
+      },
+      child: Row(
+        children: [
+          const Icon(Icons.groups_outlined, size: 20, color: AppColors.accent),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              team['teamName']?.toString() ?? 'Equipo',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
+        ],
+      ),
     );
   }
 }

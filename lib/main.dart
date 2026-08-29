@@ -15,17 +15,54 @@ import 'package:doliv_social/screens/join_team.dart';
 import 'package:doliv_social/screens/signup.dart';
 import 'package:doliv_social/screens/login.dart';
 import 'package:doliv_social/utils/Routes.dart';
-import 'package:flutter/foundation.dart' show kReleaseMode;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb, kReleaseMode;
 import 'package:flutter/material.dart';
 import 'design/design.dart';
 import 'design/gallery/component_gallery_screen.dart';
 import 'create&join-Team/create-team.dart';
 import 'home_page/bottomnavbar.dart';
 import 'package:doliv_social/screens/forgot%20password/forgot_pass.dart';
+import 'package:just_audio_background/just_audio_background.dart';
+import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'utils/connectivity_gate.dart';
+import 'utils/radio_player.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // just_audio no trae implementación nativa para Windows ni Linux (solo
+  // Android/iOS/macOS/Web). just_audio_media_kit le agrega esas dos
+  // plataformas por debajo con media_kit (libmpv) sin cambiar la API que
+  // usa `RadioPlayer`; en el resto de plataformas no hace nada (deja la
+  // implementación nativa de just_audio intacta).
+  JustAudioMediaKit.title = 'Radio Doliv';
+  JustAudioMediaKit.ensureInitialized();
+
+  // `just_audio_background` (controles en notificación / pantalla de
+  // bloqueo) depende de audio_service, que TAMPOCO tiene implementación
+  // para Windows/Linux — inicializarlo ahí lanzaría una excepción antes de
+  // llegar a `runApp`. En esas dos plataformas la radio simplemente suena
+  // sin esos controles; en el resto (donde sí aplica el concepto de
+  // "reproducción en segundo plano") se inicializa como siempre.
+  final bool supportsBackgroundAudio = !kIsWeb &&
+      defaultTargetPlatform != TargetPlatform.windows &&
+      defaultTargetPlatform != TargetPlatform.linux;
+  if (supportsBackgroundAudio) {
+    // Debe inicializarse ANTES de crear cualquier AudioPlayer (por eso va
+    // antes de tocar RadioPlayer.instance): habilita el foreground service
+    // de Android que mantiene la radio sonando con la app minimizada o la
+    // pantalla bloqueada, con controles en la notificación.
+    await JustAudioBackground.init(
+      androidNotificationChannelId: 'com.example.brl_task4.radio',
+      androidNotificationChannelName: 'Radio Doliv en vivo',
+      androidNotificationOngoing: true,
+    );
+  }
+  // Referenciar el singleton aquí (antes de mostrar cualquier pantalla)
+  // dispara su precarga del stream en segundo plano lo antes posible, para
+  // que cuando el usuario llegue a tocar el botón de radio ya esté listo.
+  RadioPlayer.instance;
   final dynamic storedValue = await secureStorage.readSecureData(key);
   // Si el usuario dejó "Recuérdame" apagado, la sesión no debe sobrevivir a
   // un reinicio de la app aunque el token siga guardado: se descarta aquí y
