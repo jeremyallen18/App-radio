@@ -1,5 +1,5 @@
 RewriteEngine On
-RewriteBase /hive-backend/
+RewriteBase /App-radio/hive-backend/
 
 # Let real files/dirs (uploads/, etc.) pass through untouched
 RewriteCond %{REQUEST_FILENAME} -f [OR]

@@ -1,1 +1,2 @@
-const String kBaseUrl = 'http://192.168.100.251/hive-backend';
+// Cambia solo esta constante para apuntar la app a otro servidor/IP/dominio.
+const String kBaseUrl = 'http://192.168.100.251/App-radio/hive-backend';
