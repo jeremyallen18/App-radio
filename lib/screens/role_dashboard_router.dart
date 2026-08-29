@@ -6,11 +6,6 @@ import '../utils/session.dart';
 import 'dashboard_director.dart';
 import 'dashboard_employee.dart';
 import 'dashboard_manager.dart';
-
-/// Lee `Session.getCachedRole()` (sin red) y muestra el dashboard que
-/// corresponde al rol del usuario autenticado. Si el rol no se pudo
-/// determinar (falló el fetch de `/user/me` o la sesión es muy antigua),
-/// se trata como [AppRole.employee] por defecto.
 import 'login.dart';
 
 /// Muestra el dashboard que corresponde al rol del usuario autenticado. Si
@@ -37,7 +32,6 @@ class _RoleDashboardRouterState extends State<RoleDashboardRouter> {
   @override
   void initState() {
     super.initState();
-    _roleFuture = Session.getCachedRole();
     _roleFuture = _resolveRole();
   }
 

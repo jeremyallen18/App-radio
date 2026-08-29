@@ -3,6 +3,7 @@ import 'package:brl_task4/screens/notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../design/components/radio_player_button.dart';
 import '../utils/api_config.dart';
 
 class MyAppBar extends StatefulWidget implements PreferredSizeWidget {
@@ -110,18 +111,24 @@ class _MyAppBarState extends State<MyAppBar> {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              IconButton(
-                icon: Icon(
-                  Icons.notifications,
-                  color: Colors.white,
-                ),
-                onPressed: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const NotificationsScreen()),
-                  );
-                  unreadCountAPI();
-                },
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const RadioPlayerButton(),
+                  IconButton(
+                    icon: Icon(
+                      Icons.notifications,
+                      color: Colors.white,
+                    ),
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                      );
+                      unreadCountAPI();
+                    },
+                  ),
+                ],
               ),
               if (unreadCount > 0)
                 Positioned(
