@@ -1,0 +1,138 @@
+/* =============================================
+   pages/equipo-hero.css
+   Equipo, parte 1/3: banda a todo el ancho encima del panel de
+   tarjetas (equipo-roster.css), portada de una referencia de diseño
+   (franja plana + titulo enorme). Colores segun tema, no fijos: en
+   oscuro (el default del sitio) la banda usa el mismo fondo que el
+   resto del modo oscuro (--bg-gradient) para que se sienta parte de la
+   pagina, no un bloque ajeno -- el turquesa de marca (--brand-cyan) del
+   diseño de referencia queda reservado para el tema claro, donde sí
+   funciona como acento fuerte sobre fondo blanco. Todo el bloque se
+   parametriza con variables --band-* redefinidas bajo body.light-theme
+   para no duplicar reglas.
+   Sigue en pages/equipo-roster.css.
+   ============================================= */
+
+.team-hero-band {
+    --band-bg: var(--bg-gradient);
+    --band-text: var(--text-main);
+    --band-text-soft: color-mix(in srgb, var(--text-main) 55%, transparent);
+    --band-accent: var(--cyan-glow);
+
+    position: relative;
+    width: 100%;
+    /* 81px = alto real de .nav-glass (fija, ver components/navbar-bar.css)
+       -- igual que el ajuste hecho en anuncios-news.css: sin esto la banda
+       arranca tapada o deja un hueco vacio antes del color. */
+    padding: calc(81px + var(--space-8)) 5% clamp(120px, 14vw, 180px);
+    background: var(--band-bg);
+    color: var(--band-text);
+    overflow: hidden;
+}
+
+body.light-theme .team-hero-band {
+    --band-bg: linear-gradient(100deg, var(--brand-cyan) 0%, #5be0ff 55%, var(--brand-cyan) 100%);
+    --band-text: #04121c;
+    --band-text-soft: rgba(4, 18, 28, 0.55);
+    --band-accent: #04121c;
+}
+
+/* Textura sutil: un solo circulo tenue del azul primario, para no dejar
+   la banda plana como un rectangulo de color sin ninguna profundidad. */
+.team-hero-band::after {
+    content: "";
+    position: absolute;
+    top: -30%;
+    right: -8%;
+    width: 46vw;
+    height: 46vw;
+    max-width: 560px;
+    max-height: 560px;
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--primary-blue) 55%, transparent), transparent 70%);
+    pointer-events: none;
+}
+
+.team-hero-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 1320px;
+    margin: 0 auto;
+}
+
+.team-hero-band .roster-kicker {
+    color: var(--band-accent);
+    opacity: 0.85;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-3);
+}
+
+.team-hero-band h1 {
+    font-size: clamp(2.4rem, 6vw, 4.2rem);
+    line-height: 1.02;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--band-text);
+    margin-bottom: var(--space-6);
+}
+
+/* Switch de categoria: mismo gesto de texto grande sin caja. */
+.team-toggle {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 14px;
+    flex: 0 0 auto;
+}
+
+.team-toggle-option {
+    border: 0;
+    background: transparent;
+    padding: 0 0 4px;
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+    font-weight: 700;
+    color: var(--band-text-soft);
+    cursor: pointer;
+    position: relative;
+    transition: color var(--duration-base) var(--ease-out);
+}
+
+.team-toggle-option::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 100%;
+    bottom: 0;
+    height: 2px;
+    background: var(--band-accent);
+    transition: right var(--duration-base) var(--ease-out);
+}
+
+.team-toggle-option.is-active {
+    color: var(--band-text);
+}
+
+.team-toggle-option.is-active::after {
+    right: 0;
+}
+
+.team-toggle-sep {
+    color: var(--band-text-soft);
+    opacity: 0.6;
+    font-weight: 300;
+    font-size: 1.3rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .team-hero-band {
+        transition: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .team-hero-band {
+        padding: calc(81px + var(--space-6)) 6% clamp(96px, 22vw, 140px);
+    }
+}

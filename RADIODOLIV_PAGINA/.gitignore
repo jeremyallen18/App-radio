@@ -1,0 +1,9 @@
+# Podcasts pesados
+assets/audio/podcasts/*.mp3
+
+# Claude Code
+.claude/
+.agents/
+
+# Variables de entorno y credenciales
+config/.env

@@ -1,0 +1,420 @@
+/* =============================================
+   pages/eventos-cartelera.css
+   Eventos, parte 3/4: capitulo 3 (cartelera completa como indice
+   editorial + visor flotante del cartel) y capitulo 4 (cierre).
+   Viene de pages/eventos-hero.css, sigue en pages/eventos-modal.css.
+
+   Aqui vive la decision central del rediseno: la cartelera NO es una
+   rejilla de tarjetas. Es un indice de filas — numero de orden, titulo
+   grande, metadatos, cuenta regresiva — separadas por una linea fina,
+   con el cartel apareciendo en un visor que sigue al cursor. Es el
+   mismo criterio de .values-list en Conocenos, llevado a contenido con
+   imagen.
+   ============================================= */
+
+.ev-chapter--index {
+    position: relative;
+    align-items: flex-start;
+    padding-block: clamp(80px, 12vh, 140px);
+}
+
+.ev-index-head {
+    margin-bottom: var(--space-7);
+}
+
+/* =========================================================
+   FILTROS
+   Enlaces de texto con un subrayado unico que se desliza hasta la
+   pestana activa (lo posiciona eventos.js midiendo el boton). Nada
+   de pildoras.
+   ========================================================= */
+.ev-filters {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(18px, 3vw, 38px);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--ev-hairline);
+}
+
+.ev-filter {
+    padding: 0;
+    border: 0;
+    background: none;
+    font-family: var(--font-display);
+    font-size: clamp(0.95rem, 1.7vw, 1.15rem);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--ev-body);
+    cursor: pointer;
+    transition: color var(--duration-base) var(--ease-out), opacity var(--duration-base) var(--ease-out);
+}
+
+.ev-filter sup {
+    margin-left: 4px;
+    font-size: 0.62em;
+    font-variant-numeric: tabular-nums;
+    color: var(--ev-accent);
+}
+
+.ev-filter:hover,
+.ev-filter.is-active {
+    color: var(--ev-ink);
+}
+
+/* Un filtro sin ningun evento se deja visible pero apagado: se ve que
+   existe y que esta vacio, en vez de desaparecer de la fila. */
+.ev-filter.is-empty {
+    opacity: 0.4;
+}
+
+.ev-filters-ink {
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    width: 0;
+    background: var(--ev-accent);
+    transition:
+        transform var(--duration-slow) var(--ease-out),
+        width var(--duration-slow) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ev-filters-ink {
+        transition: none;
+    }
+}
+
+/* =========================================================
+   INDICE DE EVENTOS
+   ========================================================= */
+.ev-index {
+    border-top: 1px solid var(--ev-hairline);
+}
+
+.ev-row {
+    position: relative;
+    display: grid;
+    /* Cinco columnas para las cinco celdas de la fila (numero, titulo,
+       fecha/lugar, cuenta regresiva, boletos). Con cuatro, la quinta se
+       desbordaba a un segundo renglon y el enlace de boletos aparecia
+       suelto debajo del titulo. La miniatura no cuenta: en escritorio
+       esta en display:none y no ocupa celda. */
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+    align-items: center;
+    gap: clamp(16px, 3vw, 44px);
+    padding-block: clamp(22px, 3.2vw, 38px);
+    border-bottom: 1px solid var(--ev-hairline);
+    transition: border-color var(--duration-slow) var(--ease-out);
+}
+
+.ev-row.is-filtered-out {
+    display: none;
+}
+
+/* El barrido de acento entra desde la izquierda al pasar el cursor:
+   tine la fila entera sin dibujarle una caja alrededor. */
+.ev-row::before {
+    content: "";
+    position: absolute;
+    inset: 0 -5% 0 -5%;
+    z-index: -1;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--ev-accent) 12%, transparent), transparent 62%);
+    opacity: 0;
+    transition: opacity var(--duration-slow) var(--ease-out);
+    pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .ev-row:hover::before,
+    .ev-row:focus-within::before {
+        opacity: 1;
+    }
+
+    .ev-row:hover,
+    .ev-row:focus-within {
+        border-color: var(--ev-hairline-strong);
+    }
+
+    .ev-row:hover .ev-row-title,
+    .ev-row:focus-within .ev-row-title {
+        color: var(--ev-accent);
+        transform: translateX(10px);
+    }
+
+    .ev-row:hover .ev-row-index,
+    .ev-row:focus-within .ev-row-index {
+        color: var(--ev-accent);
+        opacity: 1;
+    }
+}
+
+.ev-row-index {
+    font-family: var(--font-display);
+    font-size: clamp(0.8rem, 1.4vw, 1rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.08em;
+    color: var(--ev-body);
+    opacity: 0.6;
+    transition: color var(--duration-slow) var(--ease-out), opacity var(--duration-slow) var(--ease-out);
+}
+
+/* Miniatura: solo donde no hay hover real. En escritorio el cartel se
+   ve mucho mas grande en el visor flotante. */
+.ev-row-thumb {
+    display: none;
+    width: 64px;
+    height: 64px;
+    flex: none;
+    overflow: hidden;
+}
+
+.ev-row-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ev-row-main {
+    min-width: 0;
+}
+
+.ev-row-title {
+    margin: 0 0 4px;
+    font-size: clamp(1.5rem, 3.4vw, 2.75rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    color: var(--ev-ink);
+    transition: color var(--duration-slow) var(--ease-out), transform var(--duration-slow) var(--ease-out);
+}
+
+.ev-row-artist {
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--ev-body);
+}
+
+.ev-row-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.ev-row-date {
+    font-family: var(--font-display);
+    font-size: clamp(0.9rem, 1.5vw, 1.05rem);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--ev-ink);
+}
+
+.ev-row-date.is-tbd {
+    color: var(--ev-body);
+}
+
+.ev-row-place {
+    font-size: var(--text-sm);
+    color: var(--ev-body);
+}
+
+.ev-row-countdown {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--ev-accent);
+}
+
+.ev-row-countdown.is-tbd {
+    font-weight: 500;
+    color: var(--ev-body);
+}
+
+.ev-row.is-urgent .ev-row-countdown {
+    color: #ffd166;
+}
+
+/* Enlace de boletos: por encima de la capa de click de la fila. */
+.ev-row-actions {
+    position: relative;
+    z-index: 2;
+}
+
+.ev-row-buy {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid transparent;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--ev-body);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color var(--duration-base) var(--ease-out), border-color var(--duration-base) var(--ease-out);
+}
+
+.ev-row-buy i,
+.ev-row-buy svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+}
+
+.ev-row-buy:hover {
+    color: var(--ev-accent);
+    border-color: var(--ev-accent);
+}
+
+/* Capa de click de la fila completa. */
+.ev-row-open {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border: 0;
+    background: none;
+    cursor: pointer;
+}
+
+.ev-row-open:focus-visible {
+    outline: none;
+}
+
+.ev-row:has(.ev-row-open:focus-visible) {
+    outline: 2px solid var(--ev-accent);
+    outline-offset: 6px;
+}
+
+/* =========================================================
+   VISOR FLOTANTE DEL CARTEL
+   Sigue al cursor sobre el indice. Solo existe con puntero fino: en
+   tactil no hay hover, y para eso cada fila lleva su miniatura.
+   ========================================================= */
+.ev-peek {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 3;
+    width: clamp(170px, 14vw, 220px);
+    aspect-ratio: 1 / 1;
+    display: none;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate3d(var(--peek-x, 0), var(--peek-y, 0), 0) scale(0.86);
+    transition: opacity 320ms var(--ease-out), scale 320ms var(--ease-out);
+    will-change: transform, opacity;
+}
+
+.ev-peek.is-visible {
+    opacity: 1;
+    scale: 1;
+}
+
+.ev-peek img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6);
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    .ev-peek {
+        display: block;
+    }
+}
+
+/* =========================================================
+   CAPITULO 4 — CIERRE
+   ========================================================= */
+.ev-close {
+    max-width: 1000px;
+}
+
+.ev-close-lead {
+    max-width: 52ch;
+    margin: 0 0 var(--space-6);
+    font-size: clamp(1.125rem, 2vw, 1.375rem);
+    line-height: 1.5;
+    color: var(--ev-body);
+}
+
+.ev-close-trust {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+    margin: var(--space-8) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ev-close-trust li {
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--ev-hairline);
+    flex: 1 1 240px;
+    font-size: var(--text-sm);
+    color: var(--ev-body);
+}
+
+/* =========================================================
+   Mobile
+   ========================================================= */
+@media (max-width: 860px) {
+    .ev-row {
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-areas:
+            "thumb main"
+            "thumb meta"
+            "count buy";
+        align-items: start;
+        gap: 12px var(--space-4);
+    }
+
+    .ev-row-index {
+        display: none;
+    }
+
+    .ev-row-thumb {
+        display: block;
+        grid-area: thumb;
+    }
+
+    .ev-row-main { grid-area: main; }
+
+    .ev-row-meta {
+        grid-area: meta;
+        text-align: left;
+        white-space: normal;
+    }
+
+    .ev-row-countdown { grid-area: count; }
+
+    .ev-row-actions {
+        grid-area: buy;
+        justify-self: end;
+    }
+}
+
+@media not all and (hover: hover) {
+    /* Sin hover no hay visor flotante, asi que la miniatura es la unica
+       forma de ver el cartel desde el indice. */
+    .ev-row-thumb {
+        display: block;
+    }
+}
+
+/* =========================================================
+   Tema claro
+   ========================================================= */
+body.light-theme .ev-peek img {
+    box-shadow: 0 30px 70px rgba(2, 12, 27, 0.28);
+}
+
+body.light-theme .ev-row.is-urgent .ev-row-countdown {
+    color: #b45309;
+}

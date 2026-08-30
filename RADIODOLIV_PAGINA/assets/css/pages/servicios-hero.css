@@ -1,0 +1,171 @@
+/* =============================================
+   pages/servicios-hero.css
+   Servicios, parte 1/2: hero, navegacion por categoria y
+   cabeceras de categoria. Dividido desde servicios.css (fase
+   de reorganizacion de arquitectura CSS, 2026-08-13) -- mismo
+   contenido, sin cambios de valores.
+   Sigue en pages/servicios-cards.css.
+   ============================================= */
+
+/* =========================
+   SERVICIOS
+   ========================= */
+
+.services-main {
+    /* Limita ancho maximo para que no se estire demasiado en pantallas grandes. */
+    max-width: 1280px;
+    /* Centra horizontalmente la seccion. */
+    margin: 0 auto;
+    /* Da aire arriba/abajo y separa de los bordes laterales. */
+    padding: var(--page-shell-padding);
+}
+
+.services-hero {
+    /* Limita ancho del bloque de texto para facilitar lectura. */
+    max-width: 880px;
+    /* Centra el bloque y agrega espacio inferior antes del primer bloque. */
+    margin: 0 auto 64px;
+    /* Centra textos del hero de servicios. */
+    text-align: center;
+}
+
+.services-kicker {
+    /* Usa color acento de marca para etiqueta superior. */
+    color: var(--cyan-glow);
+    /* Marca visual fuerte. */
+    font-weight: 700;
+    /* Separa etiqueta del titulo principal. */
+    margin-bottom: 12px;
+    /* Convierte el texto en mayusculas. */
+    text-transform: uppercase;
+    /* Tamano pequeno tipo subtitulo. */
+    font-size: 0.82rem;
+    /* Espaciado ligero entre letras para estilo editorial. */
+    letter-spacing: 0.8px;
+}
+
+.services-hero h1 {
+    /* Tamano fluido del titulo segun ancho de pantalla. */
+    font-size: clamp(1.9rem, 5vw, 3rem);
+    /* Espacio entre titulo y parrafo. */
+    margin-bottom: 14px;
+}
+
+.services-hero p {
+    /* Color secundario para texto descriptivo. */
+    color: var(--soft-text);
+    /* Altura de linea para mejor legibilidad. */
+    line-height: 1.65;
+}
+
+/* =========================================================
+   NAV DE CATEGORIAS — pildoras pegajosas inspiradas en el
+   selector de unidades de negocio de grupoexpansion.com: en vez
+   de un menu de texto plano, cada pildora lleva su propio icono
+   y un contador, y se resalta sola segun la seccion visible
+   (scroll-spy, ver assets/js/pages/servicios.js).
+   ========================================================= */
+.services-catnav {
+    position: sticky;
+    top: 92px;
+    z-index: var(--z-dropdown);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    margin: 0 auto 56px;
+    max-width: fit-content;
+    border-radius: var(--radius-full);
+    background: rgba(5, 10, 20, 0.62);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--glass-border);
+}
+
+.services-catnav-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: var(--radius-full);
+    color: var(--soft-text);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background var(--duration-base) var(--ease-out),
+                color var(--duration-base) var(--ease-out);
+}
+
+.services-catnav-pill i {
+    width: 15px;
+    height: 15px;
+}
+
+.services-catnav-pill:hover {
+    background: var(--glass);
+    color: var(--text-main);
+}
+
+.services-catnav-pill.is-active {
+    color: #04121c;
+    background: var(--brand-cyan, var(--cyan-glow));
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--brand-cyan) 40%, transparent);
+}
+
+.services-catnav-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: var(--radius-full);
+    background: color-mix(in srgb, currentColor 16%, transparent);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.services-anchor {
+    display: block;
+    scroll-margin-top: 100px;
+}
+
+@media (max-width: 720px) {
+    /* Las 4 pildoras (con icono + texto + contador) no caben en una fila a
+       este ancho: sin este ajuste, flex-wrap las apilaba en varias lineas
+       dentro del contenedor con border-radius:full pensado para una sola
+       fila, dejando una "capsula" vertical con esquinas rarisimas. En vez
+       de apilarlas, el mismo patron que ya usan .podcast-tabs/.roster-tabs
+       en el resto del sitio: una sola fila con scroll horizontal. */
+    .services-catnav {
+        position: static;
+        max-width: none;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+    }
+
+    .services-catnav-pill {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+    }
+}
+
+/* =========================================================
+   Bloques por categoria: cada uno es su propio [data-reveal]
+   (ver base.css), asi que entra en escena por separado a medida
+   que se hace scroll -- en vez de una sola rejilla plana de 10
+   tarjetas identicas, la pagina cuenta tres momentos distintos:
+   contenido, negocio y presencia en vivo.
+   ========================================================= */
+.services-category {
+    scroll-margin-top: 100px;
+    margin-bottom: clamp(64px, 9vw, 112px);
+}
+
+.services-category:last-child {
+    margin-bottom: 0;
+}
+

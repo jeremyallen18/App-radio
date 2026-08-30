@@ -1,0 +1,433 @@
+/* =============================================
+   pages/programas-list.css
+   Programas, parte 2/3: rundown -- la parrilla partida en franjas del
+   dia (madrugada/mañana/tarde/noche) y, dentro de cada una, un programa
+   por linea SIN tarjeta: la hora vive en un canal propio a la izquierda,
+   el texto cuelga de una linea vertical del color del programa y el arte
+   flota a la derecha sobre un halo, sin marco ni caja.
+   Viene de pages/programas-hero.css, sigue en pages/programas-modal.css.
+   ============================================= */
+
+.rundown {
+    display: grid;
+    gap: clamp(48px, 6vw, 86px);
+}
+
+.rundown-block.is-filtered-out {
+    display: none;
+}
+
+/* --- Cabecera de franja: capitulo del dia --- */
+.rundown-block-head {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: baseline;
+    gap: 0 var(--space-4);
+    padding-bottom: var(--space-4);
+    margin-bottom: var(--space-7);
+    border-bottom: 1px solid var(--glass-border);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out);
+}
+
+.rundown-block-head.is-visible {
+    opacity: 1;
+    transform: none;
+}
+
+.rundown-block-head h2 {
+    font-size: clamp(1.5rem, 3.4vw, 2.4rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.01em;
+}
+
+.rundown-block-range {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--brand-cyan, var(--cyan-glow));
+}
+
+.rundown-block-note {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    color: var(--soft-text);
+    font-size: var(--text-sm);
+}
+
+/* =========================================================
+   ENTRADA DE PROGRAMA
+   ========================================================= */
+.rundown-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: 116px minmax(0, 1fr) clamp(160px, 18vw, 230px);
+    align-items: start;
+    gap: clamp(16px, 2.4vw, 34px);
+    padding: clamp(22px, 3vw, 34px) 0;
+    border-top: 1px solid var(--glass-border);
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
+}
+
+.rundown-item.is-visible {
+    opacity: 1;
+    transform: none;
+}
+
+.rundown-item.is-filtered-out {
+    display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rundown-item,
+    .rundown-block-head {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}
+
+/* Lavado de color que entra desde la izquierda al pasar el mouse -- el
+   unico "fondo" de la entrada, y solo mientras se interactua: fuera del
+   hover no hay caja de ningun tipo. */
+.rundown-item::before {
+    content: "";
+    position: absolute;
+    /* El sangrado lateral se escala con el viewport: a 24px fijos se salia
+       del contenedor en telefonos (el shell solo aporta 5% ≈ 19px de
+       padding a 375px) y empujaba scroll horizontal en toda la pagina. */
+    inset: 0 calc(-1 * clamp(0px, 2vw, 24px));
+    z-index: -1;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--show-accent) 13%, transparent), transparent 58%);
+    opacity: 0;
+    transition: opacity var(--duration-base) var(--ease-out);
+    pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .rundown-item:hover::before {
+        opacity: 1;
+    }
+}
+
+/* --- Canal de hora --- */
+.rundown-item-clock {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 4px;
+}
+
+.rundown-item-hour {
+    font-size: clamp(1.7rem, 3.2vw, 2.3rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--show-accent);
+}
+
+.rundown-item-hour i {
+    font-style: normal;
+    font-size: 0.5em;
+    opacity: 0.55;
+}
+
+.rundown-item-hour--always {
+    font-size: clamp(1.1rem, 2.2vw, 1.5rem);
+}
+
+.rundown-item-range {
+    font-size: 0.68rem;
+    line-height: 1.35;
+    color: var(--muted-text);
+}
+
+/* Etiqueta "En vivo": solo aparece en la entrada que el JS marca como
+   is-live con la hora local del visitante. */
+.rundown-item-live {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 0.66rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--show-accent);
+}
+
+.rundown-item.is-live .rundown-item-live {
+    display: inline-flex;
+}
+
+.rundown-item.is-live .pulse-dot {
+    background: var(--show-accent);
+}
+
+/* La entrada al aire se marca con una barra del color del programa en el
+   canal de hora, no con un borde alrededor: sigue sin haber tarjeta. */
+.rundown-item.is-live {
+    border-top-color: var(--show-accent);
+}
+
+.rundown-item.is-live::before {
+    opacity: 1;
+}
+
+/* --- Cuerpo --- */
+.rundown-item-main {
+    min-width: 0;
+    padding-left: clamp(16px, 2vw, 26px);
+    border-left: 1px solid var(--glass-border);
+    transition: border-color var(--duration-base) var(--ease-out);
+}
+
+.rundown-item:hover .rundown-item-main,
+.rundown-item.is-live .rundown-item-main {
+    border-left-color: var(--show-accent);
+}
+
+.rundown-item-kicker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.66rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted-text);
+    margin-bottom: 10px;
+}
+
+.rundown-item-num {
+    color: var(--show-accent);
+}
+
+.rundown-item-title {
+    font-size: clamp(1.6rem, 3.8vw, 2.6rem);
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin-bottom: 10px;
+    transition: color var(--duration-base) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .rundown-item:hover .rundown-item-title {
+        color: var(--show-accent);
+    }
+}
+
+.rundown-item.is-live .rundown-item-title {
+    color: var(--show-accent);
+}
+
+.rundown-item-host {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--soft-text);
+    margin-bottom: 12px;
+}
+
+/* Lucide reemplaza cada <i data-lucide> por un <svg>: la regla tiene que
+   alcanzar a ambos o el icono ya convertido sale a 24px. */
+.rundown-item-host i,
+.rundown-item-host svg {
+    width: 15px;
+    height: 15px;
+    color: var(--show-accent);
+    stroke: currentColor;
+}
+
+.rundown-item-desc {
+    max-width: 54ch;
+    color: var(--soft-text);
+    line-height: 1.65;
+    margin-bottom: 14px;
+}
+
+.rundown-item-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    list-style: none;
+    margin-bottom: 18px;
+}
+
+.rundown-item-tags li {
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--show-accent);
+}
+
+.rundown-item-tags li:not(:last-child)::after {
+    content: "/";
+    margin-left: 6px;
+    opacity: 0.45;
+}
+
+/* CTA como link de texto subrayado, no como boton con caja. */
+.rundown-item-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 0 3px;
+    border: 0;
+    border-bottom: 1px solid var(--glass-border);
+    background: transparent;
+    color: var(--text-main);
+    font-size: var(--text-sm);
+    font-weight: 800;
+    cursor: pointer;
+    transition: color var(--duration-base) var(--ease-out),
+                border-color var(--duration-base) var(--ease-out),
+                gap var(--duration-base) var(--ease-out);
+}
+
+.rundown-item-cta i,
+.rundown-item-cta svg {
+    width: 15px;
+    height: 15px;
+    stroke: currentColor;
+    transition: transform var(--duration-base) var(--ease-out);
+}
+
+.rundown-item-cta:hover {
+    color: var(--show-accent);
+    border-color: var(--show-accent);
+    gap: 12px;
+}
+
+.rundown-item-cta:hover i {
+    transform: translate(2px, -2px);
+}
+
+/* --- Arte: emblema flotando sobre un halo, sin marco ---
+   Los artes de cada programa son portadas/emblemas circulares que
+   pierden legibilidad si se recortan a sangre, por eso object-fit:
+   contain sobre un halo de color en vez de un crop rectangular. */
+.rundown-item-art {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+}
+
+.rundown-item-halo {
+    position: absolute;
+    inset: 6%;
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--show-accent) 42%, transparent), transparent 68%);
+    filter: blur(18px);
+    opacity: 0.75;
+    transition: opacity var(--duration-slow) var(--ease-out),
+                transform var(--duration-slow) var(--ease-out);
+}
+
+.rundown-item-art img {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 14px 26px rgba(0, 0, 0, 0.4));
+    transition: transform var(--duration-slow) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .rundown-item:hover .rundown-item-art img {
+        transform: scale(1.07) rotate(-3deg);
+    }
+
+    .rundown-item:hover .rundown-item-halo {
+        opacity: 1;
+        transform: scale(1.12);
+    }
+}
+
+/* Insignia con el icono del programa, pegada al borde del arte. */
+.rundown-item-badge {
+    position: absolute;
+    z-index: 2;
+    right: 4%;
+    bottom: 4%;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--show-accent);
+    color: #04121c;
+    box-shadow: 0 8px 20px color-mix(in srgb, var(--show-accent) 45%, transparent);
+}
+
+.rundown-item-badge i,
+.rundown-item-badge svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+}
+
+.rundown-empty {
+    text-align: center;
+    color: var(--soft-text);
+    padding: var(--space-7) 0;
+}
+
+/* =========================================================
+   Responsive: el arte pasa a acompañar al canal de hora en una fila
+   propia, para que el texto conserve el ancho util del telefono.
+   ========================================================= */
+@media (max-width: 900px) {
+    .rundown-item {
+        grid-template-columns: 96px minmax(0, 1fr);
+        grid-template-areas:
+            "clock art"
+            "main  main";
+        gap: 16px;
+    }
+
+    .rundown-item-clock { grid-area: clock; }
+    .rundown-item-main  { grid-area: main; }
+
+    .rundown-item-art {
+        grid-area: art;
+        justify-self: end;
+        width: 108px;
+        aspect-ratio: 1;
+    }
+
+    .rundown-item-main {
+        padding-left: 0;
+        border-left: 0;
+        border-top: 1px solid var(--glass-border);
+        padding-top: 16px;
+    }
+
+    .rundown-item:hover .rundown-item-main,
+    .rundown-item.is-live .rundown-item-main {
+        border-left-color: transparent;
+        border-top-color: var(--show-accent);
+    }
+}
+
+@media (max-width: 520px) {
+    .rundown-item {
+        grid-template-columns: 78px minmax(0, 1fr);
+    }
+
+    .rundown-item-art {
+        width: 84px;
+    }
+}

@@ -1,0 +1,125 @@
+/* =========================================================
+   components/carousel.css
+   Contrato visual para el carrusel de Bootstrap 5 (.carousel,
+   .carousel-inner, .carousel-item, .carousel-indicators,
+   .carousel-control-*). Solo cargamos bootstrap.bundle.min.js
+   (la logica: slide, autoplay, swipe, teclado) -- el CSS de
+   Bootstrap NO se carga para no chocar con nuestro sistema de
+   tokens/tema oscuro, asi que estas reglas reproducen el mismo
+   contrato de clases que la libreria espera (position/transform)
+   pero con nuestros propios colores y espaciados.
+   ========================================================= */
+
+.carousel {
+    position: relative;
+}
+
+.carousel-inner {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--glass-border);
+}
+
+.carousel-item {
+    position: relative;
+    display: none;
+    float: left;
+    width: 100%;
+    margin-right: -100%;
+    backface-visibility: hidden;
+    transition: transform var(--duration-slow) var(--ease-in-out);
+}
+
+.carousel-item.active,
+.carousel-item-next,
+.carousel-item-prev {
+    display: block;
+}
+
+.carousel-item-next:not(.carousel-item-start),
+.active.carousel-item-end {
+    transform: translateX(100%);
+}
+
+.carousel-item-prev:not(.carousel-item-end),
+.active.carousel-item-start {
+    transform: translateX(-100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .carousel-item {
+        transition: none;
+    }
+}
+
+/* --- Controles prev/next: mismo lenguaje visual que ya usamos en el
+       carrusel de anuncios de programas (circulo translucido). --- */
+.carousel-control-prev,
+.carousel-control-next {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: var(--z-dropdown);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    opacity: 0.85;
+    transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.carousel-control-prev:hover,
+.carousel-control-next:hover {
+    opacity: 1;
+}
+
+.carousel-control-prev { left: 0; }
+.carousel-control-next { right: 0; }
+
+.carousel-control-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(2, 6, 23, 0.55);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- Indicadores: puntos con el color de marca. --- */
+.carousel-indicators {
+    position: absolute;
+    right: 0;
+    bottom: var(--space-4);
+    left: 0;
+    z-index: var(--z-dropdown);
+    display: flex;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.carousel-indicators button {
+    width: 9px;
+    height: 9px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+
+.carousel-indicators button.active {
+    background: #fff;
+    transform: scale(1.3);
+}
