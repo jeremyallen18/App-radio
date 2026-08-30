@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
 
 /// Estados compartidos para `FutureBuilder`/`StreamBuilder`: vacío, carga y
 /// error. Reemplaza a los `Text('Error: $e')` crudos repetidos por pantalla.

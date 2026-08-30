@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'colors.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
 
 /// Escala tipográfica de 6 pasos, mapeada sobre [TextTheme] de Material 3.
 /// Pesos tomados de la pantalla ya migrada `login.dart` (w800 títulos,

@@ -2,6 +2,10 @@
 require __DIR__ . '/config.php';
 require __DIR__ . '/helpers.php';
 require __DIR__ . '/site_content.php';
+require __DIR__ . '/events.php';
+require __DIR__ . '/attendance.php';
+require __DIR__ . '/leave_requests.php';
+require __DIR__ . '/dept_tasks.php';
 
 // ---- routing -------------------------------------------------------
 
@@ -29,7 +33,8 @@ $routes = [
     ['POST', '#^/team/sendTeamcode/([^/]+)/([^/]+)/?$#',      'sendTeamcode'],
     ['POST', '#^/team/joinTeam/?$#',                          'joinTeam'],
     ['GET',  '#^/team/showTeams/?$#',                         'showTeams'],
-    ['POST', '#^/team/task/([^/]+)/?$#',                      'addTask'],
+    // La creación de tareas se unificó en el flujo por departamento
+    // (POST /dept-tasks). El endpoint viejo /team/task fue retirado.
     ['POST', '#^/team/taskDone/?$#',                          'taskDone'],
     ['GET',  '#^/team/incompleteTasks/?$#',                   'incompleteTasks'],
     ['GET',  '#^/team/completedTasks/?$#',                    'completedTasks'],
@@ -60,6 +65,21 @@ $routes = [
     ['GET',  '#^/department/list/?$#',                        'listDepartments'],
     ['POST', '#^/department/assignManager/([^/]+)/?$#',       'assignDepartmentManager'],
     ['POST', '#^/department/assignEmployee/([^/]+)/?$#',      'assignDepartmentEmployee'],
+    ['POST', '#^/department/removeEmployee/([^/]+)/?$#',      'removeDepartmentEmployee'],
+
+    // ---- Flujo jerárquico de tareas por departamento/equipo -----------
+    // Director: cualquier departamento. Manager: tareas y subtareas de su
+    // departamento. Empleado: solo cambia el estado (marcar completada).
+    ['GET',  '#^/dept-tasks/summary/?$#',                    'deptTasksSummary'],
+    ['GET',  '#^/dept-tasks/?$#',                            'deptTasksList'],
+    ['POST', '#^/dept-tasks/?$#',                            'deptTaskCreate'],
+    ['POST', '#^/dept-tasks/([^/]+)/status/?$#',             'deptTaskSetStatus'],
+    ['POST', '#^/dept-tasks/([^/]+)/review/?$#',             'deptTaskReview'],
+    ['POST', '#^/dept-tasks/([^/]+)/delete/?$#',             'deptTaskDelete'],
+    ['GET',  '#^/dept-tasks/([^/]+)/comments/?$#',           'deptTaskComments'],
+    ['POST', '#^/dept-tasks/([^/]+)/comments/?$#',           'deptTaskCommentCreate'],
+    ['GET',  '#^/dept-tasks/([^/]+)/evidence/?$#',           'deptTaskEvidence'],
+    ['POST', '#^/dept-tasks/([^/]+)/?$#',                    'deptTaskUpdate'],
 
     // ---- Gestión de contenido del sitio público RADIODOLIV_PAGINA -------
     // Solo director (ver site_content.php). Create/update van como
@@ -88,6 +108,8 @@ $routes = [
     ['POST', '#^/site/programas/?$#',                         'siteProgramaCreate'],
     ['POST', '#^/site/programas/([^/]+)/?$#',                 'siteProgramaUpdate'],
     ['POST', '#^/site/programas/([^/]+)/delete/?$#',          'siteProgramaDelete'],
+    // Lectura de la parrilla para cualquier usuario (ver desde el reproductor).
+    ['GET',  '#^/radio/programs/?$#',                         'radioProgramsList'],
 
     ['GET',  '#^/site/patrocinadores/?$#',                    'sitePatrocinadoresList'],
     ['POST', '#^/site/patrocinadores/?$#',                    'siteSponsorCreate'],
@@ -98,6 +120,56 @@ $routes = [
     ['POST', '#^/site/podcasts/?$#',                          'sitePodcastCreate'],
     ['POST', '#^/site/podcasts/([^/]+)/?$#',                  'sitePodcastUpdate'],
     ['POST', '#^/site/podcasts/([^/]+)/delete/?$#',           'sitePodcastDelete'],
+
+    // ---- Asistencia y hora de comida (EXCLUSIVO para empleados) ---------
+    // El backend rechaza con 403 cualquier operación cuyo rol no sea
+    // 'employee' (ver attendance_require_employee en attendance.php).
+    ['POST', '#^/attendance/entry/?$#',                       'attendanceEntry'],
+    ['POST', '#^/attendance/meal/start/?$#',                  'attendanceMealStart'],
+    ['POST', '#^/attendance/meal/end/?$#',                    'attendanceMealEnd'],
+    ['POST', '#^/attendance/exit/?$#',                        'attendanceExit'],
+    ['GET',  '#^/attendance/today/?$#',                       'attendanceToday'],
+    ['GET',  '#^/attendance/status/?$#',                      'attendanceToday'],
+    ['GET',  '#^/attendance/history/?$#',                     'attendanceHistory'],
+    ['GET',  '#^/attendance/summary/?$#',                     'attendanceSummary'],
+    ['GET',  '#^/attendance/corrections/my/?$#',              'attendanceCorrectionsMine'],
+    ['POST', '#^/attendance/corrections/?$#',                 'attendanceCorrectionCreate'],
+
+    // ---- Asistencia: panel administrativo (director / manager) ---------
+    ['GET',  '#^/admin/attendance-location/?$#',              'adminLocationGet'],
+    ['POST', '#^/admin/attendance-location/?$#',              'adminLocationSave'],
+    // Rutas específicas ANTES del comodín /admin/attendance/{id}.
+    ['GET',  '#^/admin/attendance/summary/?$#',               'adminAttendanceSummary'],
+    ['GET',  '#^/admin/attendance/report/?$#',                'attendanceReport'],
+    ['GET',  '#^/admin/attendance/corrections/?$#',           'adminAttendanceCorrections'],
+    ['POST', '#^/admin/attendance/corrections/([^/]+)/resolve/?$#', 'adminAttendanceCorrectionResolve'],
+    ['GET',  '#^/admin/attendance/?$#',                       'adminAttendanceList'],
+    ['GET',  '#^/admin/attendance/([^/]+)/?$#',               'adminAttendanceEmployee'],
+    ['GET',  '#^/admin/schedules/?$#',                        'adminSchedulesList'],
+    ['GET',  '#^/admin/schedules/([^/]+)/?$#',                'adminScheduleGet'],
+    ['POST', '#^/admin/schedules/([^/]+)/?$#',                'adminScheduleSave'],
+
+    // ---- Permisos, vacaciones e incapacidades -------------------------
+    // Empleado: crear y consultar las propias. Director: revisar/decidir.
+    ['POST', '#^/leave-requests/?$#',                         'leaveRequestCreate'],
+    ['GET',  '#^/leave-requests/my/?$#',                      'leaveRequestsMine'],
+    ['GET',  '#^/leave-requests/([^/]+)/evidence/?$#',        'leaveRequestEvidence'],
+    ['POST', '#^/leave-requests/([^/]+)/cancel/?$#',          'leaveRequestCancelByEmployee'],
+    ['GET',  '#^/leave-requests/([^/]+)/?$#',                 'leaveRequestGet'],
+
+    ['GET',  '#^/admin/leave-requests/?$#',                   'adminLeaveRequestsList'],
+    ['GET',  '#^/admin/leave-requests/calendar/?$#',          'adminLeaveCalendar'],
+    ['POST', '#^/admin/leave-requests/([^/]+)/approve/?$#',   'adminLeaveRequestApprove'],
+    ['POST', '#^/admin/leave-requests/([^/]+)/reject/?$#',    'adminLeaveRequestReject'],
+    ['POST', '#^/admin/leave-requests/([^/]+)/cancel/?$#',    'adminLeaveRequestCancel'],
+    ['GET',  '#^/admin/leave-requests/([^/]+)/?$#',           'adminLeaveRequestGet'],
+
+    // ---- Calendario: eventos (crear/editar/borrar solo director) y feed ----
+    ['GET',  '#^/events/?$#',                                 'eventsList'],
+    ['POST', '#^/events/?$#',                                 'eventCreate'],
+    ['POST', '#^/events/([^/]+)/delete/?$#',                  'eventDelete'],
+    ['POST', '#^/events/([^/]+)/?$#',                         'eventUpdate'],
+    ['GET',  '#^/calendar/?$#',                               'calendarFeed'],
 ];
 
 try {
@@ -446,29 +518,10 @@ function showTeams(PDO $pdo) {
     json_response(['teams' => $teams, 'email' => $user['email']]);
 }
 
-function addTask(PDO $pdo, string $teamcode) {
-    $user = require_auth($pdo);
-    $body = request_body();
-    $domainName = trim($body['domainName'] ?? '');
-    $email = trim($body['email'] ?? '');
-    $task = trim($body['task'] ?? '');
-    $deadline = trim($body['deadline'] ?? '');
-
-    if ($domainName === '' || $email === '' || $task === '') {
-        text_response('domainName, email and task are required', 400);
-    }
-
-    $team = team_from_code($pdo, $teamcode);
-    if (!$team) {
-        text_response('Team not found', 404);
-    }
-    require_team_member($pdo, $team['id'], $user);
-
-    $stmt = $pdo->prepare('INSERT INTO tasks (team_code, domain_name, email, description, deadline) VALUES (?, ?, ?, ?, ?)');
-    $stmt->execute([$teamcode, $domainName, $email, $task, $deadline]);
-
-    text_response('Task Added', 200);
-}
+// La creación de tareas del sistema viejo (por team_code + domain) se retiró:
+// ahora todo pasa por el flujo jerárquico por departamento (dept_tasks.php,
+// POST /dept-tasks). `taskDone` se conserva solo para marcar como hechas las
+// tareas antiguas que ya existieran.
 
 function taskDone(PDO $pdo) {
     $user = require_auth($pdo);

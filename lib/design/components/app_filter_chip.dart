@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
 
 /// Chip de filtro con estado: a diferencia de [QuickActionChip], que dispara
 /// una acción, este representa una opción que está activa o no (el área que

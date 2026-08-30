@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../tokens/colors.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
 
 /// Campo de texto estándar. Reemplaza a `widgets/custom_text_form_field.dart`
 /// — misma API, apoyada en `inputDecorationTheme` en vez de repetir bordes.

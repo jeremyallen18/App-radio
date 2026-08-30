@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
 
 /// Botón "Volver" — visible solo en escritorio (Windows/macOS/Linux) y solo
 /// cuando hay una ruta anterior a la que volver. En Android/iOS se oculta

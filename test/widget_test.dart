@@ -6,7 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:doliv_social/screens/login.dart';
+import 'package:doliv_social/shared/auth/login.dart';
 
 Widget _wrap(Widget child) => MaterialApp(home: child);
 

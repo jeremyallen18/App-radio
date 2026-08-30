@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'app_card.dart';
-import 'identity_avatar.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
+import 'package:doliv_social/design/components/app_card.dart';
+import 'package:doliv_social/design/components/identity_avatar.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
 
 /// Tarjeta de equipo: avatar con inicial, nombre + código, conteo de
 /// miembros/tareas y barra de avance. Todos los números que recibe deben

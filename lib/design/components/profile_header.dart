@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
-import 'identity_avatar.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
+import 'package:doliv_social/design/components/identity_avatar.dart';
 
 /// Encabezado de una ficha de persona: banda de marca, foto encima del
 /// borde, nombre, puesto y las insignias que describen su lugar en la

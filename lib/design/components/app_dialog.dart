@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../tokens/colors.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
 
 /// Diálogo de confirmación estándar. Devuelve `true`/`false`/`null`
 /// (cancelado tocando fuera). Reemplaza al `AlertDialog` repetido a mano en

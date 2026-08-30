@@ -435,6 +435,41 @@ function siteProgramaDelete(PDO $pdo, string $id) {
     json_response(['ok' => true]);
 }
 
+// GET /radio/programs — lista de la programación de la radio para verla desde
+// la app (cualquier usuario autenticado, no solo el director). Ordena por
+// franja horaria para que se lea como una parrilla del día.
+function radioProgramsList(PDO $pdo) {
+    require_auth($pdo);
+    $rows = $pdo->query(
+        'SELECT id, title, host, schedule, slot_start, slot_end, weekdays,
+                badge_time, accent, image
+           FROM radio_programs
+          ORDER BY (slot_start IS NULL), slot_start ASC, sort_order ASC, id ASC'
+    )->fetchAll();
+
+    $items = array_map(function ($r) {
+        $weekdays = array_values(array_filter(array_map(
+            'intval',
+            $r['weekdays'] !== null && $r['weekdays'] !== ''
+                ? explode(',', $r['weekdays']) : []
+        ), fn($n) => $n >= 1 && $n <= 7));
+        return [
+            'id'        => (int) $r['id'],
+            'title'     => $r['title'],
+            'host'      => $r['host'],
+            'schedule'  => $r['schedule'],
+            'badgeTime' => $r['badge_time'],
+            'slotStart' => $r['slot_start'] !== null ? (int) $r['slot_start'] : null,
+            'slotEnd'   => $r['slot_end'] !== null ? (int) $r['slot_end'] : null,
+            'weekdays'  => $weekdays,
+            'accent'    => $r['accent'],
+            'image'     => $r['image'] ?: null,
+        ];
+    }, $rows);
+
+    json_response(['items' => $items]);
+}
+
 // ---- patrocinadores (sponsors + sponsor_socials) ---------------------------
 
 function site_sponsor_with_socials(PDO $pdo, int $id): array {

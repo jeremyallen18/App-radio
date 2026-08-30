@@ -39,16 +39,24 @@ dependencies:
   http: ^1.1.0
   multi_select_flutter: ^4.1.3
   table_calendar: ^3.0.9
+  # Descargar y compartir el reporte de asistencia (CSV/PDF) generado por el
+  # backend: se guarda en un archivo temporal (path_provider) y se ofrece por
+  # la hoja de compartir del sistema (share_plus).
+  path_provider: ^2.1.5
+  share_plus: ^13.3.0
+  # Mapa interactivo para elegir la ubicación de un evento del calendario
+  # (lib/shared/calendar/location_picker_map.dart). Usa teselas de
+  # OpenStreetMap (sin API key); requiere internet solo para cargar el mapa.
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
   flutter_secure_storage: ^10.3.1
   local_auth: ^2.3.0
   fl_chart: ^1.2.0
   shared_preferences: ^2.2.2
-  socket_io_client: ^3.1.6
+  # Formateo de fechas/números localizado (es_MX) — lib/shared/resources/doc.dart.
+  intl: ^0.20.2
 
-  cached_network: ^2.0.1
-  cached_network_image: ^3.3.0
-  audioplayers: ^6.7.1
-  # Reproductor de la radio en vivo (lib/utils/radio_player.dart). Se usa
+  # Reproductor de la radio en vivo (lib/core/audio/radio_player.dart). Se usa
   # just_audio (no audioplayers) para la transmisión en vivo porque su
   # motor en Android (ExoPlayer) sí entiende el protocolo ICY/Icecast que
   # manda el stream de Zeno.fm; el MediaPlayer nativo que usa audioplayers
@@ -71,8 +79,7 @@ dependencies:
   media_kit_libs_linux: any
   # webview_flutter_plus: ^0.3.0+2
   image_picker: ^1.2.3
-  dio: ^5.4.0
-  modal_progress_hud_nsn: ^0.5.1
+  geolocator: ^14.0.3
 
 
 

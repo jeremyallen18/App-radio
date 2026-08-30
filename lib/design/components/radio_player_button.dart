@@ -2,19 +2,23 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../utils/radio_player.dart';
-import '../tokens/colors.dart';
+import 'package:doliv_social/core/audio/radio_player.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
 
 /// Botón compacto para escuchar la transmisión en vivo de Radio Doliv.
 /// Vive en el header de la app, al lado del ícono de notificaciones (ver
-/// `lib/models/appbar.dart`), con el mismo tratamiento visual (círculo
-/// `AppColors.surface`) que ese botón.
+/// `lib/shared/widgets/appbar.dart`), con el mismo tratamiento visual
+/// (círculo `AppColors.surface`) que ese botón.
 ///
-/// Mientras la radio está pausada/detenida, muestra una burbujita animada
-/// a la izquierda del botón ("DOLIV En Vivo") que se desvanece en
-/// cuanto empieza a sonar.
+/// - Tocar el botón redondo = reproducir / detener.
+/// - Tocar la etiqueta de abajo = abrir [onExpand] (panel con volumen, lo
+///   que suena y acceso a la programación del día). Si [onExpand] es null,
+///   la etiqueta es solo decorativa.
 class RadioPlayerButton extends StatefulWidget {
-  const RadioPlayerButton({super.key});
+  const RadioPlayerButton({super.key, this.onExpand});
+
+  /// Abre el panel ampliado del reproductor. Lo provee `MyAppBar`.
+  final VoidCallback? onExpand;
 
   @override
   State<RadioPlayerButton> createState() => _RadioPlayerButtonState();
@@ -23,20 +27,9 @@ class RadioPlayerButton extends StatefulWidget {
 /// Tamaño de referencia de los botones del header (play/campanita).
 const double _kHeaderButtonSize = 48;
 
-/// Tamaño FIJO y exacto de la burbuja (ancho y alto). Usar valores fijos
-/// aquí -en vez de dejar que el contenido "decida" su propio tamaño- evita
-/// por completo los errores de restricciones infinitas que causaban el
-/// rectángulo rojo de error.
-const double _kBubbleWidth = 122;
-const double _kBubbleHeight = 26;
-
-class _RadioPlayerButtonState extends State<RadioPlayerButton>
-    with SingleTickerProviderStateMixin {
+class _RadioPlayerButtonState extends State<RadioPlayerButton> {
   RadioPlaybackState _state = RadioPlaybackState.stopped;
   StreamSubscription<RadioPlaybackState>? _sub;
-
-  late final AnimationController _hintController;
-  late final Animation<double> _hintNudge;
 
   @override
   void initState() {
@@ -46,22 +39,11 @@ class _RadioPlayerButtonState extends State<RadioPlayerButton>
       if (!mounted) return;
       setState(() => _state = state);
     });
-
-    // Animación en bucle: la burbuja "respira" hacia el botón y hacia atrás,
-    // para llamar la atención sin ser demasiado invasiva.
-    _hintController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 850),
-    )..repeat(reverse: true);
-    _hintNudge = Tween<double>(begin: 0, end: -6).animate(
-      CurvedAnimation(parent: _hintController, curve: Curves.easeInOut),
-    );
   }
 
   @override
   void dispose() {
     _sub?.cancel();
-    _hintController.dispose();
     super.dispose();
   }
 
@@ -83,147 +65,110 @@ class _RadioPlayerButtonState extends State<RadioPlayerButton>
 
   @override
   Widget build(BuildContext context) {
-    // La burbuja solo tiene sentido cuando invita a "dar play": se oculta
-    // en cuanto está sonando (o mientras conecta, para no estorbar).
-    final bool showHint = !_isPlaying && !_isLoading;
-
-    return SizedBox(
-      // Ancla el tamaño del botón en sí (sin la burbuja, que se dibuja por
-      // fuera gracias a Clip.none) para que coincida con la campanita.
-      height: _kHeaderButtonSize,
-      width: _kHeaderButtonSize,
-      child: Tooltip(
-        message: _isPlaying ? 'Pausar radio en vivo' : 'Escuchar radio en vivo',
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                onPressed: _isLoading ? null : _toggle,
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.textPrimary,
-                        ),
-                      )
-                    : Icon(
-                        _isPlaying
-                            ? Icons.stop_circle_rounded
-                            : Icons.play_circle_fill_rounded,
-                        color: AppColors.textPrimary,
-                      ),
-              ),
-            ),
-            if (_isPlaying)
-              Positioned(
-                right: 6,
-                top: 6,
-                child: Container(
-                  width: 10,
-                  height: 10,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: _kHeaderButtonSize,
+          width: _kHeaderButtonSize,
+          child: Tooltip(
+            message:
+                _isPlaying ? 'Pausar radio en vivo' : 'Escuchar radio en vivo',
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
                   decoration: const BoxDecoration(
-                    color: AppColors.success,
+                    color: AppColors.surface,
                     shape: BoxShape.circle,
                   ),
-                ),
-              ),
-            // Burbuja animada apuntando al botón desde la izquierda.
-            // width/height fijos: elimina cualquier ambigüedad de tamaño
-            // (nada de restricciones infinitas ni auto-tamaño impredecible).
-            Positioned(
-              top: (_kHeaderButtonSize - _kBubbleHeight) / 2,
-              right: _kHeaderButtonSize + 4,
-              width: _kBubbleWidth,
-              height: _kBubbleHeight,
-              child: IgnorePointer(
-                child: AnimatedOpacity(
-                  opacity: showHint ? 1 : 0,
-                  duration: const Duration(milliseconds: 300),
-                  child: AnimatedBuilder(
-                    animation: _hintNudge,
-                    builder: (context, child) => Transform.translate(
-                      offset: Offset(_hintNudge.value, 0),
-                      child: child,
-                    ),
-                    child: const _RadioHintBubble(),
+                  child: IconButton(
+                    onPressed: _isLoading ? null : _toggle,
+                    icon: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.textPrimary,
+                            ),
+                          )
+                        : Icon(
+                            _isPlaying
+                                ? Icons.stop_circle_rounded
+                                : Icons.play_circle_fill_rounded,
+                            color: AppColors.textPrimary,
+                          ),
                   ),
                 ),
-              ),
+                if (_isPlaying)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        color: AppColors.success,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+        const SizedBox(height: 2),
+        // Etiqueta discreta debajo del botón. Al tocarla se abre el panel
+        // ampliado (volumen, lo que suena, programación del día).
+        _CaptionLabel(
+          playing: _isPlaying,
+          onExpand: widget.onExpand,
+        ),
+      ],
     );
   }
 }
 
-/// Capsulita azul tipo globo de diálogo, con esquinas curvas y una colita
-/// que apunta hacia el botón de radio. Ocupa exactamente el tamaño fijo
-/// que le da el `Positioned` que la contiene (ver arriba).
-class _RadioHintBubble extends StatelessWidget {
-  const _RadioHintBubble();
+class _CaptionLabel extends StatelessWidget {
+  const _CaptionLabel({required this.playing, this.onExpand});
+  final bool playing;
+  final VoidCallback? onExpand;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      mainAxisSize: MainAxisSize.max,
+    final color = playing ? AppColors.success : AppColors.textMuted;
+    final label = Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Flexible(
-          child: Container(
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: AppColors.brandBlue,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white24),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black45,
-                  blurRadius: 6,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Text(
-              'DOLIV En Vivo',
-              style: TextStyle(
-                color: AppColors.accentStrong,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              softWrap: false,
-              textAlign: TextAlign.center,
-            ),
+        Text(
+          playing ? 'En vivo' : 'Doliv en vivo',
+          style: TextStyle(
+            fontSize: 9,
+            height: 1,
+            letterSpacing: 0.3,
+            fontWeight: playing ? FontWeight.w700 : FontWeight.w500,
+            color: color,
           ),
         ),
-        // Colita del globo: un cuadrito rotado 45° pegado al borde derecho
-        // de la cápsula, apuntando hacia el botón de reproducción.
-        // Nota: usamos Transform.translate (no `margin` negativo) para
-        // acercarla a la cápsula, porque Container no admite márgenes
-        // negativos (dispara un assertion error de Flutter).
-        Transform.translate(
-          offset: const Offset(-4, 0),
-          child: Transform.rotate(
-            angle: 0.785398, // 45 grados en radianes
-            child: Container(
-              width: 7,
-              height: 7,
-              decoration: const BoxDecoration(color: AppColors.brandBlue),
-            ),
-          ),
-        ),
+        if (onExpand != null) ...[
+          const SizedBox(width: 2),
+          Icon(Icons.keyboard_arrow_up_rounded, size: 11, color: color),
+        ],
       ],
+    );
+
+    if (onExpand == null) return label;
+    return Tooltip(
+      message: 'Más controles y programación',
+      child: InkWell(
+        onTap: onExpand,
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          child: label,
+        ),
+      ),
     );
   }
 }

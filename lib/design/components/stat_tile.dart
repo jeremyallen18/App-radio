@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'app_card.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
+import 'package:doliv_social/design/components/app_card.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
 
 /// Tarjeta compacta para una métrica (usada en resúmenes/dashboards):
 /// ícono, valor y etiqueta.

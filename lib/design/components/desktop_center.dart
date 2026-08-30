@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import '../tokens/breakpoints.dart';
+import 'package:doliv_social/design/tokens/breakpoints.dart';
 
 /// Envoltorio liviano para pantallas que todavía usan `Scaffold` directo (en
 /// vez de `AppScaffold`): en escritorio centra el contenido en una columna

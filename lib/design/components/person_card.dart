@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
-import 'app_card.dart';
-import 'identity_avatar.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
+import 'package:doliv_social/design/components/app_card.dart';
+import 'package:doliv_social/design/components/identity_avatar.dart';
 
 /// Fila de una persona en un listado (directorio de compañeros, miembros de
 /// un equipo): foto, nombre, puesto y, opcionalmente, una insignia a la

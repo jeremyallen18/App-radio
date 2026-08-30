@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../design.dart';
+import 'package:doliv_social/design/design.dart';
 
 /// Pantalla de referencia visual del sistema de diseño (Fase 0). No forma
 /// parte del flujo de usuario: es para revisar tokens y componentes de un

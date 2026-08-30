@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../tokens/colors.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
 
 /// Avatar circular de una persona. Si tiene foto ([photoUrl]) se muestra
 /// encima; si no hay foto, o si la descarga falla, queda visible el respaldo:

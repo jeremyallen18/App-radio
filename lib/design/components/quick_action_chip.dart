@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
 
 /// Acción compacta con ícono + etiqueta, para filas de "acciones rápidas"
 /// en dashboards (crear equipo, unirse a equipo, etc.). Más liviana que

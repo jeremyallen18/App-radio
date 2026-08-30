@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
 
 /// Encabezado de sección con título y una acción opcional a la derecha
 /// (por ejemplo "Ver todo").

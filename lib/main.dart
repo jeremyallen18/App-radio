@@ -2,31 +2,30 @@
 // only push here in dev branch
 // do not merge in main branch
 
-import 'package:doliv_social/screens/MarkTaskDone.dart';
-import 'package:doliv_social/screens/dashboard.dart';
-import 'package:doliv_social/screens/dashboard_director.dart';
-import 'package:doliv_social/screens/dashboard_employee.dart';
-import 'package:doliv_social/screens/dashboard_manager.dart';
-import 'package:doliv_social/screens/directory/colleague_directory_screen.dart';
-import 'package:doliv_social/screens/role_dashboard_router.dart';
-import 'package:doliv_social/screens/site_content/site_content_auth_gate.dart';
-import 'package:doliv_social/screens/site_content/site_content_hub.dart';
-import 'package:doliv_social/screens/join_team.dart';
-import 'package:doliv_social/screens/signup.dart';
-import 'package:doliv_social/screens/login.dart';
-import 'package:doliv_social/utils/Routes.dart';
+import 'package:doliv_social/shared/board/dashboard.dart';
+import 'package:doliv_social/features/dashboard/director/dashboard_director.dart';
+import 'package:doliv_social/features/dashboard/employee/dashboard_employee.dart';
+import 'package:doliv_social/features/dashboard/manager/dashboard_manager.dart';
+import 'package:doliv_social/shared/directory/colleague_directory_screen.dart';
+import 'package:doliv_social/features/dashboard/role_dashboard_router.dart';
+import 'package:doliv_social/features/dashboard/director/site_content/site_content_auth_gate.dart';
+import 'package:doliv_social/features/dashboard/director/site_content/site_content_hub.dart';
+import 'package:doliv_social/shared/teams/join_team.dart';
+import 'package:doliv_social/shared/auth/signup.dart';
+import 'package:doliv_social/shared/auth/login.dart';
+import 'package:doliv_social/core/Routes.dart';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb, kReleaseMode;
 import 'package:flutter/material.dart';
-import 'design/design.dart';
-import 'design/gallery/component_gallery_screen.dart';
-import 'create&join-Team/create-team.dart';
-import 'home_page/bottomnavbar.dart';
-import 'package:doliv_social/screens/forgot%20password/forgot_pass.dart';
+import 'package:doliv_social/design/design.dart';
+import 'package:doliv_social/design/gallery/component_gallery_screen.dart';
+import 'package:doliv_social/shared/teams/create_join_team/create-team.dart';
+import 'package:doliv_social/features/shell/bottomnavbar.dart';
+import 'package:doliv_social/shared/auth/forgot_password/forgot_pass.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
-import 'utils/connectivity_gate.dart';
-import 'utils/radio_player.dart';
+import 'package:doliv_social/core/connectivity_gate.dart';
+import 'package:doliv_social/core/audio/radio_player.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,11 +52,22 @@ void main() async {
     // antes de tocar RadioPlayer.instance): habilita el foreground service
     // de Android que mantiene la radio sonando con la app minimizada o la
     // pantalla bloqueada, con controles en la notificación.
-    await JustAudioBackground.init(
-      androidNotificationChannelId: 'com.example.brl_task4.radio',
-      androidNotificationChannelName: 'Radio Doliv en vivo',
-      androidNotificationOngoing: true,
-    );
+    //
+    // Si esta inicialización falla (por ejemplo audio_service no puede
+    // registrar su servicio en ciertas versiones/OEMs de Android), NO debe
+    // impedir que la app arranque: se captura el error y se sigue sin los
+    // controles en segundo plano — la radio igual suena desde la app.
+    try {
+      await JustAudioBackground.init(
+        androidNotificationChannelId: 'com.example.brl_task4.radio',
+        androidNotificationChannelName: 'Radio Doliv en vivo',
+        androidNotificationOngoing: true,
+      );
+      // Solo ahora es seguro usar el tag MediaItem al reproducir la radio.
+      radioBackgroundReady = true;
+    } catch (e, st) {
+      debugPrint('JustAudioBackground.init falló, se continúa sin él: $e\n$st');
+    }
   }
   // Referenciar el singleton aquí (antes de mostrar cualquier pantalla)
   // dispara su precarga del stream en segundo plano lo antes posible, para
@@ -119,7 +129,6 @@ class MyApp extends StatelessWidget {
         MyRoutes.SiteContentHubRoutes: (context) =>
             const SiteContentAuthGate(child: SiteContentHubScreen()),
         MyRoutes.DirectoryRoutes: (context) => const ColleagueDirectoryScreen(),
-        MyRoutes.DoneTask: (context) => const doneTask(),
         MyRoutes.Reset: (context) => const ResetPass(),
         if (!kReleaseMode)
           MyRoutes.ComponentGallery: (context) =>

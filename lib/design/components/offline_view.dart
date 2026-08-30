@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
-import 'app_button.dart';
-import 'desktop_center.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
+import 'package:doliv_social/design/components/app_button.dart';
+import 'package:doliv_social/design/components/desktop_center.dart';
 
 /// Pantalla completa de "sin señal", hermana de `web/404.html` pero para la
 /// app nativa: mismo chiste de radio ("se cortó la transmisión"), mismos

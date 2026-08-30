@@ -1,6 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- Verificación del lugar de asistencia (geocerca): la app pide el GPS
+         solo al registrar entrada / terminar la hora de comida. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- Necesarios para que la radio siga sonando en segundo plano
          (app minimizada / pantalla bloqueada) vía just_audio_background. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />

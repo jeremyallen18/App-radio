@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'app_card.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
+import 'package:doliv_social/design/components/app_card.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
 
 /// Tarjeta de notificación: ícono + color por categoría, mensaje, fecha
 /// relativa y punto de "no leída". El `type` es el que ya emite el backend

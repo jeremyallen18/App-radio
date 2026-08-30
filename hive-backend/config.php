@@ -16,6 +16,13 @@ function load_env(string $path): void {
 }
 load_env(__DIR__ . '/.env');
 
+// Zona horaria del servidor para TODAS las fechas generadas por PHP
+// (date(), incluidas las marcas oficiales de asistencia en attendance.php).
+// Radio Doliv opera en México, así que por defecto es horario de México; se
+// puede sobreescribir con APP_TIMEZONE en .env. Las comparaciones de caducidad
+// del OTP se hacen en SQL con NOW(), no dependen de esto.
+date_default_timezone_set(getenv('APP_TIMEZONE') ?: 'America/Mexico_City');
+
 $DB_HOST = getenv('DB_HOST') ?: '127.0.0.1';
 $DB_NAME = getenv('DB_NAME') ?: 'hive_db';
 $DB_USER = getenv('DB_USER') ?: 'root';
@@ -52,6 +59,21 @@ try {
 }
 
 define('UPLOAD_DIR', __DIR__ . '/uploads/');
+
+// Almacenamiento privado: evidencia de incapacidades. NO se sirve por HTTP
+// (hay un .htaccess que lo bloquea); solo se entrega por el endpoint
+// autenticado GET /leave-requests/{id}/evidence.
+define('EVIDENCE_DIR', __DIR__ . '/private/evidence/');
+if (!is_dir(EVIDENCE_DIR)) {
+    @mkdir(EVIDENCE_DIR, 0700, true);
+}
+
+// Evidencia adjunta al completar una tarea de departamento. Mismo trato que
+// EVIDENCE_DIR: privado, solo por GET /dept-tasks/{id}/evidence autenticado.
+define('TASK_EVIDENCE_DIR', __DIR__ . '/private/task_evidence/');
+if (!is_dir(TASK_EVIDENCE_DIR)) {
+    @mkdir(TASK_EVIDENCE_DIR, 0700, true);
+}
 
 // Detecta http vs https del request actual en vez de asumir uno fijo: en
 // local (XAMPP) es http, en Hostinger detrás de su proxy/SSL es https. Si

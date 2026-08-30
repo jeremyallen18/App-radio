@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import '../tokens/breakpoints.dart';
+import 'package:doliv_social/design/tokens/breakpoints.dart';
 
 /// Lista de tarjetas de tamaño similar (equipos, departamentos, tareas) que
 /// fluye a 2-3 columnas cuando hay ancho de sobra, en vez de quedarse en una

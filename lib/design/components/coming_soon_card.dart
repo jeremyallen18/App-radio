@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'app_card.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
+import 'package:doliv_social/design/components/app_card.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
 
 /// Marcador de sección para módulos que otra área del equipo todavía está
 /// construyendo (anuncios, reportes, permisos jerárquicos, recursos por

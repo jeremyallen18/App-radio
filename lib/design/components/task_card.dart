@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'app_badge.dart';
-import 'app_card.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
+import 'package:doliv_social/design/components/app_badge.dart';
+import 'package:doliv_social/design/components/app_card.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
 
 /// Tarjeta de tarea: descripción, contexto (equipo · área), estado y fecha
 /// límite. La fecha llega como texto libre desde el backend (`dd-MM-yyyy`,

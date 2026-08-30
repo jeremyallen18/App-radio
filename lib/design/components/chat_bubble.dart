@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'identity_avatar.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
+import 'package:doliv_social/design/components/identity_avatar.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
 
 /// Burbuja de mensaje de chat, estilo Slack/Discord: avatar + nombre para
 /// los mensajes de otras personas, alineado a la izquierda; los propios,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
 
 /// Barra de entrada de mensaje: campo tipo píldora + botón de enviar
 /// circular. Pensado para chat, pero reutilizable en cualquier pantalla de

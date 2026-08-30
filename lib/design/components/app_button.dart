@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../tokens/breakpoints.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
+import 'package:doliv_social/design/tokens/breakpoints.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
 
 /// Botón primario con el degradado de marca (`brandBlue → brandNavy`).
 /// Reemplaza a `widgets/gradient_button.dart`.

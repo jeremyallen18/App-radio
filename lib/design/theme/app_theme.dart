@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
-import '../tokens/typography.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
+import 'package:doliv_social/design/tokens/typography.dart';
 
 /// Tema único de la app. Toda pantalla nueva debería verse correcta
 /// heredando de aquí, sin declarar un solo color propio.

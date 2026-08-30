@@ -47,5 +47,7 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Usamos Face ID para confirmar tu identidad antes de editar el contenido del sitio web.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Usamos tu ubicación solo al registrar tu entrada o terminar tu hora de comida, para verificar que estás en el lugar de trabajo.</string>
 </dict>
 </plist>

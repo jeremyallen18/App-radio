@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../tokens/breakpoints.dart';
-import '../tokens/colors.dart';
-import '../tokens/spacing.dart';
-import 'app_back_button.dart';
+import 'package:doliv_social/design/tokens/breakpoints.dart';
+import 'package:doliv_social/design/tokens/colors.dart';
+import 'package:doliv_social/design/tokens/spacing.dart';
+import 'package:doliv_social/design/components/app_back_button.dart';
 
 /// Scaffold estándar de la app: fondo, `SafeArea` y padding horizontal
 /// coherentes. Sustituye a los `Scaffold` sueltos repetidos en cada pantalla.
