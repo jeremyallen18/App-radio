@@ -1,0 +1,222 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import '../design/design.dart';
+import '../models/storeToken.dart';
+import '../utils/Routes.dart';
+import '../utils/api_config.dart';
+import '../utils/session.dart';
+
+class Login extends StatefulWidget {
+  const Login({super.key});
+
+  @override
+  State<Login> createState() => _LoginState();
+}
+
+ final SecureStorage secureStorage=SecureStorage();
+ String key= 'accessToken';
+class _LoginState extends State<Login> {
+
+  TextEditingController emailController =TextEditingController();
+  TextEditingController passController =TextEditingController();
+  bool _rememberMe = false;
+  bool _isLoading = false;
+
+  Future <void> LoginApi() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+    const String apiUrl = '$kBaseUrl/user/login';
+    final response = await http.post(
+        Uri.parse(apiUrl),
+        body:({
+          'email':emailController.text,
+          'password':passController.text,
+        })
+    );
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    if (response.statusCode == 200) {
+
+      dynamic generateResponse = jsonDecode(response.body);
+      Token.fromJson(generateResponse);
+      await secureStorage.writeSecureData(key,generateResponse);
+      // No bloquea el login: si /user/me falla, el rol simplemente queda
+      // sin cachear y se puede volver a pedir más adelante.
+      unawaited(Session.fetchCurrentUser(generateResponse));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Inicio de sesión exitoso"),),);
+      await Navigator.pushNamed(context, MyRoutes.BottomNavBar);
+
+    } else {
+      print('Failed to join the team. Status Code: ${response.statusCode}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Correo o contraseña incorrectos")),
+      );
+    }
+  }
+
+  final _formKey = GlobalKey<FormState>();
+  bool obscureText= true;
+  @override
+  Widget build(BuildContext context) {
+    final heightOfScreen = MediaQuery.of(context).size.height;
+
+    return AppScaffold(
+      padding: const EdgeInsets.symmetric(horizontal: 36),
+      scrollable: true,
+      body: Column(
+          children: [
+              SizedBox(height: heightOfScreen * 0.06),
+              Center(
+                child: Container(
+                  width: 96,
+                  height: 96,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.textPrimary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Image.asset(
+                    "lib/assets/login.png",
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                "Bienvenido,",
+                style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w400,
+                  fontSize: 16,
+                ),
+              ),
+              Text(
+                "Iniciar sesión",
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 28,
+                ),
+              ),
+              SizedBox(height: heightOfScreen * 0.05),
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    AppTextField(
+                      controller: emailController,
+                      textInputType: TextInputType.emailAddress,
+                      prefixIcon: Icon(Icons.email_outlined, color: AppColors.textMuted),
+                      hintText: "Correo electrónico",
+                      validator: (value) {
+                        final email = value?.trim() ?? '';
+                        if (email.isEmpty) {
+                          return 'Ingresa tu correo';
+                        }
+                        if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+                          return 'Correo inválido';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    AppTextField(
+                      controller: passController,
+                      obscured: obscureText,
+                      prefixIcon: Icon(Icons.lock_outline, color: AppColors.textMuted),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscureText ? Icons.visibility_off : Icons.visibility,
+                          color: AppColors.textMuted,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            obscureText = !obscureText;
+                          });
+                        },
+                      ),
+                      hintText: "Contraseña",
+                      validator: (value) {
+                        if ((value ?? '').length < 6) {
+                          return 'Mínimo 6 caracteres';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Switch(
+                              value: _rememberMe,
+                              onChanged: (value) => setState(() => _rememberMe = value),
+                            ),
+                            Text(
+                              "Recuérdame",
+                              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pushNamed(context, MyRoutes.Reset);
+                          },
+                          child: Text(
+                            "¿Olvidaste tu contraseña?",
+                            style: TextStyle(color: AppColors.accentStrong, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    AppButton(
+                      label: _isLoading ? 'Cargando...' : "Iniciar sesión",
+                      loading: _isLoading,
+                      onPressed: _isLoading ? null : LoginApi,
+                    ),
+                    const SizedBox(height: 24),
+                    GestureDetector(
+                      onTap: () => Navigator.pushReplacementNamed(context, MyRoutes.SignUpRoutes),
+                      child: RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: "¿No tienes cuenta? ",
+                              style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                            ),
+                            TextSpan(
+                              text: "Regístrate",
+                              style: TextStyle(
+                                color: AppColors.accentStrong,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+          ],
+      ),
+    );
+  }
+}
