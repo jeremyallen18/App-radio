@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/leave_request.dart';
 import 'package:doliv_social/services/leave_service.dart';
+import 'package:doliv_social/features/dashboard/director/leave_review_sheets.dart';
 import 'package:doliv_social/shared/widgets/evidence_viewer.dart';
 
 /// Revisión de una solicitud por el director: ver toda la información y la
@@ -58,88 +59,20 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
 
   Future<void> _approve() async {
     final r = _req!;
-    var start = r.requestedStart ?? DateTime.now();
-    var end = r.requestedEnd ?? start;
+    final start = r.requestedStart ?? DateTime.now();
+    final end = r.requestedEnd ?? start;
 
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, setSheet) => Padding(
-          padding: EdgeInsets.only(
-            left: AppSpacing.lg,
-            right: AppSpacing.lg,
-            top: AppSpacing.lg,
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + AppSpacing.lg,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Fechas autorizadas',
-                  style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 17)),
-              const SizedBox(height: 4),
-              const Text(
-                'Puedes autorizar un periodo distinto al solicitado.',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              _SheetDateRow(
-                label: 'Inicio',
-                value: start,
-                onPick: () async {
-                  final p = await showDatePicker(
-                    context: sheetContext,
-                    firstDate: DateTime(start.year - 1),
-                    lastDate: DateTime(start.year + 2),
-                    initialDate: start,
-                  );
-                  if (p != null) {
-                    setSheet(() {
-                      start = p;
-                      if (end.isBefore(p)) end = p;
-                    });
-                  }
-                },
-              ),
-              _SheetDateRow(
-                label: 'Término',
-                value: end,
-                onPick: () async {
-                  final p = await showDatePicker(
-                    context: sheetContext,
-                    firstDate: DateTime(start.year - 1),
-                    lastDate: DateTime(start.year + 2),
-                    initialDate: end,
-                  );
-                  if (p != null) {
-                    setSheet(() => end = p);
-                  }
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              AppButton(
-                label: 'APROBAR',
-                onPressed: () => Navigator.pop(sheetContext, true),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Center(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(sheetContext, false),
-                  child: const Text('Cancelar'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    final range = await showLeaveApprovalSheet(
+      context,
+      initialStart: start,
+      initialEnd: end,
     );
-    if (confirmed != true) return;
+    if (range == null) return;
 
     setState(() => _busy = true);
     try {
-      final updated = await LeaveApi.approve(widget.requestId, approvedStart: start, approvedEnd: end);
+      final updated = await LeaveApi.approve(widget.requestId,
+          approvedStart: range.start, approvedEnd: range.end);
       if (!mounted) return;
       setState(() {
         _req = updated;
@@ -160,47 +93,12 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
     required Future<LeaveRequest> Function(String reason) run,
     required String okMessage,
   }) async {
-    final controller = TextEditingController();
-    final reason = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.only(
-          left: AppSpacing.lg,
-          right: AppSpacing.lg,
-          top: AppSpacing.lg,
-          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + AppSpacing.lg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title,
-                style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 17)),
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(controller: controller, hintText: hint, maxLines: 3),
-            const SizedBox(height: AppSpacing.lg),
-            AppButton(
-              label: confirmLabel,
-              onPressed: () {
-                final text = controller.text.trim();
-                if (text.isEmpty) return;
-                Navigator.pop(sheetContext, text);
-              },
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Center(
-              child: TextButton(
-                onPressed: () => Navigator.pop(sheetContext),
-                child: const Text('Cancelar'),
-              ),
-            ),
-          ],
-        ),
-      ),
+    final reason = await showLeaveReasonSheet(
+      context,
+      title: title,
+      hint: hint,
+      confirmLabel: confirmLabel,
     );
-    controller.dispose();
     if (reason == null || reason.isEmpty) return;
 
     setState(() => _busy = true);
@@ -424,26 +322,4 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
           ],
         ),
       );
-}
-
-class _SheetDateRow extends StatelessWidget {
-  const _SheetDateRow({required this.label, required this.value, required this.onPick});
-  final String label;
-  final DateTime value;
-  final VoidCallback onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
-      trailing: OutlinedButton.icon(
-        onPressed: onPick,
-        icon: const Icon(Icons.event, size: 16),
-        label: Text(
-          '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}',
-        ),
-      ),
-    );
-  }
 }
