@@ -7,7 +7,10 @@ import 'package:doliv_social/models/attendance.dart';
 import 'package:doliv_social/models/calendar_event.dart';
 import 'package:doliv_social/services/attendance_service.dart';
 import 'package:doliv_social/core/location/attendance_location.dart';
+import 'package:doliv_social/shared/attendance/attendance_format.dart';
 import 'package:doliv_social/shared/attendance/attendance_history_screen.dart';
+import 'package:doliv_social/shared/attendance/attendance_status_cards.dart';
+import 'package:doliv_social/shared/attendance/attendance_time_cards.dart';
 
 /// "Mi asistencia": estado actual del trabajador, horas registradas, tiempo
 /// trabajado y un único botón principal cuya acción la decide el backend
@@ -145,13 +148,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         return '¿Terminar tu hora de comida ahora?';
       case AttendanceAction.salida:
         return '¿Registrar tu salida ahora? Con esto se cierra tu jornada.';
+      case AttendanceAction.saltarComida:
+        return 'Confirmas que hoy no tomarás hora de comida. '
+            'Esto NO registra tu salida: tu jornada sigue abierta y podrás '
+            'registrar tu salida cuando termines.';
     }
   }
 
   String _successMessage(AttendanceAction action, AttendanceDay day) {
     if (action == AttendanceAction.finComida && day.mealExceeded) {
       return 'Hora de comida terminada. Excediste el límite por '
-          '${_fmtMin(day.mealExcessMinutes)}.';
+          '${attendanceMinutesLabel(day.mealExcessMinutes)}.';
     }
     switch (action) {
       case AttendanceAction.entrada:
@@ -162,6 +169,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         return 'Hora de comida terminada.';
       case AttendanceAction.salida:
         return 'Salida registrada. Jornada terminada.';
+      case AttendanceAction.saltarComida:
+        return 'Registrado: hoy no tomarás hora de comida. Tu jornada sigue '
+            'abierta.';
     }
   }
 
@@ -170,19 +180,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  static String _fmtMin(int minutes) {
-    final h = minutes ~/ 60;
-    final m = minutes % 60;
-    if (h > 0 && m > 0) return '$h h $m min';
-    if (h > 0) return '$h h';
-    return '$m min';
-  }
-
-  static String _fmtClock(Duration d) {
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${two(d.inHours)}:${two(d.inMinutes % 60)}:${two(d.inSeconds % 60)}';
   }
 
   @override
@@ -210,32 +207,32 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ),
               children: [
                 if (_absence != null) ...[
-                  _AbsenceCard(absence: _absence!),
+                  AttendanceAbsenceCard(absence: _absence!),
                   const SizedBox(height: AppSpacing.lg),
                 ],
-                _StateHeader(day: day),
+                AttendanceStateHeader(day: day),
                 const SizedBox(height: AppSpacing.lg),
                 if (_absence == null) ...[
                   if (_entryOverride != null)
-                    _EventEntryCard(event: _entryOverride!)
+                    AttendanceEventEntryCard(event: _entryOverride!)
                   else
-                    _PlaceCard(place: _place),
+                    AttendancePlaceCard(place: _place),
                   const SizedBox(height: AppSpacing.lg),
                 ],
                 if (day.state == AttendanceState.enComida)
-                  _MealTimerCard(day: day, elapsed: _mealElapsed),
+                  MealTimerCard(day: day, elapsed: _mealElapsed),
                 if (day.state == AttendanceState.enComida)
                   const SizedBox(height: AppSpacing.lg),
                 if (day.mealExceeded) ...[
-                  _MealExceededBanner(day: day),
+                  MealExceededBanner(day: day),
                   const SizedBox(height: AppSpacing.lg),
                 ],
-                _TimesCard(day: day),
+                AttendanceTimesCard(day: day),
                 const SizedBox(height: AppSpacing.lg),
-                _ScheduleCard(day: day),
+                AttendanceScheduleCard(day: day),
                 const SizedBox(height: AppSpacing.xl),
                 if (_absence == null) ...[
-                  _PrimaryAction(
+                  AttendancePrimaryAction(
                     day: day,
                     submitting: _submitting,
                     onPerform: _perform,
@@ -258,478 +255,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           );
         },
       ),
-    );
-  }
-}
-
-class _StateHeader extends StatelessWidget {
-  const _StateHeader({required this.day});
-  final AttendanceDay day;
-
-  @override
-  Widget build(BuildContext context) {
-    final (color, icon) = switch (day.state) {
-      AttendanceState.sinEntrada => (AppColors.textMuted, Icons.schedule),
-      AttendanceState.enJornada => (AppColors.success, Icons.work_outline),
-      AttendanceState.enComida => (AppColors.warning, Icons.restaurant),
-      AttendanceState.jornadaTerminada => (AppColors.accent, Icons.check_circle_outline),
-    };
-    return AppCard(
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(AppRadius.chip),
-            ),
-            child: Icon(icon, color: color),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Estado actual',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  day.stateLabel.toUpperCase(),
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                  ),
-                ),
-                if (day.isLate) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Llegada tarde: ${_AttendanceScreenState._fmtMin(day.lateMinutes)}',
-                    style: const TextStyle(color: AppColors.warning, fontSize: 12),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AbsenceCard extends StatelessWidget {
-  const _AbsenceCard({required this.absence});
-  final AttendanceAbsence absence;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.success.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.event_available, color: AppColors.success),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Asistencia no requerida hoy',
-                  style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Tienes una ausencia autorizada: ${absence.typeLabel}'
-                  '${absence.rangeLabel.isNotEmpty ? ' (${absence.rangeLabel})' : ''}. '
-                  'No necesitas registrar entrada, hora de comida ni salida.',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlaceCard extends StatelessWidget {
-  const _PlaceCard({required this.place});
-  final AttendanceLocationConfig? place;
-
-  @override
-  Widget build(BuildContext context) {
-    if (place == null) {
-      return const AppCard(
-        child: Row(
-          children: [
-            Icon(Icons.location_off_outlined, color: AppColors.warning, size: 18),
-            SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                'El director aún no ha configurado el lugar de asistencia. No '
-                'podrás registrar entrada ni terminar la hora de comida hasta '
-                'que lo haga.',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    final p = place!;
-    return AppCard(
-      child: Row(
-        children: [
-          const Icon(Icons.place_outlined, color: AppColors.accent),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  (p.label ?? '').isNotEmpty ? p.label! : 'Lugar de asistencia',
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Debes estar a menos de ${p.radiusM} m para registrar tu '
-                  'entrada y para terminar tu hora de comida.',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Reemplaza a `_PlaceCard` cuando hoy hay un evento con ubicación que cubre al
-/// trabajador: la entrada se registra en el lugar y a la hora del evento.
-class _EventEntryCard extends StatelessWidget {
-  const _EventEntryCard({required this.event});
-  final EntryOverrideEvent event;
-
-  @override
-  Widget build(BuildContext context) {
-    final place = (event.label ?? '').isNotEmpty ? event.label! : 'el lugar del evento';
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.accent.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.accent.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.event, color: AppColors.accent),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Hoy entras por el evento «${event.title}»',
-                  style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Tu entrada de hoy se registra en $place '
-                  '(a menos de ${event.radiusM} m)'
-                  '${event.entryTime != null ? ', con hora de entrada ${event.entryTime}' : ''}. '
-                  'La hora de comida y la salida no cambian.',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MealTimerCard extends StatelessWidget {
-  const _MealTimerCard({required this.day, required this.elapsed});
-  final AttendanceDay day;
-  final Duration elapsed;
-
-  @override
-  Widget build(BuildContext context) {
-    final limit = day.mealLimitMinutes;
-    final remaining =
-        limit == null ? null : limit - elapsed.inMinutes;
-    final exceeded = remaining != null && remaining < 0;
-    return AppCard(
-      child: Column(
-        children: [
-          const Text(
-            'HORA DE COMIDA',
-            style: TextStyle(
-              color: AppColors.warning,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            _AttendanceScreenState._fmtClock(elapsed),
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w800,
-              fontSize: 40,
-              fontFeatures: [FontFeature.tabularFigures()],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          if (remaining != null)
-            Text(
-              exceeded
-                  ? 'Límite excedido por ${_AttendanceScreenState._fmtMin(-remaining)}'
-                  : 'Tiempo disponible: ${_AttendanceScreenState._fmtMin(remaining)}',
-              style: TextStyle(
-                color: exceeded ? AppColors.error : AppColors.textMuted,
-                fontSize: 13,
-                fontWeight: exceeded ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MealExceededBanner extends StatelessWidget {
-  const _MealExceededBanner({required this.day});
-  final AttendanceDay day;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.warning_amber_rounded, color: AppColors.error),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Hora de comida excedida',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Duración: ${day.mealMinutesLabel ?? '—'}   ·   '
-                  'Límite: ${_AttendanceScreenState._fmtMin(day.mealLimitMinutes ?? 0)}   ·   '
-                  'Exceso: ${_AttendanceScreenState._fmtMin(day.mealExcessMinutes)}',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TimesCard extends StatelessWidget {
-  const _TimesCard({required this.day});
-  final AttendanceDay day;
-
-  @override
-  Widget build(BuildContext context) {
-    final comida = switch ((day.inicioComida, day.finComida)) {
-      (null, _) => '—',
-      (final i?, null) => '$i — en curso',
-      (final i?, final f?) => '$i — $f',
-    };
-    return AppCard(
-      child: Column(
-        children: [
-          _row('Entrada', day.entrada ?? '—'),
-          const Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
-          _row('Hora de comida', comida,
-              subtitle: day.mealMinutesLabel != null
-                  ? 'Duración: ${day.mealMinutesLabel}'
-                  : null),
-          const Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
-          _row('Salida', day.salida ?? '—'),
-          const Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
-          _row(
-            'Tiempo trabajado',
-            day.workedLabel ?? '—',
-            subtitle: day.workedInProgress && day.workedLabel != null
-                ? 'En curso'
-                : null,
-            emphasize: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _row(String label, String value, {String? subtitle, bool emphasize = false}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-          ),
-        ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: emphasize ? FontWeight.w800 : FontWeight.w600,
-                fontSize: emphasize ? 17 : 15,
-              ),
-            ),
-            if (subtitle != null)
-              Text(
-                subtitle,
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _ScheduleCard extends StatelessWidget {
-  const _ScheduleCard({required this.day});
-  final AttendanceDay day;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = day.schedule;
-    if (s == null) {
-      return const AppCard(
-        child: Row(
-          children: [
-            Icon(Icons.info_outline, color: AppColors.textMuted, size: 18),
-            SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                'Aún no tienes un horario asignado. Pídeselo al director.',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionHeader(
-            title: 'Mi horario',
-            padding: EdgeInsets.only(bottom: AppSpacing.sm),
-          ),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              AppBadge(label: 'Entrada ${s.entryTime}'),
-              AppBadge(label: 'Salida ${s.exitTime}'),
-              AppBadge(label: 'Comida ${s.mealTime}'),
-              AppBadge(label: 'Límite ${s.mealMaxMinutes} min'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PrimaryAction extends StatelessWidget {
-  const _PrimaryAction({
-    required this.day,
-    required this.submitting,
-    required this.onPerform,
-  });
-
-  final AttendanceDay day;
-  final bool submitting;
-  final void Function(AttendanceAction) onPerform;
-
-  @override
-  Widget build(BuildContext context) {
-    final action = day.nextAction;
-    if (action == null) {
-      // Jornada terminada: sin acción disponible.
-      return Container(
-        height: 50,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-          border: Border.all(color: AppColors.surfaceBorder),
-        ),
-        child: const Text(
-          'JORNADA TERMINADA',
-          style: TextStyle(
-            color: AppColors.textMuted,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1,
-          ),
-        ),
-      );
-    }
-
-    // En jornada y sin comida todavía: el botón principal inicia la comida,
-    // pero se ofrece una salida directa para quien no toma hora de comida.
-    final showDirectExit = day.state == AttendanceState.enJornada &&
-        action == AttendanceAction.inicioComida;
-
-    return Column(
-      children: [
-        AppButton(
-          label: action.buttonLabel,
-          loading: submitting,
-          onPressed: submitting ? null : () => onPerform(action),
-        ),
-        if (showDirectExit) ...[
-          const SizedBox(height: AppSpacing.sm),
-          TextButton(
-            onPressed: submitting ? null : () => onPerform(AttendanceAction.salida),
-            child: const Text('No tomaré hora de comida · Registrar salida'),
-          ),
-        ],
-      ],
     );
   }
 }
