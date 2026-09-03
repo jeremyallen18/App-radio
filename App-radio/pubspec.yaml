@@ -80,6 +80,11 @@ dependencies:
   # webview_flutter_plus: ^0.3.0+2
   image_picker: ^1.2.3
   geolocator: ^14.0.3
+  # Elegir cualquier archivo de oficina (PDF, Word, Excel, ...) para el
+  # apartado "Documentos" de Recursos del equipo
+  # (lib/shared/resources/team_documents_screen.dart). La descarga reutiliza
+  # path_provider + share_plus, igual que el reporte de asistencia.
+  file_picker: ^12.2.0
 
 
 
@@ -112,6 +117,13 @@ dependency_overrides:
   # build.gradle.kts with the conflicting Kotlin compilerOptions DSL.
   # 2.4.21 is the last version using the classic build.gradle.
   shared_preferences_android: 2.4.21
+  # path_provider_android 2.3.x migró a bindings JNI (paquete `jni`), cuyo
+  # código autogenerado no compila con la versión de `jni` que resuelve
+  # este proyecto ('JObject isn't a type' / 'jNullReference' en
+  # path_provider.g.dart y jni_flutter/generated_plugin.dart). 2.2.17 es la
+  # última línea previa a JNI (canales de plataforma normales) y no
+  # arrastra jni/jni_flutter. Quitar al actualizar Flutter/plugins.
+  path_provider_android: 2.2.17
 
 # The following section is specific to Flutter packages.
 flutter:

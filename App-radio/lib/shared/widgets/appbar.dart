@@ -16,13 +16,11 @@ class MyAppBar extends StatefulWidget implements PreferredSizeWidget {
   _MyAppBarState createState() => _MyAppBarState();
 
   @override
-  Size get preferredSize => Size.fromHeight(132);
+  Size get preferredSize => Size.fromHeight(112);
 }
 
 class _MyAppBarState extends State<MyAppBar> {
-  String userName="";
   int unreadCount = 0;
-  String? _photoUrl;
   AppRole? _role;
 
   Future<void> unreadCountAPI() async {
@@ -40,35 +38,11 @@ class _MyAppBarState extends State<MyAppBar> {
     }
   }
 
-  Future<void> nameAPI() async {
-    dynamic storedValue = await secureStorage.readSecureData(key);
-
-    const String apiUrl =
-        '$kBaseUrl/user/sendName';
-
-    final response = await http.get(
-      Uri.parse(apiUrl),
-      headers: <String, String>{
-        'Authorization': storedValue,
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final String data = json.decode(response.body);
-      setState(() {
-        userName = data;
-      });
-    } else {
-      print('Error: ${response.statusCode}');
-    }
-  }
-
-  Future<void> _loadPhoto() async {
+  Future<void> _loadRole() async {
     final token = await secureStorage.readSecureData(key);
     final profile = await Session.fetchCurrentUser(token ?? '');
     if (!mounted) return;
     setState(() {
-      _photoUrl = profile?.photoUrl;
       _role = profile?.role;
     });
   }
@@ -76,9 +50,8 @@ class _MyAppBarState extends State<MyAppBar> {
   @override
   void initState() {
     super.initState();
-    nameAPI();
     unreadCountAPI();
-    _loadPhoto();
+    _loadRole();
   }
 
   @override
@@ -94,43 +67,38 @@ class _MyAppBarState extends State<MyAppBar> {
       child: SafeArea(
         bottom: false,
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            CircleAvatar(
-              radius: 32,
-              backgroundColor: AppColors.surface,
-              backgroundImage: _photoUrl != null
-                  ? NetworkImage(_photoUrl!) as ImageProvider
-                  : const AssetImage('lib/assets/prof.png'),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '¡Hola!',
-                    style: TextStyle(fontSize: 14, color: AppColors.textMuted),
-                  ),
-                  Text(
-                    userName,
-                    style: const TextStyle(
-                      fontSize: 24.0,
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w800,
+            // Botón de menú hamburguesa: solo cuando la pantalla trae un
+            // Drawer (inicio, tablero y progreso lo pasan a su Scaffold).
+            Builder(
+              builder: (context) {
+                final hasDrawer = Scaffold.maybeOf(context)?.hasDrawer ?? false;
+                if (!hasDrawer) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.sm),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: AppColors.surface,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.menu, color: AppColors.textPrimary),
+                      tooltip: 'Menú',
+                      onPressed: () => Scaffold.of(context).openDrawer(),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  AppBadge(
-                    label: _role?.label ?? AppRole.employee.label,
-                    variant: AppBadgeVariant.info,
-                  ),
-                ],
-              ),
+                );
+              },
             ),
+            AppBadge(
+              label: _role?.label ?? AppRole.employee.label,
+              variant: AppBadgeVariant.info,
+            ),
+            const Spacer(),
             Row(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 RadioPlayerButton(onExpand: () => showRadioPlayer(context)),
                 const SizedBox(width: AppSpacing.sm),

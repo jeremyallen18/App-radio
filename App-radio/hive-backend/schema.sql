@@ -95,12 +95,23 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+-- Mensajería directa 1 a 1 entre compañeros (ver migración 016). No es una
+-- sala global: cada fila es un mensaje privado de sender_id para recipient_id.
+-- conversation_key = los dos ids ordenados y unidos por ':' -> permite leer
+-- "la conversación entre A y B" con un índice, sin importar la dirección.
 CREATE TABLE IF NOT EXISTS chat_messages (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  team_id CHAR(24) NULL,
-  username VARCHAR(255) NOT NULL,
-  message TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  conversation_key CHAR(49) NOT NULL,
+  sender_id CHAR(24) NOT NULL,
+  recipient_id CHAR(24) NOT NULL,
+  body TEXT NOT NULL,
+  read_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_cm_convo (conversation_key, id),
+  KEY idx_cm_inbox (recipient_id, read_at),
+  KEY idx_cm_sender (sender_id, id),
+  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS images (
@@ -117,6 +128,24 @@ CREATE TABLE IF NOT EXISTS texts (
   email VARCHAR(255) NOT NULL,
   text TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Documentos de equipo (apartado "Documentos" de Recursos; ver migración
+-- 017). Archivos de oficina que suben y descargan los miembros; se guardan
+-- en private/documents/ y solo se entregan por GET /document/download/{id}
+-- autenticado (nunca estáticos).
+CREATE TABLE IF NOT EXISTS documents (
+  id CHAR(24) PRIMARY KEY,
+  team_id CHAR(24) NOT NULL,
+  doc_name VARCHAR(255) NOT NULL,
+  stored_path VARCHAR(255) NOT NULL,
+  original_name VARCHAR(255) NOT NULL,
+  mime VARCHAR(150) NULL,
+  file_size INT NOT NULL DEFAULT 0,
+  uploaded_by VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_documents_team (team_id, id),
+  FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS leader_messages (
@@ -176,7 +205,10 @@ CREATE TABLE IF NOT EXISTS anuncios (
 CREATE TABLE IF NOT EXISTS attendance (
   id INT AUTO_INCREMENT PRIMARY KEY,
   employee_id CHAR(24) NOT NULL,
-  type ENUM('entrada','inicio_comida','fin_comida','salida') NOT NULL,
+  -- `sin_comida`: el trabajador declara que hoy NO tomará hora de comida. Es
+  -- solo constancia de esa decisión; NO registra salida ni cierra la jornada
+  -- (ver hive-backend/attendance.php y migrations/018_attendance_meal_skip.sql).
+  type ENUM('entrada','inicio_comida','fin_comida','salida','sin_comida') NOT NULL,
   work_date DATE NOT NULL,
   event_time DATETIME NOT NULL,
   device_time DATETIME NULL,
@@ -185,6 +217,9 @@ CREATE TABLE IF NOT EXISTS attendance (
   method VARCHAR(20) NOT NULL DEFAULT 'gps',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   KEY idx_attendance_emp_date (employee_id, work_date),
+  -- Cada tipo de evento es único por (trabajador, día): hace atómico el
+  -- registro y evita duplicados por peticiones simultáneas (migración 019).
+  UNIQUE KEY uq_attendance_evento (employee_id, work_date, type),
   FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
@@ -240,8 +275,14 @@ CREATE TABLE IF NOT EXISTS attendance_correction_requests (
   attendance_id INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   resolved_at DATETIME NULL,
+  -- Solo puede haber UNA solicitud pendiente por (trabajador, día, tipo de
+  -- fichaje). pending_slot = 1 mientras está pendiente, NULL en cualquier otro
+  -- estado (NULL no colisiona en UNIQUE), así se puede volver a solicitar tras
+  -- una resolución. Backstop de concurrencia (migración 019).
+  pending_slot TINYINT GENERATED ALWAYS AS (IF(status = 'pendiente', 1, NULL)) VIRTUAL,
   KEY idx_acr_emp (employee_id, status),
   KEY idx_acr_status (status, created_at),
+  UNIQUE KEY uq_acr_pendiente (employee_id, work_date, kind, pending_slot),
   FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL,
   FOREIGN KEY (attendance_id) REFERENCES attendance(id) ON DELETE SET NULL
@@ -285,12 +326,17 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   cancelled_at DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  -- Impide dos solicitudes PENDIENTES idénticas (mismo tipo y mismo rango
+  -- solicitado) del mismo trabajador — doble envío accidental / reintento.
+  -- Mismo patrón pending_slot que attendance_correction_requests (migración 019).
+  pending_slot TINYINT GENERATED ALWAYS AS (IF(status = 'pendiente', 1, NULL)) VIRTUAL,
   KEY idx_lr_employee (employee_id),
   KEY idx_lr_status (status),
   KEY idx_lr_req_start (requested_start_date),
   KEY idx_lr_req_end (requested_end_date),
   KEY idx_lr_appr_start (approved_start_date),
   KEY idx_lr_appr_end (approved_end_date),
+  UNIQUE KEY uq_leave_pendiente (employee_id, type, requested_start_date, requested_end_date, pending_slot),
   FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL,
   FOREIGN KEY (cancelled_by) REFERENCES users(id) ON DELETE SET NULL
@@ -391,6 +437,74 @@ CREATE TABLE IF NOT EXISTS dept_task_comments (
   KEY idx_dtc_task (task_id, created_at),
   FOREIGN KEY (task_id) REFERENCES dept_tasks(id) ON DELETE CASCADE,
   FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
+-- Anuncios internos de la empresa (migraciones 014 y 015, ver
+-- hive-backend/internal_announcements.php). El DIRECTOR publica un anuncio y
+-- TODA la audiencia lo recibe INMEDIATAMENTE (no hay ventana de vigencia). Lo
+-- relevante es la fecha de la reunión, event_at. scope='general' (toda la
+-- empresa) o 'areas' (departamentos en internal_announcement_areas y sus
+-- managers). Si requires_confirmation=1 (una reunión), el resto confirma
+-- asistencia (sí/no); quien confirma "sí" recibe un recordatorio recurrente
+-- (uno al día) hasta que llegue event_at — ver internal_announcement_reminders.
+-- El director ve el historial de visualizaciones y confirmaciones, y puede
+-- editar o eliminar el anuncio.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS internal_announcements (
+  id CHAR(24) PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  body TEXT NOT NULL,
+  scope ENUM('general','areas') NOT NULL DEFAULT 'general',
+  requires_confirmation TINYINT(1) NOT NULL DEFAULT 0,
+  event_at DATETIME NULL,
+  location_label VARCHAR(255) NULL,
+  created_by CHAR(24) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_ia_event (event_at),
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS internal_announcement_areas (
+  announcement_id CHAR(24) NOT NULL,
+  department_id CHAR(24) NOT NULL,
+  PRIMARY KEY (announcement_id, department_id),
+  FOREIGN KEY (announcement_id) REFERENCES internal_announcements(id) ON DELETE CASCADE,
+  FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS internal_announcement_views (
+  announcement_id CHAR(24) NOT NULL,
+  user_id CHAR(24) NOT NULL,
+  viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (announcement_id, user_id),
+  FOREIGN KEY (announcement_id) REFERENCES internal_announcements(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS internal_announcement_confirmations (
+  announcement_id CHAR(24) NOT NULL,
+  user_id CHAR(24) NOT NULL,
+  status ENUM('si','no') NOT NULL DEFAULT 'si',
+  responded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (announcement_id, user_id),
+  FOREIGN KEY (announcement_id) REFERENCES internal_announcements(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Marca de recordatorio ya enviado (una fila por día) a quien confirmó
+-- asistencia, para no duplicar el aviso recurrente del mismo día. Lo llena
+-- ia_dispatch_due_reminders() de forma perezosa (al consultar notificaciones)
+-- o el cron opcional cron_announcement_reminders.php.
+CREATE TABLE IF NOT EXISTS internal_announcement_reminders (
+  announcement_id CHAR(24) NOT NULL,
+  user_id CHAR(24) NOT NULL,
+  reminder_date DATE NOT NULL,
+  sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (announcement_id, user_id, reminder_date),
+  FOREIGN KEY (announcement_id) REFERENCES internal_announcements(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- ============================================================================
@@ -506,6 +620,20 @@ CREATE TABLE IF NOT EXISTS radio_team (
   sort_order INT NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   UNIQUE KEY slug (slug)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Caja "Comentarios en vivo" del hero de Inicio, en tiempo real. Los
+-- comentarios se agrupan por franja horaria (la hora en punto del servidor)
+-- y RADIODOLIV_PAGINA/inc/data/live_comments.php borra los de franjas ya
+-- cerradas, así que la caja se reinicia sola cada hora.
+CREATE TABLE IF NOT EXISTS radio_live_comments (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  name VARCHAR(60) NOT NULL,
+  body VARCHAR(240) NOT NULL,
+  client_id VARCHAR(40) DEFAULT NULL COMMENT 'Id aleatorio del navegador desde localStorage, solo para anti-flood',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Patrocinadores de la Sección Azul (reemplaza inc/data/sponsors.php).

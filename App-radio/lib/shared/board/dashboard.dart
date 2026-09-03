@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:doliv_social/shared/widgets/appbar.dart';
-import 'package:doliv_social/shared/chat/chat.dart';
+import 'package:doliv_social/shared/widgets/app_menu_drawer.dart';
+import 'package:doliv_social/shared/chat/chatHistory.dart';
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/models.dart';
 import 'package:doliv_social/services/team_service.dart';
+import 'package:doliv_social/services/chat_service.dart';
 import 'package:doliv_social/core/session.dart';
 import 'package:doliv_social/shared/auth/login.dart';
 import 'package:doliv_social/shared/teams/task_board_screen.dart';
@@ -29,11 +33,34 @@ class dashb_memState extends State<dashb_mem> {
   List<DepartmentInfo> _departments = const [];
   bool _loading = true;
   String? _error;
+  int _unreadMessages = 0;
+  Timer? _unreadTimer;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _refreshUnread();
+    _unreadTimer =
+        Timer.periodic(const Duration(seconds: 15), (_) => _refreshUnread());
+  }
+
+  @override
+  void dispose() {
+    _unreadTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refreshUnread() async {
+    final n = await ChatService.unreadTotal();
+    if (mounted && n != _unreadMessages) setState(() => _unreadMessages = n);
+  }
+
+  void _openMessages() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ChatScreenfetch()),
+    ).then((_) => _refreshUnread());
   }
 
   Future<void> _load() async {
@@ -82,15 +109,24 @@ class dashb_memState extends State<dashb_mem> {
     return Scaffold(
       backgroundColor: AppColors.bgBase,
       appBar: const MyAppBar(),
+      drawer: const AppMenuDrawer(),
       floatingActionButton: _profile == null
           ? null
           : FloatingActionButton(
-              tooltip: 'Chat de la empresa',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ChatScreen(_profile!.email)),
+              tooltip: 'Mensajes',
+              onPressed: _openMessages,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.chat),
+                  if (_unreadMessages > 0)
+                    Positioned(
+                      top: -8,
+                      right: -10,
+                      child: UnreadCountBadge(count: _unreadMessages),
+                    ),
+                ],
               ),
-              child: const Icon(Icons.chat),
             ),
       body: Builder(
         builder: (context) {

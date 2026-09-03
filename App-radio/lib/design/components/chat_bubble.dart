@@ -7,9 +7,9 @@ import 'package:doliv_social/design/tokens/spacing.dart';
 /// los mensajes de otras personas, alineado a la izquierda; los propios,
 /// alineados a la derecha, sin avatar repetido.
 ///
-/// El backend (`GET /chat/getAllChats`) no devuelve marca de tiempo hoy
-/// (la columna `created_at` existe en la tabla pero el SELECT no la pide) —
-/// este widget no muestra ninguna hora para no inventarla.
+/// [isMe] lo decide quien llama a partir de `fromMe` que devuelve el backend
+/// (`GET /chat/thread/{correo}`). Este widget no muestra la hora del mensaje
+/// para no recargar el hilo.
 class ChatBubble extends StatelessWidget {
   const ChatBubble({
     super.key,

@@ -1,19 +1,37 @@
 <?php
 // DB connection for the Hive backend
 
+// Almacen de variables de .env. No se usa putenv()/getenv() porque algunos
+// hostings compartidos (p. ej. InfinityFree) tienen putenv() deshabilitada
+// por seguridad: se ejecuta sin error pero no guarda nada. En su lugar las
+// variables se acumulan en un static y env_get() las lee desde ahi.
+function &env_store(): array {
+    static $vars = [];
+    return $vars;
+}
+
 function load_env(string $path): void {
     if (!is_file($path)) return;
+    $store = &env_store();
     foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
         $line = trim($line);
         if ($line === '' || $line[0] === '#') continue;
         [$key, $value] = array_pad(explode('=', $line, 2), 2, '');
         $key = trim($key);
         $value = trim($value);
-        if ($key !== '' && getenv($key) === false) {
-            putenv("$key=$value");
+        if ($key !== '' && !array_key_exists($key, $store)) {
+            $store[$key] = $value;
         }
     }
 }
+
+// Reemplazo de getenv(): devuelve la variable cargada por load_env() o
+// $default si no existe.
+function env_get(string $key, $default = null) {
+    $store = &env_store();
+    return array_key_exists($key, $store) ? $store[$key] : $default;
+}
+
 load_env(__DIR__ . '/.env');
 
 // Zona horaria del servidor para TODAS las fechas generadas por PHP
@@ -21,21 +39,21 @@ load_env(__DIR__ . '/.env');
 // Radio Doliv opera en México, así que por defecto es horario de México; se
 // puede sobreescribir con APP_TIMEZONE en .env. Las comparaciones de caducidad
 // del OTP se hacen en SQL con NOW(), no dependen de esto.
-date_default_timezone_set(getenv('APP_TIMEZONE') ?: 'America/Mexico_City');
+date_default_timezone_set(env_get('APP_TIMEZONE') ?: 'America/Mexico_City');
 
-$DB_HOST = getenv('DB_HOST') ?: '127.0.0.1';
-$DB_NAME = getenv('DB_NAME') ?: 'hive_db';
-$DB_USER = getenv('DB_USER') ?: 'root';
-$DB_PASS = getenv('DB_PASS') ?: '';
+$DB_HOST = env_get('DB_HOST') ?: '127.0.0.1';
+$DB_NAME = env_get('DB_NAME') ?: 'hive_db';
+$DB_USER = env_get('DB_USER') ?: 'root';
+$DB_PASS = env_get('DB_PASS') ?: '';
 
-define('APP_BASE_PATH', getenv('APP_BASE_PATH') !== false ? getenv('APP_BASE_PATH') : '/hive-backend');
+define('APP_BASE_PATH', env_get('APP_BASE_PATH') !== null ? env_get('APP_BASE_PATH') : '/hive-backend');
 
-define('SMTP_HOST', getenv('SMTP_HOST') ?: '');
-define('SMTP_PORT', (int) (getenv('SMTP_PORT') ?: 587));
-define('SMTP_USER', getenv('SMTP_USER') ?: '');
-define('SMTP_PASS', getenv('SMTP_PASS') ?: '');
-define('SMTP_FROM', getenv('SMTP_FROM') ?: getenv('SMTP_USER') ?: '');
-define('SMTP_FROM_NAME', getenv('SMTP_FROM_NAME') ?: 'Radio Doliv');
+define('SMTP_HOST', env_get('SMTP_HOST') ?: '');
+define('SMTP_PORT', (int) (env_get('SMTP_PORT') ?: 587));
+define('SMTP_USER', env_get('SMTP_USER') ?: '');
+define('SMTP_PASS', env_get('SMTP_PASS') ?: '');
+define('SMTP_FROM', env_get('SMTP_FROM') ?: env_get('SMTP_USER') ?: '');
+define('SMTP_FROM_NAME', env_get('SMTP_FROM_NAME') ?: 'Radio Doliv');
 
 require __DIR__ . '/lib/PHPMailer/Exception.php';
 require __DIR__ . '/lib/PHPMailer/PHPMailer.php';
@@ -51,6 +69,16 @@ try {
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         ]
     );
+
+    // Zona horaria de la SESIÓN de MySQL: varias comparaciones (expiración de
+    // OTP, marcas de asistencia) se hacen en SQL con NOW(), no con PHP -- ver
+    // comentario de date_default_timezone_set() arriba. En XAMPP local MySQL
+    // ya corre en hora de México (config del SO), pero en Hostinger arranca
+    // en UTC, así que sin esto esas comparaciones quedan 6h adelantadas.
+    // Offset fijo (no nombre de zona) porque hosting compartido normalmente
+    // no trae cargadas las tablas de zonas horarias de MySQL; México ya no
+    // cambia de horario (DST abolido desde 2022 salvo franja fronteriza).
+    $pdo->exec("SET time_zone = '-06:00'");
 } catch (PDOException $e) {
     http_response_code(500);
     header('Content-Type: application/json');
@@ -75,6 +103,14 @@ if (!is_dir(TASK_EVIDENCE_DIR)) {
     @mkdir(TASK_EVIDENCE_DIR, 0700, true);
 }
 
+// Documentos de equipo (PDF, Word, Excel, ...). Privados como la evidencia:
+// nunca se sirven estáticos por Apache, solo por GET /document/download/{id}
+// tras comprobar que quien pide pertenece al equipo dueño del documento.
+define('DOCUMENT_DIR', __DIR__ . '/private/documents/');
+if (!is_dir(DOCUMENT_DIR)) {
+    @mkdir(DOCUMENT_DIR, 0700, true);
+}
+
 // Detecta http vs https del request actual en vez de asumir uno fijo: en
 // local (XAMPP) es http, en Hostinger detrás de su proxy/SSL es https. Si
 // se sirve como http y se anuncia https (o viceversa), el navegador/WebView
@@ -95,5 +131,5 @@ if (!is_dir(UPLOAD_DIR)) {
 // sobreescribir con RADIODOLIV_PAGINA_PATH en .env.
 define(
     'RADIODOLIV_PAGINA_PATH',
-    getenv('RADIODOLIV_PAGINA_PATH') ?: dirname(__DIR__, 2) . '/RADIODOLIV_PAGINA'
+    env_get('RADIODOLIV_PAGINA_PATH') ?: dirname(__DIR__, 2) . '/RADIODOLIV_PAGINA'
 );

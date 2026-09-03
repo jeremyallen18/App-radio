@@ -74,7 +74,39 @@ function site_handle_image(string $field, string $subdir, string $labelForName, 
     return 'assets/img/' . $subdir . '/' . $fileName;
 }
 
+// Devuelve el valor de la cabecera X-Api-Key sin importar cómo la exponga el
+// servidor (variable $_SERVER o getallheaders()), o null si no vino.
+function site_request_api_key(): ?string {
+    if (isset($_SERVER['HTTP_X_API_KEY']) && $_SERVER['HTTP_X_API_KEY'] !== '') {
+        return trim((string) $_SERVER['HTTP_X_API_KEY']);
+    }
+    if (function_exists('getallheaders')) {
+        foreach (getallheaders() as $name => $value) {
+            if (strcasecmp($name, 'X-Api-Key') === 0) {
+                return trim((string) $value);
+            }
+        }
+    }
+    return null;
+}
+
+// Autoriza la edición del contenido del sitio público. Dos formas de entrar:
+//
+//   1. App Flutter del director (App-radio): sesión + rol 'director'.
+//   2. App interna de Sistemas (proyecto beta_web): NO tiene login. Se
+//      identifica con una llave estática en la cabecera X-Api-Key que debe
+//      coincidir con SITE_CONTENT_KEY del .env. Si SITE_CONTENT_KEY está
+//      vacío o no está definido, esta vía queda deshabilitada y todo sigue
+//      exactamente como antes (solo director por sesión).
 function site_require_director(PDO $pdo): array {
+    $configuredKey = (string) env_get('SITE_CONTENT_KEY', '');
+    if ($configuredKey !== '') {
+        $sentKey = site_request_api_key();
+        if ($sentKey !== null && hash_equals($configuredKey, $sentKey)) {
+            return ['email' => 'sistemas@radiodoliv', 'role' => 'director'];
+        }
+    }
+
     $user = require_auth($pdo);
     require_role($user, ['director']);
     return $user;

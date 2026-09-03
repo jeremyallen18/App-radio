@@ -22,7 +22,12 @@ AttendanceState attendanceStateFromString(String? value) {
 
 /// Acción que el empleado puede realizar ahora mismo (la que dicta el botón
 /// principal). `null` cuando la jornada ya terminó.
-enum AttendanceAction { entrada, inicioComida, finComida, salida }
+///
+/// `saltarComida` ("hoy no tomaré hora de comida") NUNCA la devuelve el backend
+/// como `nextAction`: es una acción secundaria opcional que ofrece la app
+/// mientras el siguiente paso es `inicioComida`. Solo deja constancia de que el
+/// trabajador no tomará la comida; no registra salida ni cierra la jornada.
+enum AttendanceAction { entrada, inicioComida, finComida, salida, saltarComida }
 
 AttendanceAction? attendanceActionFromString(String? value) {
   switch (value) {
@@ -34,6 +39,8 @@ AttendanceAction? attendanceActionFromString(String? value) {
       return AttendanceAction.finComida;
     case 'salida':
       return AttendanceAction.salida;
+    case 'sin_comida':
+      return AttendanceAction.saltarComida;
     default:
       return null;
   }
@@ -51,6 +58,8 @@ extension AttendanceActionInfo on AttendanceAction {
         return 'TERMINAR HORA DE COMIDA';
       case AttendanceAction.salida:
         return 'REGISTRAR SALIDA';
+      case AttendanceAction.saltarComida:
+        return 'NO TOMARÉ HORA DE COMIDA';
     }
   }
 
@@ -65,6 +74,8 @@ extension AttendanceActionInfo on AttendanceAction {
         return 'attendance/meal/end';
       case AttendanceAction.salida:
         return 'attendance/exit';
+      case AttendanceAction.saltarComida:
+        return 'attendance/meal/skip';
     }
   }
 }
@@ -175,6 +186,10 @@ class AttendanceDay {
   final String? finComida;
   final String? salida;
 
+  /// El trabajador declaró que hoy no tomará hora de comida. Es solo
+  /// constancia: no implica salida ni cierre de jornada.
+  final bool mealSkipped;
+
   final int? mealMinutes;
   final String? mealMinutesLabel;
   final int? mealElapsedMinutes; // comida en curso (para el temporizador)
@@ -201,6 +216,7 @@ class AttendanceDay {
     required this.inicioComida,
     required this.finComida,
     required this.salida,
+    required this.mealSkipped,
     required this.mealMinutes,
     required this.mealMinutesLabel,
     required this.mealElapsedMinutes,
@@ -226,6 +242,7 @@ class AttendanceDay {
       inicioComida: json['inicioComida']?.toString(),
       finComida: json['finComida']?.toString(),
       salida: json['salida']?.toString(),
+      mealSkipped: json['mealSkipped'] == true,
       mealMinutes: (json['mealMinutes'] as num?)?.toInt(),
       mealMinutesLabel: json['mealMinutesLabel']?.toString(),
       mealElapsedMinutes: (json['mealElapsedMinutes'] as num?)?.toInt(),

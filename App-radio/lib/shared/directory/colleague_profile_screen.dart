@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/models.dart';
+import 'package:doliv_social/shared/chat/chat.dart';
 import 'package:doliv_social/shared/directory/colleague_directory_screen.dart';
 import 'package:doliv_social/shared/directory/directory_api.dart';
 
@@ -121,6 +122,18 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
                   footer: _ContactRow(
                     email: user.email,
                     onCopy: () => _copyEmail(user.email),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                AppButton(
+                  label: 'Enviar mensaje',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ChatScreen(
+                        peerEmail: user.email,
+                        peerName: user.name,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),

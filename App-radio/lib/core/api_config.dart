@@ -14,7 +14,7 @@
 // ruta, así que su URL local ahora lleva el prefijo /radio-doliv/.
 const String kBaseUrl = String.fromEnvironment(
   'BASE_URL',
-  defaultValue: 'http://192.168.3.74/hive-backend',
+  defaultValue: 'http://192.168.3.44/hive-backend',
 );
 
 // Raíz pública de RADIODOLIV_PAGINA (mismo host, proyecto hermano dentro de
@@ -23,5 +23,5 @@ const String kBaseUrl = String.fromEnvironment(
 // "assets/img/eventos/foo.jpg").
 const String kSiteBaseUrl = String.fromEnvironment(
   'SITE_BASE_URL',
-  defaultValue: 'http://192.168.3.74/radio-doliv/RADIODOLIV_PAGINA/',
+  defaultValue: 'http://192.168.3.44/radio-doliv/RADIODOLIV_PAGINA/',
 );

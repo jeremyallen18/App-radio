@@ -6,6 +6,16 @@ require __DIR__ . '/events.php';
 require __DIR__ . '/attendance.php';
 require __DIR__ . '/leave_requests.php';
 require __DIR__ . '/dept_tasks.php';
+require __DIR__ . '/internal_announcements.php';
+
+// Documentos de equipo: tipos permitidos y tamaño máximo. Van aquí (y no
+// junto a sus handlers) porque el dispatcher de rutas corre antes de llegar
+// a esa sección del archivo, y `const` a nivel de script no se "hoistea".
+const DOCUMENT_ALLOWED_EXT = [
+    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+    'txt', 'csv', 'zip', 'rar', '7z',
+];
+const DOCUMENT_MAX_BYTES = 25 * 1024 * 1024; // 25 MB
 
 // ---- routing -------------------------------------------------------
 
@@ -41,12 +51,21 @@ $routes = [
     ['POST', '#^/team/deleteMember/([^/]+)/?$#',              'deleteMember'],
     ['POST', '#^/team/deleteTeam/([^/]+)/?$#',                'deleteTeam'],
     ['POST', '#^/team/leaderResign/([^/]+)/?$#',              'leaderResign'],
-    ['GET',  '#^/chat/getAllChats/?$#',                       'getAllChats'],
+    // Mensajería directa 1 a 1 (ver migración 016). Ya no hay sala global:
+    // solo se leen las conversaciones en las que participa quien pregunta.
+    ['GET',  '#^/chat/conversations/?$#',                     'chatConversations'],
+    ['GET',  '#^/chat/thread/([^/]+)/?$#',                    'chatThread'],
     ['POST', '#^/chat/sendMessage/?$#',                       'sendChatMessage'],
     ['GET',  '#^/image/showImage/([^/]+)/?$#',                'showImage'],
     ['POST', '#^/image/addImage/?$#',                         'addImage'],
     ['POST', '#^/text/addText/([^/]+)/?$#',                   'addText'],
     ['GET',  '#^/text/showText/([^/]+)/?$#',                  'showText'],
+    // Documentos de equipo (PDF, Word, Excel, ...). Cualquier miembro lista,
+    // sube y descarga; borra quien lo subió o el líder.
+    ['GET',  '#^/document/list/([^/]+)/?$#',                  'teamDocumentsList'],
+    ['POST', '#^/document/upload/?$#',                        'teamDocumentUpload'],
+    ['GET',  '#^/document/download/([^/]+)/?$#',              'teamDocumentDownload'],
+    ['POST', '#^/document/([^/]+)/delete/?$#',                'teamDocumentDelete'],
     ['POST', '#^/leave/applyLeave/([^/]+)/?$#',                'applyLeave'],
     ['POST', '#^/leave/leaveResult/([^/]+)/?$#',               'leaveResult'],
     ['GET',  '#^/notifications/?$#',                          'listNotifications'],
@@ -70,6 +89,7 @@ $routes = [
     // ---- Flujo jerárquico de tareas por departamento/equipo -----------
     // Director: cualquier departamento. Manager: tareas y subtareas de su
     // departamento. Empleado: solo cambia el estado (marcar completada).
+    ['GET',  '#^/dept-tasks/summary/by-department/?$#',      'deptTasksSummaryByDepartment'],
     ['GET',  '#^/dept-tasks/summary/?$#',                    'deptTasksSummary'],
     ['GET',  '#^/dept-tasks/?$#',                            'deptTasksList'],
     ['POST', '#^/dept-tasks/?$#',                            'deptTaskCreate'],
@@ -126,6 +146,7 @@ $routes = [
     // 'employee' (ver attendance_require_employee en attendance.php).
     ['POST', '#^/attendance/entry/?$#',                       'attendanceEntry'],
     ['POST', '#^/attendance/meal/start/?$#',                  'attendanceMealStart'],
+    ['POST', '#^/attendance/meal/skip/?$#',                   'attendanceMealSkip'],
     ['POST', '#^/attendance/meal/end/?$#',                    'attendanceMealEnd'],
     ['POST', '#^/attendance/exit/?$#',                        'attendanceExit'],
     ['GET',  '#^/attendance/today/?$#',                       'attendanceToday'],
@@ -163,6 +184,16 @@ $routes = [
     ['POST', '#^/admin/leave-requests/([^/]+)/reject/?$#',    'adminLeaveRequestReject'],
     ['POST', '#^/admin/leave-requests/([^/]+)/cancel/?$#',    'adminLeaveRequestCancel'],
     ['GET',  '#^/admin/leave-requests/([^/]+)/?$#',           'adminLeaveRequestGet'],
+
+    // ---- Anuncios internos de la empresa (crear/editar/borrar solo director) ----
+    // El resto los ve en su tablero de inicio y confirma asistencia si aplica.
+    // Las rutas específicas van ANTES del comodín /internal-announcements/{id}.
+    ['GET',  '#^/internal-announcements/?$#',                  'internalAnnouncementsList'],
+    ['POST', '#^/internal-announcements/?$#',                  'internalAnnouncementCreate'],
+    ['GET',  '#^/internal-announcements/([^/]+)/views/?$#',    'internalAnnouncementViews'],
+    ['POST', '#^/internal-announcements/([^/]+)/confirm/?$#',  'internalAnnouncementConfirm'],
+    ['POST', '#^/internal-announcements/([^/]+)/delete/?$#',   'internalAnnouncementDelete'],
+    ['POST', '#^/internal-announcements/([^/]+)/?$#',          'internalAnnouncementUpdate'],
 
     // ---- Calendario: eventos (crear/editar/borrar solo director) y feed ----
     ['GET',  '#^/events/?$#',                                 'eventsList'],
@@ -321,7 +352,12 @@ function newPassword(PDO $pdo, string $email) {
         json_response(['error' => 'OTP verification required or expired'], 400);
     }
 
-    $stmt = $pdo->prepare('UPDATE users SET password = ?, otp = NULL, otp_expires = NULL, otp_verified = 0 WHERE id = ?');
+    // token = NULL invalida cualquier sesión abierta: si alguien recupera su
+    // contraseña porque sospecha que su cuenta está comprometida, el token que
+    // pudiera tener un tercero deja de funcionar de inmediato (antes seguía
+    // válido hasta el siguiente login). El usuario vuelve a la pantalla de
+    // login tras cambiar la contraseña, así que esto es transparente para él.
+    $stmt = $pdo->prepare('UPDATE users SET password = ?, token = NULL, otp = NULL, otp_expires = NULL, otp_verified = 0 WHERE id = ?');
     $stmt->execute([password_hash($newPassword, PASSWORD_BCRYPT), $user['id']]);
 
     json_response(['message' => 'Password updated successfully']);
@@ -704,27 +740,144 @@ function leaderResign(PDO $pdo, string $teamId) {
     text_response('Leadership transferred', 200);
 }
 
-// ---- handlers: chat ----------------------------------------------------
+// ---- handlers: chat (mensajería directa 1 a 1) ------------------------
+//
+// Modelo: cada mensaje es privado entre `sender_id` y `recipient_id`.
+// `conversation_key` = los dos ids ordenados y unidos por ':' — así la
+// autorización es estructural: solo se puede leer un hilo cuyo key contenga
+// el id de quien pregunta (chat_convo_key() siempre lo arma con {yo, otro}).
 
-function getAllChats(PDO $pdo) {
-    require_auth($pdo);
-    $stmt = $pdo->query('SELECT username, message FROM chat_messages ORDER BY id ASC');
-    json_response(['chats' => $stmt->fetchAll()]);
+function chat_convo_key(string $a, string $b): string {
+    return $a < $b ? "$a:$b" : "$b:$a";
 }
 
+// Resuelve a la otra persona por correo o por id. Corta la petición si no
+// existe o si es uno mismo.
+function chat_resolve_peer(PDO $pdo, string $ref, array $me): array {
+    $ref = trim($ref);
+    if ($ref === '') {
+        error_response('Indica a quién quieres escribir.', 400);
+    }
+    $stmt = $pdo->prepare('SELECT id, name, email, photo_path FROM users WHERE email = ? OR id = ? LIMIT 1');
+    $stmt->execute([$ref, $ref]);
+    $peer = $stmt->fetch();
+    if (!$peer) {
+        error_response('No encontramos a esa persona.', 404);
+    }
+    if ($peer['id'] === $me['id']) {
+        error_response('No puedes enviarte un mensaje a ti mismo.', 400);
+    }
+    return $peer;
+}
+
+// GET /chat/conversations — una fila por persona con la que hay hilo: último
+// mensaje, cuándo, si lo mandé yo, y cuántos me faltan por leer.
+function chatConversations(PDO $pdo) {
+    $me = require_auth($pdo);
+
+    $stmt = $pdo->prepare(
+        'SELECT m.conversation_key, m.sender_id, m.recipient_id, m.body, m.created_at
+           FROM chat_messages m
+           JOIN (
+             SELECT conversation_key, MAX(id) AS last_id
+               FROM chat_messages
+              WHERE sender_id = :me OR recipient_id = :me
+              GROUP BY conversation_key
+           ) t ON t.last_id = m.id
+          ORDER BY m.id DESC'
+    );
+    $stmt->execute([':me' => $me['id']]);
+    $rows = $stmt->fetchAll();
+
+    $peerStmt = $pdo->prepare('SELECT id, name, email, photo_path FROM users WHERE id = ?');
+    $unreadStmt = $pdo->prepare(
+        'SELECT COUNT(*) FROM chat_messages
+          WHERE conversation_key = ? AND recipient_id = ? AND read_at IS NULL'
+    );
+
+    $conversations = [];
+    foreach ($rows as $r) {
+        $peerId = $r['sender_id'] === $me['id'] ? $r['recipient_id'] : $r['sender_id'];
+        $peerStmt->execute([$peerId]);
+        $peer = $peerStmt->fetch();
+        if (!$peer) continue; // la otra persona fue dada de baja
+        $unreadStmt->execute([$r['conversation_key'], $me['id']]);
+        $conversations[] = [
+            'peerId'       => $peer['id'],
+            'peerName'     => $peer['name'],
+            'peerEmail'    => $peer['email'],
+            'peerPhotoUrl' => $peer['photo_path'] ? UPLOAD_URL_BASE . $peer['photo_path'] : null,
+            'lastMessage'  => $r['body'],
+            'lastAt'       => $r['created_at'],
+            'lastFromMe'   => $r['sender_id'] === $me['id'],
+            'unread'       => (int) $unreadStmt->fetchColumn(),
+        ];
+    }
+
+    json_response(['conversations' => $conversations]);
+}
+
+// GET /chat/thread/{peerEmailOrId} — el hilo completo con esa persona, en
+// orden cronológico. Al abrirlo se marcan como leídos los mensajes que me
+// mandó y seguían sin leer.
+function chatThread(PDO $pdo, string $peerRef) {
+    $me = require_auth($pdo);
+    $peer = chat_resolve_peer($pdo, $peerRef, $me);
+    $key = chat_convo_key($me['id'], $peer['id']);
+
+    $pdo->prepare(
+        'UPDATE chat_messages SET read_at = NOW()
+          WHERE conversation_key = ? AND recipient_id = ? AND read_at IS NULL'
+    )->execute([$key, $me['id']]);
+
+    $stmt = $pdo->prepare(
+        'SELECT id, sender_id, body, created_at, read_at
+           FROM chat_messages WHERE conversation_key = ? ORDER BY id ASC'
+    );
+    $stmt->execute([$key]);
+    $messages = array_map(fn($r) => [
+        'id'        => (int) $r['id'],
+        'message'   => $r['body'],
+        'fromMe'    => $r['sender_id'] === $me['id'],
+        'createdAt' => $r['created_at'],
+        'readAt'    => $r['read_at'],
+    ], $stmt->fetchAll());
+
+    json_response([
+        'peer' => [
+            'id'       => $peer['id'],
+            'name'     => $peer['name'],
+            'email'    => $peer['email'],
+            'photoUrl' => $peer['photo_path'] ? UPLOAD_URL_BASE . $peer['photo_path'] : null,
+        ],
+        'messages' => $messages,
+    ]);
+}
+
+// POST /chat/sendMessage — body: { to: <correo|id>, message: <texto> }.
+// El remitente sale del token, nunca del body.
 function sendChatMessage(PDO $pdo) {
-    // El username se toma del token, nunca del body, para que nadie pueda
-    // publicar en el chat haciéndose pasar por otra persona.
-    $user = require_auth($pdo);
+    $me = require_auth($pdo);
     $body = request_body();
     $message = trim($body['message'] ?? '');
+    $to = (string) ($body['to'] ?? $body['recipient'] ?? $body['recipientEmail'] ?? '');
 
     if ($message === '') {
         text_response('message is required', 400);
     }
+    if (mb_strlen($message) > 4000) {
+        $message = mb_substr($message, 0, 4000);
+    }
 
-    $stmt = $pdo->prepare('INSERT INTO chat_messages (username, message) VALUES (?, ?)');
-    $stmt->execute([$user['email'], $message]);
+    $peer = chat_resolve_peer($pdo, $to, $me);
+    $key = chat_convo_key($me['id'], $peer['id']);
+
+    $pdo->prepare(
+        'INSERT INTO chat_messages (conversation_key, sender_id, recipient_id, body)
+         VALUES (?, ?, ?, ?)'
+    )->execute([$key, $me['id'], $peer['id'], $message]);
+
+    notify_user($pdo, $peer['email'], null, 'chat', $me['name'] . ' te envió un mensaje.');
 
     text_response('Message sent', 200);
 }
@@ -812,6 +965,148 @@ function showText(PDO $pdo, string $teamId) {
     json_response(['data' => array_values($grouped)]);
 }
 
+// ---- handlers: documentos de equipo -----------------------------------
+//
+// Archivos de oficina (PDF, Word, Excel, ...) compartidos dentro de un
+// equipo. Se guardan en DOCUMENT_DIR (privado); nunca se sirven estáticos.
+// Listar/subir/descargar: cualquier miembro del equipo. Borrar: quien lo
+// subió o el líder del equipo. (DOCUMENT_ALLOWED_EXT / DOCUMENT_MAX_BYTES se
+// declaran al inicio del archivo porque el dispatcher corre antes que esta
+// sección.)
+
+function document_payload(array $r): array {
+    return [
+        'id'           => $r['id'],
+        'docName'      => $r['doc_name'],
+        'originalName' => $r['original_name'],
+        'mime'         => $r['mime'],
+        'fileSize'     => (int) $r['file_size'],
+        'uploadedBy'   => $r['uploaded_by'],
+        'createdAt'    => $r['created_at'],
+    ];
+}
+
+function teamDocumentsList(PDO $pdo, string $teamId) {
+    $user = require_auth($pdo);
+    require_team_member($pdo, $teamId, $user);
+    $stmt = $pdo->prepare(
+        'SELECT * FROM documents WHERE team_id = ? ORDER BY created_at DESC, id DESC'
+    );
+    $stmt->execute([$teamId]);
+    json_response([
+        'success' => true,
+        'documents' => array_map('document_payload', $stmt->fetchAll()),
+    ]);
+}
+
+function teamDocumentUpload(PDO $pdo) {
+    $user = require_auth($pdo);
+    $teamId = trim($_POST['teamId'] ?? '');
+    $docName = trim($_POST['docName'] ?? '');
+
+    if ($teamId === '' || empty($_FILES['document']) || $_FILES['document']['error'] === UPLOAD_ERR_NO_FILE) {
+        text_response('teamId y el archivo son obligatorios', 400);
+    }
+    require_team_member($pdo, $teamId, $user);
+
+    $file = $_FILES['document'];
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        text_response('No se pudo subir el documento. Inténtalo de nuevo.', 400);
+    }
+    $size = (int) $file['size'];
+    if ($size <= 0 || $size > DOCUMENT_MAX_BYTES) {
+        text_response('El documento supera el tamaño máximo permitido (25 MB).', 400);
+    }
+    $originalName = $file['name'];
+    $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+    if (!in_array($ext, DOCUMENT_ALLOWED_EXT, true)) {
+        text_response('Tipo de archivo no permitido.', 400);
+    }
+
+    $mime = null;
+    if (function_exists('finfo_open')) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $file['tmp_name']) ?: null;
+        finfo_close($finfo);
+    }
+
+    // Nombre generado por el servidor: nunca se confía en el original.
+    $stored = bin2hex(random_bytes(16)) . '.' . $ext;
+    if (!move_uploaded_file($file['tmp_name'], DOCUMENT_DIR . $stored)) {
+        text_response('No se pudo guardar el documento en el servidor.', 500);
+    }
+
+    $id = generate_id();
+    $stmt = $pdo->prepare(
+        'INSERT INTO documents
+           (id, team_id, doc_name, stored_path, original_name, mime, file_size, uploaded_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    );
+    $stmt->execute([
+        $id, $teamId,
+        $docName !== '' ? mb_substr($docName, 0, 255) : $originalName,
+        $stored, mb_substr($originalName, 0, 255), $mime, $size, $user['email'],
+    ]);
+
+    $stmt = $pdo->prepare('SELECT * FROM documents WHERE id = ?');
+    $stmt->execute([$id]);
+    json_response([
+        'success' => true,
+        'message' => 'Documento subido correctamente.',
+        'document' => document_payload($stmt->fetch()),
+    ]);
+}
+
+function teamDocumentDownload(PDO $pdo, string $documentId) {
+    $user = require_auth($pdo);
+    $stmt = $pdo->prepare('SELECT * FROM documents WHERE id = ?');
+    $stmt->execute([$documentId]);
+    $doc = $stmt->fetch();
+    if (!$doc) {
+        error_response('Documento no encontrado', 404);
+    }
+    require_team_member($pdo, $doc['team_id'], $user);
+
+    $path = DOCUMENT_DIR . basename($doc['stored_path']);
+    if (!is_file($path)) {
+        error_response('El archivo ya no está disponible en el servidor.', 404);
+    }
+
+    // Fuerza la descarga con el nombre original, no el aleatorio del disco.
+    header('Content-Type: ' . ($doc['mime'] ?: 'application/octet-stream'));
+    header('Content-Disposition: attachment; filename="' . str_replace('"', '', $doc['original_name']) . '"');
+    header('Content-Length: ' . filesize($path));
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: private, no-store');
+    readfile($path);
+    exit;
+}
+
+function teamDocumentDelete(PDO $pdo, string $documentId) {
+    $user = require_auth($pdo);
+    $stmt = $pdo->prepare('SELECT * FROM documents WHERE id = ?');
+    $stmt->execute([$documentId]);
+    $doc = $stmt->fetch();
+    if (!$doc) {
+        error_response('Documento no encontrado', 404);
+    }
+    require_team_member($pdo, $doc['team_id'], $user);
+
+    // Lo borra quien lo subió o el líder del equipo.
+    $isUploader = strcasecmp($doc['uploaded_by'], $user['email']) === 0;
+    if (!$isUploader && !is_team_leader($pdo, $doc['team_id'], $user['email'])) {
+        error_response('Solo quien subió el documento o el líder pueden eliminarlo.', 403);
+    }
+
+    $pdo->prepare('DELETE FROM documents WHERE id = ?')->execute([$documentId]);
+    $path = DOCUMENT_DIR . basename($doc['stored_path']);
+    if (is_file($path)) {
+        @unlink($path);
+    }
+
+    json_response(['success' => true, 'message' => 'Documento eliminado.']);
+}
+
 // ---- handlers: leave ----------------------------------------------------
 
 function applyLeave(PDO $pdo, string $teamId) {
@@ -876,6 +1171,9 @@ function leaveResult(PDO $pdo, string $leaveId) {
 
 function listNotifications(PDO $pdo) {
     $user = require_auth($pdo);
+    // Aprovecha el sondeo de la campana para emitir los recordatorios de
+    // anuncios que le tocan hoy a esta persona (ver internal_announcements.php).
+    ia_dispatch_due_reminders($pdo, $user['id']);
     $stmt = $pdo->prepare(
         'SELECT id, team_id AS teamId, type, message, read_at AS readAt, created_at AS createdAt
          FROM notifications WHERE email = ? ORDER BY created_at DESC, id DESC LIMIT 100'

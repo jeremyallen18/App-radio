@@ -1,9 +1,12 @@
 <?php
 // Permisos, vacaciones e incapacidades de empleados (Radio Doliv).
 //
-// SOLO empleados solicitan; el DIRECTOR revisa/aprueba/rechaza/revoca y nunca
-// es tratado como empleado (no puede crear solicitudes). Toda la autorización
-// y validación es autoritativa en el backend.
+// Solicitan EMPLEADOS y MANAGERS (ambos registran asistencia y por tanto
+// pueden necesitar ausentarse). El DIRECTOR revisa/aprueba/rechaza/revoca y
+// nunca es tratado como solicitante (no puede crear solicitudes). El manager
+// solicita como cualquier trabajador: NO aprueba nada (eso es solo del
+// director), así que no hay riesgo de autoaprobación. Toda la autorización y
+// validación es autoritativa en el backend.
 //
 // Integración con asistencia: un permiso `aprobado` cuyo rango APROBADO cubre
 // un día laboral hace que ese día no requiera registro de asistencia
@@ -30,12 +33,14 @@ const LEAVE_EVIDENCE_MIME = ['image/jpeg', 'image/png', 'image/webp', 'applicati
 
 // ---- helpers: seguridad --------------------------------------------
 
-function leave_require_employee(PDO $pdo): array {
+// Quien puede SOLICITAR permisos: empleados y managers. El director no (revisa,
+// no solicita). Misma regla que attendance_require_worker() en attendance.php.
+function leave_require_requester(PDO $pdo): array {
     $user = require_auth($pdo);
-    if (($user['role'] ?? '') !== 'employee') {
+    if (!in_array($user['role'] ?? '', ['employee', 'manager'], true)) {
         json_response([
             'success' => false,
-            'message' => 'Esta sección es solo para empleados.',
+            'message' => 'Esta sección no está disponible para tu rol.',
         ], 403);
     }
     return $user;
@@ -247,7 +252,7 @@ function leave_store_evidence(array $file): array {
 // Campos: type, requestedStartDate, requestedEndDate, reason (opcional),
 //         evidence (archivo; OBLIGATORIO si type = incapacidad).
 function leaveRequestCreate(PDO $pdo) {
-    $user = leave_require_employee($pdo);
+    $user = leave_require_requester($pdo);
 
     $type = trim($_POST['type'] ?? '');
     if (!in_array($type, LEAVE_TYPES, true)) {
@@ -260,6 +265,21 @@ function leaveRequestCreate(PDO $pdo) {
     if ($end === null) leave_fail('Debes seleccionar una fecha de término.', 400);
     if ($end < $start) {
         leave_fail('La fecha de término no puede ser anterior a la fecha de inicio.', 400);
+    }
+
+    // Evita el reenvío accidental de una solicitud idéntica (mismo tipo y mismo
+    // rango) que sigue pendiente. Comprobación previa para el caso normal; el
+    // índice único uq_leave_pendiente es el backstop de concurrencia (dos
+    // envíos simultáneos por doble toque / reintento de red). Se hace ANTES de
+    // procesar el archivo para no mover la evidencia en balde.
+    $dup = $pdo->prepare(
+        "SELECT id FROM leave_requests
+          WHERE employee_id = ? AND type = ? AND requested_start_date = ?
+            AND requested_end_date = ? AND status = 'pendiente'"
+    );
+    $dup->execute([$user['id'], $type, $start, $end]);
+    if ($dup->fetch()) {
+        leave_fail('Ya enviaste una solicitud igual (mismo tipo y fechas) que sigue pendiente de revisión.', 409);
     }
 
     $reason = trim($_POST['reason'] ?? '');
@@ -277,18 +297,30 @@ function leaveRequestCreate(PDO $pdo) {
 
     $days = leave_business_days($start, $end);
     $id = generate_id();
-    $stmt = $pdo->prepare(
-        'INSERT INTO leave_requests
-           (id, employee_id, type, requested_start_date, requested_end_date, requested_days,
-            reason, status, evidence_path, evidence_mime)
-         VALUES (?, ?, ?, ?, ?, ?, ?, "pendiente", ?, ?)'
-    );
-    $stmt->execute([
-        $id, $user['id'], $type, $start, $end, $days,
-        $reason !== '' ? $reason : null,
-        $evidence['path'] ?? null,
-        $evidence['mime'] ?? null,
-    ]);
+    try {
+        $stmt = $pdo->prepare(
+            'INSERT INTO leave_requests
+               (id, employee_id, type, requested_start_date, requested_end_date, requested_days,
+                reason, status, evidence_path, evidence_mime)
+             VALUES (?, ?, ?, ?, ?, ?, ?, "pendiente", ?, ?)'
+        );
+        $stmt->execute([
+            $id, $user['id'], $type, $start, $end, $days,
+            $reason !== '' ? $reason : null,
+            $evidence['path'] ?? null,
+            $evidence['mime'] ?? null,
+        ]);
+    } catch (PDOException $e) {
+        if ($e->getCode() === '23000') {
+            // Perdió la carrera contra otra solicitud idéntica simultánea: no
+            // dejes huérfana la evidencia que se acababa de guardar.
+            if ($evidence && !empty($evidence['path'])) {
+                @unlink(EVIDENCE_DIR . basename($evidence['path']));
+            }
+            leave_fail('Ya enviaste una solicitud igual (mismo tipo y fechas) que sigue pendiente de revisión.', 409);
+        }
+        throw $e;
+    }
 
     json_response([
         'success' => true,
@@ -299,7 +331,7 @@ function leaveRequestCreate(PDO $pdo) {
 
 // GET /leave-requests/my
 function leaveRequestsMine(PDO $pdo) {
-    $user = leave_require_employee($pdo);
+    $user = leave_require_requester($pdo);
     $stmt = $pdo->prepare(
         'SELECT * FROM leave_requests WHERE employee_id = ? ORDER BY created_at DESC, id DESC'
     );
@@ -310,7 +342,7 @@ function leaveRequestsMine(PDO $pdo) {
 
 // GET /leave-requests/{id}  — solo el dueño.
 function leaveRequestGet(PDO $pdo, string $id) {
-    $user = leave_require_employee($pdo);
+    $user = leave_require_requester($pdo);
     $row = leave_row($pdo, $id);
     if (!$row || $row['employee_id'] !== $user['id']) {
         error_response('No encontramos esa solicitud.', 404);
@@ -321,7 +353,7 @@ function leaveRequestGet(PDO $pdo, string $id) {
 // POST /leave-requests/{id}/cancel — el empleado cancela su propia solicitud
 // mientras siga pendiente. Un permiso ya aprobado solo lo revoca el director.
 function leaveRequestCancelByEmployee(PDO $pdo, string $id) {
-    $user = leave_require_employee($pdo);
+    $user = leave_require_requester($pdo);
     $row = leave_row($pdo, $id);
     if (!$row || $row['employee_id'] !== $user['id']) {
         error_response('No encontramos esa solicitud.', 404);
@@ -351,7 +383,8 @@ function leaveRequestEvidence(PDO $pdo, string $id) {
     if (!$row) {
         error_response('No se pudo cargar la evidencia.', 404);
     }
-    $isOwner = $row['employee_id'] === $user['id'] && $user['role'] === 'employee';
+    $isOwner = $row['employee_id'] === $user['id']
+        && in_array($user['role'], ['employee', 'manager'], true);
     $isDirector = $user['role'] === 'director';
     if (!$isOwner && !$isDirector) {
         error_response('No tienes permiso para realizar esta acción.', 403);
@@ -432,13 +465,14 @@ function adminLeaveRequestGet(PDO $pdo, string $id) {
     json_response(['success' => true, 'request' => $payload]);
 }
 
-// Valida que el empleado de la solicitud siga siendo un empleado válido.
+// Valida que el solicitante siga siendo un trabajador válido (empleado o
+// manager: ambos pueden pedir permisos).
 function leave_admin_employee(PDO $pdo, array $row): array {
     $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
     $stmt->execute([$row['employee_id']]);
     $emp = $stmt->fetch();
-    if (!$emp || $emp['role'] !== 'employee') {
-        leave_fail('El empleado de esta solicitud ya no está activo.', 409);
+    if (!$emp || !in_array($emp['role'], ['employee', 'manager'], true)) {
+        leave_fail('El solicitante ya no está activo.', 409);
     }
     return $emp;
 }

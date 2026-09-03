@@ -310,6 +310,56 @@ function deptTasksSummary(PDO $pdo) {
     ]);
 }
 
+// ---- GET /dept-tasks/summary/by-department ----------------------
+// Conteos de tareas por estado agrupados por CADA departamento de la
+// empresa, mas los totales. Solo el director: le da control del avance
+// de todas las areas, no solo la propia (para el manager/empleado ya
+// esta /dept-tasks/summary, acotado a su departamento).
+//
+// Una sola consulta con LEFT JOIN + GROUP BY para no hacer N+1: los
+// departamentos sin ninguna tarea salen igual, con los tres contadores
+// en 0. Los SUM(condicion) se apoyan en que MySQL evalua un booleano
+// como 1/0.
+
+function deptTasksSummaryByDepartment(PDO $pdo) {
+    $user = require_auth($pdo);
+    require_role($user, ['director']);
+
+    $stmt = $pdo->query(
+        "SELECT d.id, d.name,
+                COALESCE(SUM(t.status = 'pendiente'), 0)   AS pendiente,
+                COALESCE(SUM(t.status = 'en_progreso'), 0) AS en_progreso,
+                COALESCE(SUM(t.status = 'completada'), 0)  AS completada
+         FROM departments d
+         LEFT JOIN dept_tasks t ON t.department_id = d.id
+         GROUP BY d.id, d.name
+         ORDER BY d.name ASC"
+    );
+
+    $departments = [];
+    $totals = ['pendiente' => 0, 'en_progreso' => 0, 'completada' => 0];
+    foreach ($stmt->fetchAll() as $r) {
+        $raw = [
+            'pendiente'   => (int) $r['pendiente'],
+            'en_progreso' => (int) $r['en_progreso'],
+            'completada'  => (int) $r['completada'],
+        ];
+        foreach ($totals as $k => $_) {
+            $totals[$k] += $raw[$k];
+        }
+        $departments[] = [
+            'departmentId'   => $r['id'],
+            'departmentName' => $r['name'],
+        ] + dept_task_counts_payload($raw);
+    }
+
+    json_response([
+        'success'     => true,
+        'departments' => $departments,
+        'totals'      => dept_task_counts_payload($totals),
+    ]);
+}
+
 // ---- GET /dept-tasks -----------------------------------------------
 
 function deptTasksList(PDO $pdo) {
@@ -538,6 +588,12 @@ function deptTaskSetStatus(PDO $pdo, string $id) {
     }
 
     // ---- status === 'completada' ----
+    // Comprobación previa para el doble toque normal: si ya está completada, no
+    // se procesa el archivo ni se vuelve a notificar / generar la recurrencia.
+    if ($row['status'] === 'completada') {
+        dept_task_fail('Esta tarea ya está marcada como completada.', 409);
+    }
+
     $hasFile = !empty($_FILES['evidence']) && $_FILES['evidence']['error'] !== UPLOAD_ERR_NO_FILE;
     if (!empty($row['requires_evidence']) && !$hasFile && empty($row['evidence_path'])) {
         dept_task_fail('Esta tarea requiere adjuntar evidencia para marcarse como completada.', 400);
@@ -553,14 +609,28 @@ function deptTaskSetStatus(PDO $pdo, string $id) {
     // Un empleado NO cierra la tarea: queda pendiente de revisión del manager.
     $reviewStatus = $user['role'] === 'employee' ? 'pendiente_revision' : 'sin_revision';
 
+    // Transición atómica: solo la aplica quien encuentra la tarea aún sin
+    // completar. Con dos peticiones simultáneas (o un doble toque que esquiva
+    // la comprobación previa) una gana y la otra recibe rowCount()===0, así no
+    // se dispara dos veces dept_task_spawn_next() / la notificación ni se
+    // pisan evidencias.
     $stmt = $pdo->prepare(
         "UPDATE dept_tasks
             SET status = 'completada', completed_by = ?, completed_at = NOW(),
                 evidence_path = ?, evidence_mime = ?, review_status = ?,
                 review_note = NULL, reviewed_by = NULL, reviewed_at = NULL
-          WHERE id = ?"
+          WHERE id = ? AND status <> 'completada'"
     );
     $stmt->execute([$user['id'], $evidencePath, $evidenceMime, $reviewStatus, $id]);
+
+    if ($stmt->rowCount() === 0) {
+        // Otra petición simultánea ya la completó: limpia la evidencia recién
+        // subida por esta y responde de forma idempotente.
+        if ($hasFile && !empty($stored['path'])) {
+            @unlink(TASK_EVIDENCE_DIR . basename($stored['path']));
+        }
+        dept_task_fail('Esta tarea ya está marcada como completada.', 409);
+    }
 
     $fresh = dept_task_row($pdo, $id);
     if ($reviewStatus === 'pendiente_revision') {

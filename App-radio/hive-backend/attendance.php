@@ -16,7 +16,8 @@
 // trabajador cae fuera de ese radio (por defecto 10 m).
 //
 // Endpoints (registrados en index.php):
-//   POST /attendance/entry | /attendance/meal/start | /attendance/meal/end | /attendance/exit
+//   POST /attendance/entry | /attendance/meal/start | /attendance/meal/skip | /attendance/meal/end | /attendance/exit
+//        (meal/skip: "hoy no tomaré hora de comida" — solo constancia, NO cierra la jornada)
 //   GET  /attendance/today | /attendance/status | /attendance/history
 //   GET  /attendance/summary?month=YYYY-MM                 (resumen del mes)
 //   POST /attendance/corrections                           (solicitar corrección)
@@ -109,13 +110,21 @@ function attendance_state_label(string $state): string {
 }
 
 // Acción válida según el estado. En jornada, si el empleado ya tomó su hora
-// de comida el siguiente paso es la salida; si no, iniciar la comida.
+// de comida —o declaró que hoy no la tomará (`sin_comida`)— el siguiente paso
+// es la salida; si no, iniciar la comida. `sin_comida` NUNCA implica salida:
+// el trabajador sigue en jornada hasta que registre la salida explícitamente.
 function attendance_primary_action(array $events): ?string {
     $state = attendance_state($events);
     if ($state === 'sin_entrada') return 'entrada';
     if ($state === 'en_comida') return 'fin_comida';
     if ($state === 'jornada_terminada') return null;
-    return attendance_pick($events, 'fin_comida') ? 'salida' : 'inicio_comida';
+    $mealSettled = attendance_pick($events, 'fin_comida') || attendance_pick($events, 'sin_comida');
+    return $mealSettled ? 'salida' : 'inicio_comida';
+}
+
+// ¿El trabajador declaró hoy que no tomará hora de comida?
+function attendance_meal_skipped(array $events): bool {
+    return attendance_pick($events, 'sin_comida') !== null;
 }
 
 // ---- helpers: horario y snapshot -------------------------------------
@@ -211,6 +220,7 @@ function attendance_day_summary(PDO $pdo, array $employee, string $workDate, arr
     $finComida    = attendance_pick($events, 'fin_comida');
     $salida       = attendance_pick($events, 'salida');
     $state        = attendance_state($events);
+    $mealSkipped  = attendance_meal_skipped($events);
 
     $stmt = $pdo->prepare(
         'SELECT * FROM attendance_schedule_snapshots WHERE employee_id = ? AND work_date = ?'
@@ -273,6 +283,9 @@ function attendance_day_summary(PDO $pdo, array $employee, string $workDate, arr
         'inicioComida'       => $hm($inicioComida),
         'finComida'          => $hm($finComida),
         'salida'             => $hm($salida),
+        // El trabajador declaró que hoy no tomará hora de comida. Es solo
+        // constancia: NO hay salida ni cierre de jornada por esto.
+        'mealSkipped'        => $mealSkipped,
         'mealMinutes'        => $mealMinutes,
         'mealMinutesLabel'   => $mealMinutes !== null ? attendance_fmt_hm($mealMinutes) : null,
         'mealElapsedMinutes' => $mealElapsedMinutes,
@@ -359,9 +372,29 @@ function attendance_verify_location(PDO $pdo, string $type, ?float $lat, ?float 
 
 // ---- helpers: inserción de eventos --------------------------------
 
+// Mensaje de negocio cuando un evento ya existe para hoy. Se usa tanto en las
+// comprobaciones previas de cada handler como en el backstop de concurrencia
+// (violación del índice único uq_attendance_evento).
+function attendance_duplicate_message(string $type): string {
+    return [
+        'entrada'       => 'Ya tienes una entrada registrada para hoy.',
+        'inicio_comida' => 'Ya registraste tu hora de comida hoy.',
+        'fin_comida'    => 'Ya registraste el fin de tu hora de comida hoy.',
+        'salida'        => 'Ya registraste tu salida hoy.',
+        'sin_comida'    => 'Ya indicaste que hoy no tomarás hora de comida.',
+    ][$type] ?? 'Esa acción de asistencia ya está registrada para hoy.';
+}
+
 // Inserta un evento inmutable. La marca oficial es SIEMPRE la hora del
 // servidor; device_time (si llega) se guarda solo como diagnóstico. La
 // verificación de ubicación ya se hizo antes (attendance_verify_location).
+//
+// Concurrencia: las comprobaciones previas de cada handler (SELECT + if) NO son
+// atómicas frente a dos peticiones simultáneas del mismo trabajador (doble
+// toque, reintento de red, dos dispositivos). El índice único
+// uq_attendance_evento (employee_id, work_date, type) cierra esa ventana a
+// nivel de motor: la segunda inserción lanza SQLSTATE 23000 y aquí se traduce
+// al mismo mensaje de negocio en vez de crear un evento duplicado o un 500.
 function attendance_insert_event(PDO $pdo, string $employeeId, string $workDate, string $type, array $body): array {
     [$lat, $lng] = attendance_coords_from_body($body);
     $method = $body['method'] ?? 'gps';
@@ -377,7 +410,14 @@ function attendance_insert_event(PDO $pdo, string $employeeId, string $workDate,
            (employee_id, type, work_date, event_time, device_time, latitude, longitude, method)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    $stmt->execute([$employeeId, $type, $workDate, $now, $deviceTime, $lat, $lng, $method]);
+    try {
+        $stmt->execute([$employeeId, $type, $workDate, $now, $deviceTime, $lat, $lng, $method]);
+    } catch (PDOException $e) {
+        if ($e->getCode() === '23000') {
+            attendance_fail(attendance_duplicate_message($type), 409);
+        }
+        throw $e;
+    }
 
     return ['type' => $type, 'timestamp' => $now];
 }
@@ -439,12 +479,56 @@ function attendanceMealStart(PDO $pdo) {
     if (attendance_pick($events, 'inicio_comida')) {
         attendance_fail('Ya registraste tu hora de comida hoy.');
     }
+    if (attendance_meal_skipped($events)) {
+        attendance_fail('Ya indicaste que hoy no tomarás hora de comida.');
+    }
 
     $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'inicio_comida', request_body());
     $events = attendance_events_for($pdo, $user['id'], $workDate);
     json_response([
         'success'    => true,
         'message'    => 'Hora de comida iniciada',
+        'attendance' => $ev,
+        'day'        => attendance_day_summary($pdo, $user, $workDate, $events),
+    ]);
+}
+
+// POST /attendance/meal/skip — el trabajador declara que HOY no tomará hora de
+// comida. Deja constancia de esa decisión y nada más: NO registra salida, NO
+// cierra la jornada, NO crea ni modifica ninguna marca de salida. El trabajador
+// sigue "en jornada" y el siguiente paso disponible pasa a ser la salida, que
+// debe registrar él mismo cuando de verdad se vaya. Operación independiente del
+// checkout, por diseño. No exige ubicación.
+function attendanceMealSkip(PDO $pdo) {
+    $user = require_auth($pdo);
+    attendance_require_worker($user);
+
+    $workDate = attendance_workday();
+    attendance_block_if_absent($pdo, $user, $workDate);
+    $events = attendance_events_for($pdo, $user['id'], $workDate);
+    $state = attendance_state($events);
+
+    if ($state === 'sin_entrada') {
+        attendance_fail('No puedes indicar que no tomarás hora de comida porque no tienes una entrada registrada.');
+    }
+    if ($state === 'jornada_terminada') {
+        attendance_fail('No puedes cambiar tu hora de comida porque ya registraste tu salida.');
+    }
+    if ($state === 'en_comida') {
+        attendance_fail('No puedes indicar que no tomarás hora de comida porque ya tienes una comida activa.');
+    }
+    if (attendance_pick($events, 'inicio_comida')) {
+        attendance_fail('Ya registraste tu hora de comida hoy.');
+    }
+    if (attendance_meal_skipped($events)) {
+        attendance_fail('Ya indicaste que hoy no tomarás hora de comida.');
+    }
+
+    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'sin_comida', request_body());
+    $events = attendance_events_for($pdo, $user['id'], $workDate);
+    json_response([
+        'success'    => true,
+        'message'    => 'Registrado: hoy no tomarás hora de comida. Tu jornada sigue abierta; registra tu salida cuando termines.',
         'attendance' => $ev,
         'day'        => attendance_day_summary($pdo, $user, $workDate, $events),
     ]);
@@ -1144,6 +1228,7 @@ function attendanceCorrectionCreate(PDO $pdo) {
     if ($reason === '') attendance_fail('Explica brevemente que paso.', 400);
     if (mb_strlen($reason) > 1000) $reason = mb_substr($reason, 0, 1000);
 
+    // Comprobación previa para el caso normal (mensaje claro sin tocar la BD).
     $stmt = $pdo->prepare(
         "SELECT id FROM attendance_correction_requests
           WHERE employee_id = ? AND work_date = ? AND kind = ? AND status = 'pendiente'"
@@ -1153,12 +1238,24 @@ function attendanceCorrectionCreate(PDO $pdo) {
         attendance_fail('Ya tienes una solicitud pendiente para ese mismo fichaje.', 409);
     }
 
-    $stmt = $pdo->prepare(
-        'INSERT INTO attendance_correction_requests
-           (employee_id, work_date, kind, requested_time, reason)
-         VALUES (?, ?, ?, ?, ?)'
-    );
-    $stmt->execute([$user['id'], $workDate, $kind, $time, $reason]);
+    // Backstop de concurrencia: el índice único uq_acr_pendiente
+    // (employee_id, work_date, kind, pending_slot) impide dos solicitudes
+    // PENDIENTES iguales creadas a la vez (doble toque / reintento). Tras
+    // resolverse (aprobada/rechazada) pending_slot pasa a NULL y se puede
+    // volver a solicitar.
+    try {
+        $stmt = $pdo->prepare(
+            'INSERT INTO attendance_correction_requests
+               (employee_id, work_date, kind, requested_time, reason)
+             VALUES (?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([$user['id'], $workDate, $kind, $time, $reason]);
+    } catch (PDOException $e) {
+        if ($e->getCode() === '23000') {
+            attendance_fail('Ya tienes una solicitud pendiente para ese mismo fichaje.', 409);
+        }
+        throw $e;
+    }
     $id = (int) $pdo->lastInsertId();
 
     attendance_notify_dept_managers($pdo, $user, 'attendance_correction',
@@ -1279,11 +1376,27 @@ function adminAttendanceCorrectionResolve(PDO $pdo, string $id) {
                 mb_substr('Solicitud #' . $req['id'] . ': ' . $req['reason'], 0, 255),
             ]);
         } else {
-            $pdo->prepare(
-                "INSERT INTO attendance (employee_id, type, work_date, event_time, method)
-                 VALUES (?, ?, ?, ?, 'manual')"
-            )->execute([$req['employee_id'], $req['kind'], $req['work_date'], $newDt]);
-            $attId = (int) $pdo->lastInsertId();
+            try {
+                $pdo->prepare(
+                    "INSERT INTO attendance (employee_id, type, work_date, event_time, method)
+                     VALUES (?, ?, ?, ?, 'manual')"
+                )->execute([$req['employee_id'], $req['kind'], $req['work_date'], $newDt]);
+                $attId = (int) $pdo->lastInsertId();
+            } catch (PDOException $e) {
+                if ($e->getCode() !== '23000') throw $e;
+                // uq_attendance_evento: otra resolución simultánea ya creó ese
+                // evento. Se ajusta el existente en vez de duplicarlo — el
+                // resultado converge al mismo estado.
+                $stmt = $pdo->prepare(
+                    'SELECT id FROM attendance
+                      WHERE employee_id = ? AND work_date = ? AND type = ?
+                      ORDER BY event_time ASC LIMIT 1'
+                );
+                $stmt->execute([$req['employee_id'], $req['work_date'], $req['kind']]);
+                $attId = (int) $stmt->fetchColumn();
+                $pdo->prepare("UPDATE attendance SET event_time = ?, method = 'manual' WHERE id = ?")
+                    ->execute([$newDt, $attId]);
+            }
         }
 
         $pdo->prepare(

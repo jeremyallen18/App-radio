@@ -309,6 +309,72 @@ class DeptTaskApi {
     );
   }
 
+  /// Conteos de tareas por estado para CADA departamento de la empresa,
+  /// más los totales. Solo el director tiene acceso: el backend responde
+  /// 403 a cualquier otro rol. Alimenta las gráficas de desempeño por
+  /// departamento del panel del director.
+  static Future<DeptTasksByDepartment> summaryByDepartment() async {
+    final res = await _get(Uri.parse('$kBaseUrl/dept-tasks/summary/by-department'));
+    final b = _body(res);
+    int n(Map? map, String k) => (map?[k] as num?)?.toInt() ?? 0;
+    final rows = ((b['departments'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((e) => DepartmentTaskCounts(
+              departmentId: (e['departmentId'] ?? '').toString(),
+              departmentName: (e['departmentName'] ?? '').toString(),
+              pending: n(e, 'pendientes'),
+              done: n(e, 'completada'),
+              total: n(e, 'total'),
+            ))
+        .toList();
+    final t = b['totals'] as Map?;
+    return DeptTasksByDepartment(
+      departments: rows,
+      totalPending: n(t, 'pendientes'),
+      totalDone: n(t, 'completada'),
+      total: n(t, 'total'),
+    );
+  }
+
   static String _ymd(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+}
+
+/// Avance de tareas de un departamento (para las gráficas del director).
+/// `pending` incluye las tareas en progreso, igual que el resto de la app.
+class DepartmentTaskCounts {
+  const DepartmentTaskCounts({
+    required this.departmentId,
+    required this.departmentName,
+    required this.pending,
+    required this.done,
+    required this.total,
+  });
+
+  final String departmentId;
+  final String departmentName;
+  final int pending;
+  final int done;
+  final int total;
+
+  /// Fracción completada 0..1 (0 cuando el departamento no tiene tareas).
+  double get completionRatio => total == 0 ? 0 : done / total;
+}
+
+/// Respuesta de [DeptTaskApi.summaryByDepartment]: una fila por
+/// departamento más los totales de toda la empresa.
+class DeptTasksByDepartment {
+  const DeptTasksByDepartment({
+    required this.departments,
+    required this.totalPending,
+    required this.totalDone,
+    required this.total,
+  });
+
+  final List<DepartmentTaskCounts> departments;
+  final int totalPending;
+  final int totalDone;
+  final int total;
+
+  double get completionRatio => total == 0 ? 0 : totalDone / total;
 }

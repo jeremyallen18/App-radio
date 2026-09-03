@@ -3,6 +3,7 @@ import 'package:doliv_social/shared/resources/doc.dart';
 import 'package:doliv_social/shared/resources/fetchR.dart';
 import 'package:doliv_social/shared/resources/getR.dart';
 import 'package:doliv_social/shared/resources/imagecc.dart';
+import 'package:doliv_social/shared/resources/team_documents_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:doliv_social/design/design.dart';
 
@@ -20,6 +21,12 @@ class ResourceM extends StatelessWidget {
           label: 'Documentación',
           description: 'Notas y avances guardados en este dispositivo.',
           builder: (context) => DocumentationPage(),
+        ),
+        _ResourceSection(
+          icon: Icons.folder_outlined,
+          label: 'Documentos',
+          description: 'Sube y descarga archivos (PDF, Word, Excel…) del equipo.',
+          builder: (context) => TeamDocumentsScreen(teamId),
         ),
         _ResourceSection(
           icon: Icons.download_outlined,

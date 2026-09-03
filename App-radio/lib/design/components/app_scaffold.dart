@@ -17,6 +17,7 @@ class AppScaffold extends StatelessWidget {
     super.key,
     required this.body,
     this.appBar,
+    this.drawer,
     this.padding = const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
     this.floatingActionButton,
     this.bottomNavigationBar,
@@ -29,6 +30,11 @@ class AppScaffold extends StatelessWidget {
 
   final Widget body;
   final PreferredSizeWidget? appBar;
+
+  /// Panel lateral (menú hamburguesa). Cuando se pasa, [MyAppBar] muestra
+  /// solo el botón de menú que lo abre (`Scaffold.of(context).hasDrawer`).
+  final Widget? drawer;
+
   final EdgeInsets padding;
   final Widget? floatingActionButton;
   final Widget? bottomNavigationBar;
@@ -77,6 +83,7 @@ class AppScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: backgroundColor ?? AppColors.bgBase,
       appBar: appBar,
+      drawer: drawer,
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,
       body: GestureDetector(
