@@ -7,8 +7,11 @@ import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/dept_task.dart';
 import 'package:doliv_social/models/models.dart';
 import 'package:doliv_social/services/team_service.dart';
+import 'package:doliv_social/shared/teams/evidence_confirm_sheet.dart';
+import 'package:doliv_social/shared/teams/task_board_card.dart';
 import 'package:doliv_social/shared/teams/task_detail_sheet.dart';
 import 'package:doliv_social/shared/teams/task_form_screen.dart';
+import 'package:doliv_social/shared/widgets/app_menu_drawer.dart';
 import 'package:doliv_social/shared/widgets/evidence_viewer.dart';
 
 /// Tablero de tareas de un departamento/equipo, a pantalla completa.
@@ -30,9 +33,19 @@ class TaskBoardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
+      drawer: const AppMenuDrawer(),
       appBar: AppBar(
         leading: const AppBackButton(),
         title: Text('Tareas · $departmentName'),
+        actions: [
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.menu),
+              tooltip: 'Menú',
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          ),
+        ],
       ),
       body: TaskBoardBody(
         departmentId: departmentId,
@@ -146,6 +159,9 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
   }
 
   Future<void> _toggleDone(DeptTask t) async {
+    // Evita reentradas por doble toque en la casilla mientras hay una
+    // operación (o su cadena de diálogos) en curso.
+    if (_busy) return;
     final bool markingDone = !t.isDone;
 
     // Desmarcar / reabrir: sin confirmación.
@@ -168,7 +184,8 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
       context,
       title: 'Completar tarea',
       message: t.requiresEvidence
-          ? '"${t.title}" requiere adjuntar evidencia (una foto). ¿Continuar?'
+          ? '"${t.title}" requiere adjuntar una foto como evidencia. '
+            'Podrás revisarla antes de enviarla.'
           : '¿Marcar "${t.title}" como completada?',
       confirmLabel: t.requiresEvidence ? 'Elegir foto' : 'Completar',
     );
@@ -176,29 +193,55 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
 
     File? evidence;
     if (t.requiresEvidence) {
-      final XFile? picked = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1600,
-        imageQuality: 80,
-      );
-      if (picked == null) return; // canceló el selector
-      evidence = File(picked.path);
+      // Seleccionar la foto NO la sube: el usuario la revisa en una pantalla
+      // de confirmación (previsualización + "Enviar" / "Cambiar" / "Cancelar")
+      // y solo al confirmar se envía al servidor.
+      evidence = await _pickAndConfirmEvidence(t);
+      if (evidence == null) return; // canceló o no eligió foto
     }
 
+    if (_busy) return;
     setState(() => _busy = true);
     try {
       await DeptTaskApi.complete(t.id, evidence: evidence);
       await _load();
       if (mounted) {
         setState(() => _busy = false);
-        if (!widget.canManage) {
-          _snack('Tarea enviada. Tu manager la revisará.');
-        }
+        _snack(widget.canManage
+            ? 'Evidencia enviada. Tarea completada.'
+            : 'Evidencia enviada. Tu manager la revisará.');
       }
     } on TeamException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
       _snack(e.message);
+    }
+  }
+
+  /// Deja elegir una foto de evidencia y la muestra en una hoja de
+  /// confirmación con previsualización. Devuelve el archivo solo si el usuario
+  /// pulsa "Enviar evidencia"; `null` si cancela o no elige ninguna. "Cambiar
+  /// foto" reabre el selector sin enviar nada.
+  Future<File?> _pickAndConfirmEvidence(DeptTask t) async {
+    final picker = ImagePicker();
+    while (true) {
+      final XFile? picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1600,
+        imageQuality: 80,
+      );
+      if (picked == null || !mounted) return null; // canceló el selector
+      final file = File(picked.path);
+
+      final action = await showModalBottomSheet<EvidenceChoice>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: AppColors.surface,
+        builder: (_) => EvidenceConfirmSheet(taskTitle: t.title, file: file),
+      );
+      if (action == EvidenceChoice.confirm) return file;
+      if (action == EvidenceChoice.replace) continue; // elegir otra
+      return null; // canceló
     }
   }
 
@@ -377,7 +420,7 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
             )
           else
             for (final t in _topLevel) ...[
-              _TaskCard(
+              TaskBoardCard(
                 task: t,
                 canManage: widget.canManage,
                 canComplete: _canComplete(t),
@@ -395,7 +438,7 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
               for (final s in _subtasksOf(t.id))
                 Padding(
                   padding: const EdgeInsets.only(left: AppSpacing.xl, top: AppSpacing.sm),
-                  child: _TaskCard(
+                  child: TaskBoardCard(
                     task: s,
                     canManage: widget.canManage,
                     canComplete: _canComplete(s),
@@ -414,232 +457,6 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
                 ),
               const SizedBox(height: AppSpacing.md),
             ],
-        ],
-      ),
-    );
-  }
-}
-
-class _TaskCard extends StatelessWidget {
-  const _TaskCard({
-    required this.task,
-    required this.canManage,
-    required this.canComplete,
-    required this.busy,
-    required this.onToggleDone,
-    required this.onCycleStatus,
-    required this.onEdit,
-    required this.onAddSubtask,
-    required this.onDelete,
-    required this.onOpen,
-    required this.onApprove,
-    required this.onReject,
-    this.onViewEvidence,
-    this.dense = false,
-  });
-
-  final DeptTask task;
-  final bool canManage;
-  final bool canComplete;
-  final bool busy;
-  final VoidCallback onToggleDone;
-  final VoidCallback onCycleStatus;
-  final VoidCallback onEdit;
-  final VoidCallback? onAddSubtask;
-  final VoidCallback onDelete;
-  final VoidCallback onOpen;
-  final VoidCallback onApprove;
-  final VoidCallback onReject;
-  final VoidCallback? onViewEvidence;
-  final bool dense;
-
-  Color get _statusColor => switch (task.status) {
-        DeptTaskStatus.pendiente => AppColors.textMuted,
-        DeptTaskStatus.enProgreso => AppColors.warning,
-        DeptTaskStatus.completada => AppColors.success,
-      };
-
-  Widget _chip(String text, Color color, {IconData? icon}) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 12, color: color),
-              const SizedBox(width: 3),
-            ],
-            Text(text,
-                style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700)),
-          ],
-        ),
-      );
-
-  /// Metadato discreto: ícono + texto en gris tenue.
-  Widget _meta(IconData icon, String text) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: AppColors.textMuted),
-          const SizedBox(width: 3),
-          Text(text, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
-        ],
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onOpen,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Casilla de completada: para el empleado es su única acción.
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                onPressed: (busy || !canComplete) ? null : onToggleDone,
-                tooltip: canComplete
-                    ? null
-                    : (task.assignedTo == null
-                        ? 'Sin responsable: solo un manager puede completarla'
-                        : 'Solo puede completarla la persona asignada'),
-                icon: Icon(
-                  task.isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-                  color: task.isDone
-                      ? AppColors.success
-                      : (canComplete ? AppColors.textMuted : AppColors.surfaceBorder),
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      task.title,
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: dense ? 14 : 15,
-                        decoration: task.isDone ? TextDecoration.lineThrough : null,
-                      ),
-                    ),
-                    if ((task.description ?? '').isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(task.description!,
-                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                    ],
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        GestureDetector(
-                          onTap: canManage && !busy ? onCycleStatus : null,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: _statusColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(AppRadius.pill),
-                            ),
-                            child: Text(task.statusLabel,
-                                style: TextStyle(color: _statusColor, fontSize: 11, fontWeight: FontWeight.w700)),
-                          ),
-                        ),
-                        if (task.assignedTo != null)
-                          _meta(Icons.person_outline, task.assignedTo!.name),
-                        if (task.dueLabel != null)
-                          _meta(Icons.event_outlined, task.dueLabel!),
-                        if (!dense && task.subtaskCount > 0)
-                          _meta(Icons.checklist,
-                              '${task.subtaskDoneCount}/${task.subtaskCount} subtareas'),
-                        if (task.awaitingReview)
-                          _chip('Por revisar', AppColors.warning,
-                              icon: Icons.hourglass_empty),
-                        if (task.reviewStatus == DeptTaskReviewStatus.aprobada)
-                          _chip('Aprobada', AppColors.success, icon: Icons.verified_outlined),
-                        if (task.isRecurring)
-                          _chip(task.recurrence.label, AppColors.accent, icon: Icons.repeat),
-                        if (task.requiresEvidence && !task.hasEvidence)
-                          _chip('Requiere evidencia', AppColors.textMuted,
-                              icon: Icons.attach_file),
-                        if (task.hasEvidence)
-                          GestureDetector(
-                            onTap: onViewEvidence,
-                            child: _chip('Ver evidencia', AppColors.accent,
-                                icon: Icons.attach_file),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              if (canManage)
-                PopupMenuButton<String>(
-                  enabled: !busy,
-                  onSelected: (v) {
-                    switch (v) {
-                      case 'edit':
-                        onEdit();
-                      case 'sub':
-                        onAddSubtask?.call();
-                      case 'del':
-                        onDelete();
-                    }
-                  },
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Editar')),
-                    if (onAddSubtask != null)
-                      const PopupMenuItem(value: 'sub', child: Text('Agregar subtarea')),
-                    const PopupMenuItem(value: 'del', child: Text('Eliminar')),
-                  ],
-                ),
-            ],
-          ),
-
-          // Nota de rechazo: la ve sobre todo el empleado asignado.
-          if (task.wasRejected && (task.reviewNote ?? '').isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppRadius.chip),
-              ),
-              child: Text('Devuelta: ${task.reviewNote}',
-                  style: const TextStyle(color: AppColors.error, fontSize: 12)),
-            ),
-          ],
-
-          // Acciones de revisión (solo manager/director, tarea pendiente).
-          if (canManage && task.awaitingReview) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: busy ? null : onReject,
-                    icon: const Icon(Icons.undo, size: 16),
-                    label: const Text('Devolver'),
-                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: busy ? null : onApprove,
-                    icon: const Icon(Icons.check, size: 16),
-                    label: const Text('Aprobar'),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ],
       ),
     );
