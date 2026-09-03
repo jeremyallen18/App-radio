@@ -1,16 +1,13 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:table_calendar/table_calendar.dart';
 
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/calendar_event.dart';
 import 'package:doliv_social/models/models.dart';
 import 'package:doliv_social/services/calendar_service.dart';
-import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/session.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
+import 'package:doliv_social/shared/calendar/calendar_tiles.dart';
 import 'package:doliv_social/shared/calendar/event_form_screen.dart';
 
 /// Calendario: actividades a entregar (tareas con fecha límite) y eventos.
@@ -59,24 +56,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       _role = profile.role;
     }
     if (_role == AppRole.director) {
-      await _loadDepartments(token);
+      _departments = await CalendarApi.departments();
     }
     await _load();
-  }
-
-  Future<void> _loadDepartments(dynamic token) async {
-    try {
-      final res = await http.get(
-        Uri.parse('$kBaseUrl/department/list'),
-        headers: {'Authorization': (token as String?) ?? ''},
-      );
-      if (res.statusCode == 200) {
-        final List<dynamic> raw = jsonDecode(res.body)['departments'] ?? [];
-        _departments = raw
-            .map((d) => DepartmentInfo.fromJson(Map<String, dynamic>.from(d)))
-            .toList();
-      }
-    } catch (_) {}
   }
 
   static DateTime _dayKey(DateTime d) => DateTime.utc(d.year, d.month, d.day);
@@ -233,11 +215,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 )
               else ...[
                 for (final e in dayEvents) ...[
-                  _EventTile(event: e),
+                  CalendarEventTile(event: e),
                   const SizedBox(height: AppSpacing.sm),
                 ],
                 for (final a in dayActs) ...[
-                  _ActivityTile(activity: a),
+                  CalendarActivityTile(activity: a),
                   const SizedBox(height: AppSpacing.sm),
                 ],
               ],
@@ -299,125 +281,5 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
     }
     return null;
-  }
-}
-
-class _EventTile extends StatelessWidget {
-  const _EventTile({required this.event});
-  final CalendarEvent event;
-
-  @override
-  Widget build(BuildContext context) {
-    final timeLabel = [
-      if (event.startTime != null) event.startTime!,
-      if (event.endTime != null) '– ${event.endTime!}',
-    ].join(' ');
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.event, color: AppColors.accent, size: 18),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  event.title,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-              if (event.hasLocation)
-                const AppBadge(label: 'Con ubicación', variant: AppBadgeVariant.info),
-            ],
-          ),
-          if (timeLabel.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(timeLabel, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-          ],
-          if ((event.description ?? '').isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(event.description!, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-          ],
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: 4,
-            children: [
-              AppBadge(label: event.isGeneral ? 'General' : 'Áreas'),
-              if (!event.isGeneral && event.areaNames.isNotEmpty)
-                AppBadge(label: event.areaNames),
-              if (event.hasLocation && event.entryTime != null)
-                AppBadge(
-                  label: 'Entrada ${event.entryTime}'
-                      '${(event.locationLabel ?? '').isNotEmpty ? ' · ${event.locationLabel}' : ''}',
-                  variant: AppBadgeVariant.warning,
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActivityTile extends StatelessWidget {
-  const _ActivityTile({required this.activity});
-  final CalendarActivity activity;
-
-  @override
-  Widget build(BuildContext context) {
-    final sub = [
-      if ((activity.teamName ?? '').isNotEmpty) activity.teamName!,
-      if ((activity.domainName ?? '').isNotEmpty) activity.domainName!,
-    ].join(' · ');
-    return AppCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            activity.completed ? Icons.check_circle : Icons.assignment_outlined,
-            color: activity.completed ? AppColors.success : AppColors.warning,
-            size: 18,
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  activity.description,
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    decoration: activity.completed ? TextDecoration.lineThrough : null,
-                  ),
-                ),
-                if (sub.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(sub, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                ],
-                if ((activity.assignedTo).isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    activity.assignedTo,
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          AppBadge(
-            label: activity.completed ? 'Entregada' : 'A entregar',
-            variant: activity.completed ? AppBadgeVariant.success : AppBadgeVariant.warning,
-          ),
-        ],
-      ),
-    );
   }
 }

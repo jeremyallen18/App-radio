@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'package:doliv_social/models/calendar_event.dart';
+import 'package:doliv_social/models/models.dart';
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 
@@ -74,6 +75,25 @@ class CalendarApi {
 
   static Future<void> deleteEvent(String id) async {
     await _postJson(Uri.parse('$kBaseUrl/events/$id/delete'), const {});
+  }
+
+  /// Lista de departamentos, para el selector de alcance del director. Nunca
+  /// lanza: ante cualquier fallo devuelve una lista vacía (el selector
+  /// simplemente no muestra departamentos).
+  static Future<List<DepartmentInfo>> departments() async {
+    try {
+      final res = await http.get(
+        Uri.parse('$kBaseUrl/department/list'),
+        headers: {'Authorization': await _token()},
+      );
+      if (res.statusCode != 200) return [];
+      final List<dynamic> raw = jsonDecode(res.body)['departments'] ?? [];
+      return raw
+          .map((d) => DepartmentInfo.fromJson(Map<String, dynamic>.from(d)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   // ---- transporte ---------------------------------------------------
