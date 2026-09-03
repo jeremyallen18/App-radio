@@ -1,18 +1,15 @@
-import 'dart:convert';
-
 import 'package:doliv_social/core/Routes.dart';
 import 'package:doliv_social/shared/auth/login.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/models.dart';
+import 'package:doliv_social/services/profile_service.dart';
 import 'package:doliv_social/shared/directory/colleague_directory_screen.dart';
-import 'package:doliv_social/shared/teams/teamDetail.dart';
-import 'package:doliv_social/core/api_config.dart';
+import 'package:doliv_social/shared/home/profile_hero.dart';
+import 'package:doliv_social/shared/home/profile_widgets.dart';
 import 'package:doliv_social/core/audio/radio_player.dart';
-import 'package:doliv_social/core/session.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -41,48 +38,13 @@ class _ProfileState extends State<Profile> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final token = await secureStorage.readSecureData(key);
-
-    Future<int?> count(String path, String field) async {
-      try {
-        final response = await http.get(
-          Uri.parse('$kBaseUrl/$path'),
-          headers: <String, String>{'Authorization': token ?? ''},
-        );
-        if (response.statusCode != 200) return null;
-        final List<dynamic> list = jsonDecode(response.body)[field] ?? [];
-        return list.length;
-      } catch (_) {
-        return null;
-      }
-    }
-
-    Future<List<dynamic>> teams() async {
-      try {
-        final response = await http.get(
-          Uri.parse('$kBaseUrl/team/showTeams'),
-          headers: <String, String>{'Authorization': token ?? ''},
-        );
-        if (response.statusCode != 200) return [];
-        return jsonDecode(response.body)['teams'] ?? [];
-      } catch (_) {
-        return [];
-      }
-    }
-
-    final results = await Future.wait([
-      Session.fetchCurrentUser(token ?? ''),
-      count('team/incompleteTasks', 'incompleteTasks'),
-      count('team/completedTasks', 'completedTasks'),
-      teams(),
-    ]);
-
+    final overview = await ProfileApi.fetchOverview();
     if (!mounted) return;
     setState(() {
-      _profile = results[0] as UserProfile?;
-      _pendingCount = results[1] as int?;
-      _completedCount = results[2] as int?;
-      _teams = results[3] as List<dynamic>;
+      _profile = overview.profile;
+      _pendingCount = overview.pendingCount;
+      _completedCount = overview.completedCount;
+      _teams = overview.teams;
       _loading = false;
     });
   }
@@ -96,40 +58,16 @@ class _ProfileState extends State<Profile> {
 
     setState(() => _uploadingPhoto = true);
     try {
-      final token = await secureStorage.readSecureData(key);
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$kBaseUrl/user/photo'),
-      );
-      request.headers['Authorization'] = token ?? '';
-      request.files.add(await http.MultipartFile.fromPath('photo', pickedFile.path));
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
+      final updated = await ProfileApi.uploadPhoto(pickedFile.path);
       if (!mounted) return;
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
-        setState(() => _profile = UserProfile.fromJson(json));
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Foto de perfil actualizada')),
-        );
-      } else {
-        String message = 'No se pudo actualizar la foto';
-        try {
-          message = (jsonDecode(response.body)['error'] as String?) ?? message;
-        } catch (_) {}
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), backgroundColor: Colors.red),
-        );
-      }
-    } catch (_) {
+      setState(() => _profile = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Foto de perfil actualizada')),
+      );
+    } on ProfileException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ocurrió un error al subir la foto'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(e.message), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _uploadingPhoto = false);
@@ -196,7 +134,7 @@ class _ProfileState extends State<Profile> {
     return ListView(
       padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
       children: [
-        _ProfileHero(
+        ProfileHero(
           name: profile?.name ?? 'Mi perfil',
           headline: profile?.headline ?? 'Cargando tu información…',
           photoUrl: profile?.photoUrl,
@@ -210,7 +148,7 @@ class _ProfileState extends State<Profile> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (profile != null)
-                _MetaRow(
+                ProfileMetaRow(
                   icon: Icons.apartment_outlined,
                   text: profile.department != null
                       ? '${profile.department!.name} · Radio Doliv'
@@ -218,7 +156,7 @@ class _ProfileState extends State<Profile> {
                 ),
               const SizedBox(height: AppSpacing.sm),
               if (profile != null)
-                _MetaRow(
+                ProfileMetaRow(
                   icon: Icons.mail_outline,
                   text: profile.email,
                   trailing: IconButton(
@@ -254,19 +192,19 @@ class _ProfileState extends State<Profile> {
               Row(
                 children: [
                   Expanded(
-                    child: _StatItem(
+                    child: ProfileStatItem(
                       value: _pendingCount?.toString() ?? '—',
                       label: 'Pendientes',
                     ),
                   ),
                   Expanded(
-                    child: _StatItem(
+                    child: ProfileStatItem(
                       value: _completedCount?.toString() ?? '—',
                       label: 'Completadas',
                     ),
                   ),
                   Expanded(
-                    child: _StatItem(
+                    child: ProfileStatItem(
                       value: _teams.length.toString(),
                       label: 'Equipos',
                     ),
@@ -280,17 +218,17 @@ class _ProfileState extends State<Profile> {
         const Divider(height: 1, color: AppColors.surfaceBorder),
         Row(
           children: [
-            _TabButton(
+            ProfileTabButton(
               label: 'Equipos',
               selected: _tab == _ProfileTab.equipos,
               onTap: () => setState(() => _tab = _ProfileTab.equipos),
             ),
-            _TabButton(
+            ProfileTabButton(
               label: 'Mi área',
               selected: _tab == _ProfileTab.area,
               onTap: () => setState(() => _tab = _ProfileTab.area),
             ),
-            _TabButton(
+            ProfileTabButton(
               label: 'Cuenta',
               selected: _tab == _ProfileTab.cuenta,
               onTap: () => setState(() => _tab = _ProfileTab.cuenta),
@@ -308,9 +246,9 @@ class _ProfileState extends State<Profile> {
   Widget _buildTabContent() {
     switch (_tab) {
       case _ProfileTab.equipos:
-        return _TeamsList(teams: _teams);
+        return ProfileTeamsList(teams: _teams);
       case _ProfileTab.area:
-        return _AreaCard(
+        return ProfileAreaCard(
           department: _profile?.department,
           onOpenDirectory: _openDirectory,
         );
@@ -377,368 +315,6 @@ class _ProfileState extends State<Profile> {
             const Icon(Icons.arrow_forward_ios_outlined, size: 16.0, color: AppColors.textMuted),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Banda de marca a todo lo ancho con la foto superpuesta, a la manera de
-/// una cabecera de perfil de X: sin tarjeta, sin bordes — la pantalla misma
-/// es el encabezado.
-class _ProfileHero extends StatelessWidget {
-  const _ProfileHero({
-    required this.name,
-    required this.headline,
-    required this.photoUrl,
-    required this.avatarSeed,
-    required this.onEditPhoto,
-    required this.uploadingPhoto,
-  });
-
-  final String name;
-  final String headline;
-  final String? photoUrl;
-  final String avatarSeed;
-  final VoidCallback onEditPhoto;
-  final bool uploadingPhoto;
-
-  static const double _bandHeight = 120;
-  static const double _avatarRadius = 44;
-  static const double _ringWidth = 4;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              height: _bandHeight,
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppColors.brandBlue, AppColors.brandNavy],
-                ),
-              ),
-            ),
-            // El avatar se coloca con `Padding` (no `Positioned`) para que el
-            // `Stack` crezca y contenga la parte que sobresale de la banda; si
-            // no, el nombre de abajo se montaría encima de la foto.
-            Padding(
-              padding: const EdgeInsets.only(
-                left: AppSpacing.lg,
-                top: _bandHeight - _avatarRadius - _ringWidth,
-              ),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(_ringWidth),
-                    decoration: const BoxDecoration(
-                      color: AppColors.bgBase,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IdentityAvatar(
-                      id: avatarSeed,
-                      label: name,
-                      radius: _avatarRadius,
-                      photoUrl: photoUrl,
-                    ),
-                  ),
-                  if (uploadingPhoto)
-                    Positioned.fill(
-                      child: Container(
-                        margin: const EdgeInsets.all(_ringWidth),
-                        decoration: BoxDecoration(
-                          color: AppColors.bgBase.withValues(alpha: 0.6),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Material(
-                      color: AppColors.bgBase,
-                      shape: const CircleBorder(
-                        side: BorderSide(color: AppColors.surfaceBorder),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: InkWell(
-                        onTap: uploadingPhoto ? null : onEditPhoto,
-                        child: const Padding(
-                          padding: EdgeInsets.all(7),
-                          child: Icon(
-                            Icons.photo_camera_outlined,
-                            size: 16,
-                            color: AppColors.accentStrong,
-                            semanticLabel: 'Cambiar foto de perfil',
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                headline,
-                style: const TextStyle(fontSize: 14, color: AppColors.textMuted),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MetaRow extends StatelessWidget {
-  const _MetaRow({required this.icon, required this.text, this.trailing});
-
-  final IconData icon;
-  final String text;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 15, color: AppColors.textMuted),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-          ),
-        ),
-        if (trailing != null) ...[const SizedBox(width: AppSpacing.sm), trailing!],
-      ],
-    );
-  }
-}
-
-class _StatItem extends StatelessWidget {
-  const _StatItem({required this.value, required this.label});
-
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-        ),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
-      ],
-    );
-  }
-}
-
-/// Pestaña estilo X: subrayado de acento sobre el texto activo, resto
-/// silenciado. Reparte el ancho en partes iguales entre las tres pestañas.
-class _TabButton extends StatelessWidget {
-  const _TabButton({required this.label, required this.selected, required this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: selected ? AppColors.accent : Colors.transparent,
-                width: 3,
-              ),
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: selected ? AppColors.textPrimary : AppColors.textMuted,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TeamsList extends StatelessWidget {
-  const _TeamsList({required this.teams});
-
-  final List<dynamic> teams;
-
-  @override
-  Widget build(BuildContext context) {
-    if (teams.isEmpty) {
-      return const AppCard(
-        child: Text(
-          'Todavía no perteneces a ningún equipo.',
-          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        for (int i = 0; i < teams.length; i++) ...[
-          if (i > 0) const SizedBox(height: AppSpacing.sm),
-          _TeamRow(team: Map<String, dynamic>.from(teams[i])),
-        ],
-      ],
-    );
-  }
-}
-
-class _TeamRow extends StatelessWidget {
-  const _TeamRow({required this.team});
-
-  final Map<String, dynamic> team;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => t_detail(team: team)),
-        );
-      },
-      child: Row(
-        children: [
-          const Icon(Icons.groups_outlined, size: 20, color: AppColors.accent),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(
-              team['teamName']?.toString() ?? 'Equipo',
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
-        ],
-      ),
-    );
-  }
-}
-
-/// Tarjeta del departamento propio y puerta de entrada al directorio. Es el
-/// único lugar de la app donde se busca gente, así que la acción va visible
-/// en la tarjeta y no escondida en la lista de "Cuenta".
-class _AreaCard extends StatelessWidget {
-  const _AreaCard({required this.department, required this.onOpenDirectory});
-
-  final DepartmentInfo? department;
-  final VoidCallback onOpenDirectory;
-
-  @override
-  Widget build(BuildContext context) {
-    final dept = department;
-    final String description = dept?.description ?? '';
-
-    return AppCard(
-      onTap: onOpenDirectory,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.apartment_outlined, size: 20, color: AppColors.accent),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  dept?.name ?? 'Sin departamento asignado',
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            dept == null
-                ? 'Aun así puedes buscar a cualquier persona de Radio Doliv.'
-                : description.isNotEmpty
-                    ? description
-                    : (dept.employeeCount == 1
-                        ? '1 persona en el área'
-                        : '${dept.employeeCount} personas en el área'),
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              const Icon(Icons.person_search_outlined, size: 18, color: AppColors.accentStrong),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  dept == null ? 'Buscar compañeros' : 'Ver y buscar compañeros de mi área',
-                  style: const TextStyle(
-                    color: AppColors.accentStrong,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
-            ],
-          ),
-        ],
       ),
     );
   }
