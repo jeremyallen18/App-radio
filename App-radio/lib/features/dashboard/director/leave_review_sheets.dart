@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:doliv_social/design/design.dart';
+import 'package:doliv_social/shared/calendar/date_pickers.dart';
 
 /// Hoja inferior de aprobación: deja al director autorizar un periodo distinto
 /// al solicitado. Devuelve el rango elegido, o `null` si cancela.
@@ -79,8 +80,8 @@ class _LeaveApprovalSheetState extends State<_LeaveApprovalSheet> {
             label: 'Inicio',
             value: _start,
             onPick: () async {
-              final p = await showDatePicker(
-                context: context,
+              final p = await pickWorkingDate(
+                context,
                 firstDate: DateTime(_start.year - 1),
                 lastDate: DateTime(_start.year + 2),
                 initialDate: _start,
@@ -97,8 +98,8 @@ class _LeaveApprovalSheetState extends State<_LeaveApprovalSheet> {
             label: 'Término',
             value: _end,
             onPick: () async {
-              final p = await showDatePicker(
-                context: context,
+              final p = await pickWorkingDate(
+                context,
                 firstDate: DateTime(_start.year - 1),
                 lastDate: DateTime(_start.year + 2),
                 initialDate: _end,

@@ -24,6 +24,10 @@ class _ChatScreenfetchState extends State<ChatScreenfetch> {
   bool _loading = true;
   bool _hasError = false;
 
+  /// Evita que un doble toque (o un toque mientras la transición aún corre)
+  /// apile dos veces la misma conversación en la pila de navegación.
+  bool _opening = false;
+
   @override
   void initState() {
     super.initState();
@@ -65,15 +69,21 @@ class _ChatScreenfetchState extends State<ChatScreenfetch> {
   }
 
   Future<void> _openThread(Map<String, dynamic> convo) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ChatScreen(
-          peerEmail: convo['peerEmail']?.toString() ?? '',
-          peerName: convo['peerName']?.toString(),
+    if (_opening) return;
+    _opening = true;
+    try {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            peerEmail: convo['peerEmail']?.toString() ?? '',
+            peerName: convo['peerName']?.toString(),
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      _opening = false;
+    }
     if (mounted) _fetch(); // refresca no leídos al volver
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/attendance.dart';
 import 'package:doliv_social/services/attendance_service.dart';
+import 'package:doliv_social/shared/calendar/date_pickers.dart';
 
 /// Pantalla del empleado para pedir una corrección de asistencia ("olvidé
 /// marcar salida el 25", "entré a las 9:05 pero quedó 9:40"). El manager de
@@ -67,8 +68,8 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await pickWorkingDate(
+      context,
       firstDate: DateTime(now.year - 1),
       lastDate: now,
       initialDate: _date.isAfter(now) ? now : _date,

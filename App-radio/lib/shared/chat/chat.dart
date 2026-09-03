@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:doliv_social/shared/chat/chatHistory.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:doliv_social/design/design.dart';
@@ -42,8 +41,14 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _peerName = widget.peerName ?? _shortEmail(widget.peerEmail);
     _fetchMessages();
-    _pollTimer =
-        Timer.periodic(const Duration(seconds: 3), (_) => _fetchMessages());
+    // Sondeo cada 5 s (antes 3 s, demasiado agresivo) y solo mientras este
+    // hilo es la pantalla visible: si hay otra pantalla encima, no se
+    // consulta hasta volver.
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted) return;
+      final isCurrent = ModalRoute.of(context)?.isCurrent ?? true;
+      if (isCurrent) _fetchMessages();
+    });
   }
 
   String _shortEmail(String email) =>
@@ -185,25 +190,6 @@ class _ChatScreenState extends State<ChatScreen> {
         title: Text(_peerName),
         leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            tooltip: _emojiOpen ? 'Cerrar emojis' : 'Emojis',
-            icon: Icon(
-                _emojiOpen ? Icons.keyboard_outlined : Icons.emoji_emotions_outlined),
-            onPressed: () => setState(() => _emojiOpen = !_emojiOpen),
-          ),
-          IconButton(
-            tooltip: 'Todas mis conversaciones',
-            icon: const Icon(Icons.forum_outlined),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const ChatScreenfetch()),
-              );
-            },
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -226,7 +212,12 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
             ),
           ),
-          MessageComposer(controller: _controller, onSend: _sendMessage),
+          MessageComposer(
+            controller: _controller,
+            onSend: _sendMessage,
+            emojiActive: _emojiOpen,
+            onToggleEmoji: () => setState(() => _emojiOpen = !_emojiOpen),
+          ),
           if (_emojiOpen)
             EmojiPickerPanel(onEmojiSelected: _insertEmoji),
         ],

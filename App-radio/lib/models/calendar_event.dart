@@ -57,6 +57,13 @@ class CalendarEvent {
   final double? longitude;
   final int? radiusM;
   final String? locationLabel;
+
+  /// Lugar del evento en texto libre (independiente de la geocerca).
+  final String? locationText;
+
+  /// Días de antelación de los recordatorios automáticos (7/5/3/2).
+  final List<int> reminderOffsets;
+
   final String? entryTime; // "HH:MM" — override de hora de entrada
   final List<EventArea> areas;
 
@@ -73,6 +80,8 @@ class CalendarEvent {
     required this.longitude,
     required this.radiusM,
     required this.locationLabel,
+    this.locationText,
+    this.reminderOffsets = const [7, 5, 3, 2],
     required this.entryTime,
     required this.areas,
   });
@@ -94,6 +103,12 @@ class CalendarEvent {
         longitude: (json['longitude'] as num?)?.toDouble(),
         radiusM: (json['radiusM'] as num?)?.toInt(),
         locationLabel: json['locationLabel']?.toString(),
+        locationText: (json['locationText']?.toString().isNotEmpty ?? false)
+            ? json['locationText'].toString()
+            : null,
+        reminderOffsets: ((json['reminderOffsets'] as List?) ?? const [7, 5, 3, 2])
+            .map((e) => (e as num).toInt())
+            .toList(),
         entryTime: json['entryTime']?.toString(),
         areas: ((json['areas'] as List?) ?? const [])
             .whereType<Map>()

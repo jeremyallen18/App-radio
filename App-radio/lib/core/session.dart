@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:doliv_social/models/models.dart';
 import 'package:doliv_social/core/storeToken.dart';
 import 'package:doliv_social/core/api_config.dart';
+import 'package:doliv_social/core/session_keys.dart' show secureStorage, emailVerifiedKey;
 
 class Session {
   static const String _roleKey = 'userRole';
@@ -27,6 +28,10 @@ class Session {
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       final profile = UserProfile.fromJson(json);
       await _storage.writeSecureData(_roleKey, profile.role.name);
+      // Mantiene fresca la marca de verificación de correo que lee el aviso
+      // del shell (p. ej. tras abrir el enlace y volver a la app).
+      await secureStorage.writeSecureData(
+          emailVerifiedKey, profile.emailVerified ? '1' : '0');
       return profile;
     } catch (_) {
       return null;

@@ -52,7 +52,7 @@ extension TaskRecurrenceInfo on TaskRecurrence {
   String get label => switch (this) {
         TaskRecurrence.none => 'No se repite',
         TaskRecurrence.daily => 'Cada día',
-        TaskRecurrence.weekdays => 'Lunes a viernes',
+        TaskRecurrence.weekdays => 'Lunes a sábado',
         TaskRecurrence.weekly => 'Cada semana',
         TaskRecurrence.monthly => 'Cada mes',
       };
@@ -107,6 +107,12 @@ class DeptTask {
   final DateTime? dueDate;
   final TaskUserRef? completedBy;
   final DateTime? completedAt;
+
+  /// Entregada después de su fecha límite (backend: `dept_tasks.completed_late`,
+  /// migración 021). Lo decide el servidor; la app muestra una insignia
+  /// "Retardo". La tarea sigue con estado `completada`.
+  final bool completedLate;
+
   final DateTime? createdAt;
   final int subtaskCount;
   final int subtaskDoneCount;
@@ -143,6 +149,7 @@ class DeptTask {
     required this.dueDate,
     required this.completedBy,
     required this.completedAt,
+    required this.completedLate,
     required this.createdAt,
     required this.subtaskCount,
     required this.subtaskDoneCount,
@@ -173,6 +180,7 @@ class DeptTask {
       dueDate: d('dueDate'),
       completedBy: TaskUserRef.maybe(json['completedBy']),
       completedAt: d('completedAt'),
+      completedLate: json['completedLate'] == true,
       createdAt: d('createdAt'),
       subtaskCount: (json['subtaskCount'] as num?)?.toInt() ?? 0,
       subtaskDoneCount: (json['subtaskDoneCount'] as num?)?.toInt() ?? 0,

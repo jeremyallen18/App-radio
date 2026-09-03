@@ -30,6 +30,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Traducciones de los widgets de Material/Cupertino (DatePicker,
+  # DateRangePicker, TimePicker, encabezados de día, etc.) al español. Sin
+  # esto los calendarios del sistema salen en inglés aunque `intl` ya esté.
+  flutter_localizations:
+    sdk: flutter
 
 
   # The following adds the Cupertino Icons font to your application.

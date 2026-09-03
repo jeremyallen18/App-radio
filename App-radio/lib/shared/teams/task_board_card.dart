@@ -150,6 +150,9 @@ class TaskBoardCard extends StatelessWidget {
                               icon: Icons.hourglass_empty),
                         if (task.reviewStatus == DeptTaskReviewStatus.aprobada)
                           _chip('Aprobada', AppColors.success, icon: Icons.verified_outlined),
+                        if (task.completedLate)
+                          _chip('Retardo', AppColors.error,
+                              icon: Icons.timer_off_outlined),
                         if (task.isRecurring)
                           _chip(task.recurrence.label, AppColors.accent, icon: Icons.repeat),
                         if (task.requiresEvidence && !task.hasEvidence)

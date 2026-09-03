@@ -50,8 +50,27 @@ CREATE TABLE IF NOT EXISTS users (
   otp VARCHAR(10) NULL,
   otp_expires DATETIME NULL,
   otp_verified TINYINT(1) NOT NULL DEFAULT 0,
+  -- Verificación de correo al registrarse (migración 023). NULL = sin
+  -- verificar. Las cuentas creadas antes de la migración se dan por
+  -- verificadas (email_verified_at = created_at).
+  email_verified_at DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- Tokens de verificación de correo (migración 023). Solo se guarda el hash
+-- SHA-256 del token; un solo uso (consumed_at) y con caducidad (expires_at).
+CREATE TABLE IF NOT EXISTS email_verifications (
+  id CHAR(24) PRIMARY KEY,
+  user_id CHAR(24) NOT NULL,
+  token_hash CHAR(64) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  consumed_at DATETIME NULL,
+  requested_ip VARCHAR(45) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_ev_token (token_hash),
+  KEY idx_ev_user (user_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS teams (
@@ -174,6 +193,10 @@ CREATE TABLE IF NOT EXISTS notifications (
   team_id CHAR(24) NULL,
   email VARCHAR(255) NOT NULL,
   type VARCHAR(50) NOT NULL,
+  -- Destino estructurado opcional (migración 020): a qué entidad apunta la
+  -- notificación, para que el cliente abra la pantalla correcta al tocarla.
+  entity_type VARCHAR(32) NULL,
+  entity_id VARCHAR(64) NULL,
   message VARCHAR(255) NOT NULL,
   read_at DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -343,6 +366,34 @@ CREATE TABLE IF NOT EXISTS leave_requests (
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
+-- Justificación de faltas pasadas (migración 022 / hive-backend/absences.php).
+-- Una falta = día laboral (lun-sáb) ya pasado sin asistencia y sin permiso
+-- aprobado. El trabajador la justifica con motivo + evidencia OBLIGATORIA; el
+-- director aprueba o rechaza. Una justificación aprobada quita el día del
+-- conteo de faltas injustificadas.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS absence_justifications (
+  id CHAR(24) PRIMARY KEY,
+  employee_id CHAR(24) NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  reason VARCHAR(1000) NULL,
+  evidence_path VARCHAR(255) NULL,
+  evidence_mime VARCHAR(100) NULL,
+  status ENUM('pendiente','aprobada','rechazada') NOT NULL DEFAULT 'pendiente',
+  review_note VARCHAR(1000) NULL,
+  reviewed_by CHAR(24) NULL,
+  reviewed_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_absence_just (employee_id, start_date, end_date),
+  KEY idx_aj_employee (employee_id, start_date),
+  KEY idx_aj_status (status),
+  FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------------------------
 -- Eventos del calendario (ver migrations/007_events.sql y hive-backend/events.php).
 -- El director crea eventos 'general' (toda la empresa) o 'areas' (solo los
 -- departamentos de event_areas y sus managers). Si has_location = 1, el evento
@@ -363,12 +414,28 @@ CREATE TABLE IF NOT EXISTS events (
   longitude DECIMAL(10,7) NULL,
   radius_m INT NULL,
   location_label VARCHAR(255) NULL,
+  -- Lugar del evento en texto libre, para cualquier evento (migración 024).
+  location_text VARCHAR(255) NULL,
+  -- Días de antelación de los recordatorios automáticos, CSV (migración 024).
+  reminder_offsets VARCHAR(50) NOT NULL DEFAULT '7,5,3,2',
   entry_time TIME NULL,
   created_by CHAR(24) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_events_date (event_date),
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Recordatorios de evento ya enviados (migración 024): idempotencia por
+-- (evento, antelación en días, usuario avisado).
+CREATE TABLE IF NOT EXISTS event_reminders_sent (
+  event_id CHAR(24) NOT NULL,
+  offset_days INT NOT NULL,
+  user_id CHAR(24) NOT NULL,
+  sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (event_id, offset_days, user_id),
+  FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS event_areas (
@@ -409,6 +476,9 @@ CREATE TABLE IF NOT EXISTS dept_tasks (
   status ENUM('pendiente','en_progreso','completada') NOT NULL DEFAULT 'pendiente',
   completed_by CHAR(24) NULL,
   completed_at DATETIME NULL,
+  -- Entregada fuera de plazo (migración 021): la calcula el servidor al
+  -- pasar a 'completada' (completed_at > fin del día de due_date).
+  completed_late TINYINT(1) NOT NULL DEFAULT 0,
   review_status ENUM('sin_revision','pendiente_revision','aprobada','rechazada') NOT NULL DEFAULT 'sin_revision',
   review_note VARCHAR(1000) NULL,
   reviewed_by CHAR(24) NULL,
@@ -460,10 +530,15 @@ CREATE TABLE IF NOT EXISTS internal_announcements (
   event_at DATETIME NULL,
   location_label VARCHAR(255) NULL,
   created_by CHAR(24) NOT NULL,
+  -- Evento del calendario que generó este anuncio (migración 024); NULL si el
+  -- director lo publicó directamente. UNIQUE: un evento => un anuncio.
+  event_id CHAR(24) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_ia_event (event_at),
-  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+  UNIQUE KEY uq_ia_event (event_id),
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS internal_announcement_areas (

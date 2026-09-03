@@ -5,6 +5,7 @@ require __DIR__ . '/site_content.php';
 require __DIR__ . '/events.php';
 require __DIR__ . '/attendance.php';
 require __DIR__ . '/leave_requests.php';
+require __DIR__ . '/absences.php';
 require __DIR__ . '/dept_tasks.php';
 require __DIR__ . '/internal_announcements.php';
 
@@ -33,6 +34,8 @@ $routes = [
     ['GET',  '#^/?$#',                                       'home'],
     ['POST', '#^/user/signup/?$#',                            'signup'],
     ['POST', '#^/user/login/?$#',                             'login'],
+    ['GET',  '#^/verify-email/?$#',                           'verifyEmail'],
+    ['POST', '#^/user/resendVerification/?$#',                'resendVerification'],
     ['POST', '#^/user/resetPassword/?$#',                     'resetPassword'],
     ['POST', '#^/user/verifyOTP/([^/]+)/?$#',                 'verifyOTP'],
     ['POST', '#^/user/newPassword/([^/]+)/?$#',               'newPassword'],
@@ -167,6 +170,8 @@ $routes = [
     ['GET',  '#^/admin/attendance/?$#',                       'adminAttendanceList'],
     ['GET',  '#^/admin/attendance/([^/]+)/?$#',               'adminAttendanceEmployee'],
     ['GET',  '#^/admin/schedules/?$#',                        'adminSchedulesList'],
+    // La ruta 'bulk' va ANTES del comodín /admin/schedules/{id}.
+    ['POST', '#^/admin/schedules/bulk/?$#',                   'adminScheduleBulkSave'],
     ['GET',  '#^/admin/schedules/([^/]+)/?$#',                'adminScheduleGet'],
     ['POST', '#^/admin/schedules/([^/]+)/?$#',                'adminScheduleSave'],
 
@@ -184,6 +189,14 @@ $routes = [
     ['POST', '#^/admin/leave-requests/([^/]+)/reject/?$#',    'adminLeaveRequestReject'],
     ['POST', '#^/admin/leave-requests/([^/]+)/cancel/?$#',    'adminLeaveRequestCancel'],
     ['GET',  '#^/admin/leave-requests/([^/]+)/?$#',           'adminLeaveRequestGet'],
+
+    // ---- Justificación de faltas pasadas (ver absences.php) ------------
+    ['GET',  '#^/absences/mine/?$#',                          'absencesMine'],
+    ['POST', '#^/absences/justify/?$#',                       'absenceJustify'],
+    ['GET',  '#^/absences/justifications/([^/]+)/evidence/?$#','absenceEvidence'],
+    ['GET',  '#^/admin/absences/?$#',                         'adminAbsencesList'],
+    ['POST', '#^/admin/absences/([^/]+)/approve/?$#',         'adminAbsenceApprove'],
+    ['POST', '#^/admin/absences/([^/]+)/reject/?$#',          'adminAbsenceReject'],
 
     // ---- Anuncios internos de la empresa (crear/editar/borrar solo director) ----
     // El resto los ve en su tablero de inicio y confirma asistencia si aplica.
@@ -234,6 +247,17 @@ function googleOAuthStub(PDO $pdo) {
 
 // ---- handlers: auth ----------------------------------------------------
 
+// Manda el correo de verificación a $user y, si SMTP no está disponible o
+// falla, deja el enlace en el log del backend como respaldo para desarrollo.
+function dispatch_verification_email(PDO $pdo, array $user): bool {
+    $token = issue_email_verification($pdo, $user['id'], $_SERVER['REMOTE_ADDR'] ?? null);
+    $link = backend_public_base_url() . '/verify-email?token=' . $token;
+    $sent = send_verification_email($user['email'], $user['name'] ?? '', $link);
+    error_log('[hive-backend] Email verification link for ' . $user['email'] . ': ' . $link
+        . ($sent ? ' (emailed)' : ' (NOT emailed)'));
+    return $sent;
+}
+
 function signup(PDO $pdo) {
     $body = request_body();
     $name = trim($body['name'] ?? '');
@@ -244,16 +268,94 @@ function signup(PDO $pdo) {
         text_response('All fields are required', 400);
     }
 
-    $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
+    $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ?');
     $stmt->execute([$email]);
-    if ($stmt->fetch()) {
+    $existing = $stmt->fetch();
+    if ($existing) {
+        // Si la cuenta existe pero nunca verificó el correo, se reenvía el
+        // enlace en vez de solo rechazar: cubre a quien se registró y perdió
+        // el correo. Una cuenta ya verificada sí se rechaza tal cual.
+        if (empty($existing['email_verified_at'])) {
+            if (email_verification_send_allowed($pdo, $existing['id'])) {
+                dispatch_verification_email($pdo, $existing);
+            }
+            text_response('Ese correo ya está registrado pero sin verificar. Revisa tu bandeja: te enviamos el enlace de verificación.', 409);
+        }
         text_response('Email already registered', 409);
     }
 
+    $userId = generate_id();
     $stmt = $pdo->prepare('INSERT INTO users (id, name, email, password) VALUES (?, ?, ?, ?)');
-    $stmt->execute([generate_id(), $name, $email, password_hash($password, PASSWORD_BCRYPT)]);
+    $stmt->execute([$userId, $name, $email, password_hash($password, PASSWORD_BCRYPT)]);
 
-    text_response('Signup successful! Please log in.', 200);
+    dispatch_verification_email($pdo, ['id' => $userId, 'name' => $name, 'email' => $email]);
+
+    text_response('Cuenta creada. Te enviamos un correo para verificar tu dirección; ya puedes iniciar sesión.', 200);
+}
+
+// GET /verify-email?token=...  — el usuario abre este enlace desde su correo.
+// Responde una página HTML (no JSON). Mensajes genéricos: válido / caducado /
+// ya usado; no se confirma si el token existía.
+function verifyEmail(PDO $pdo) {
+    $token = trim($_GET['token'] ?? '');
+    if ($token === '') {
+        render_verification_page('Enlace no válido',
+            'Falta el código de verificación. Abre el enlace completo desde tu correo.', false);
+    }
+
+    $stmt = $pdo->prepare('SELECT * FROM email_verifications WHERE token_hash = ? LIMIT 1');
+    $stmt->execute([hash_verification_token($token)]);
+    $row = $stmt->fetch();
+
+    if (!$row) {
+        render_verification_page('Enlace no válido',
+            'Este enlace de verificación no es válido. Pide uno nuevo desde la app.', false);
+    }
+    if (!empty($row['consumed_at'])) {
+        render_verification_page('Correo ya verificado',
+            'Este enlace ya se usó. Tu correo está verificado; puedes cerrar esta página.', true);
+    }
+    if (strtotime($row['expires_at']) < time()) {
+        render_verification_page('Enlace caducado',
+            'Este enlace de verificación caducó. Pide uno nuevo desde el aviso de la app.', false);
+    }
+
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare('UPDATE email_verifications SET consumed_at = NOW() WHERE id = ? AND consumed_at IS NULL')
+            ->execute([$row['id']]);
+        $pdo->prepare('UPDATE users SET email_verified_at = COALESCE(email_verified_at, NOW()) WHERE id = ?')
+            ->execute([$row['user_id']]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+
+    render_verification_page('¡Correo verificado!',
+        'Listo. Ya puedes volver a la app y usar tu cuenta con normalidad.', true);
+}
+
+// POST /user/resendVerification  — body: { email }. Siempre responde 200 con
+// un mensaje neutro (no revela si el correo existe). Con límite de envíos.
+function resendVerification(PDO $pdo) {
+    $body = request_body();
+    $email = trim($body['email'] ?? '');
+    $neutral = ['success' => true,
+        'message' => 'Si la cuenta existe y aún no está verificada, te enviamos un nuevo enlace.'];
+
+    if ($email === '') {
+        json_response($neutral);
+    }
+    $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ?');
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
+
+    if ($user && empty($user['email_verified_at'])
+        && email_verification_send_allowed($pdo, $user['id'])) {
+        dispatch_verification_email($pdo, $user);
+    }
+    json_response($neutral);
 }
 
 function login(PDO $pdo) {
@@ -273,8 +375,13 @@ function login(PDO $pdo) {
     $stmt = $pdo->prepare('UPDATE users SET token = ? WHERE id = ?');
     $stmt->execute([$token, $user['id']]);
 
-    // The client decodes the whole response body as the token value itself.
-    raw_json_response($token, 200);
+    // Antes se devolvía el token como string a secas. Ahora va un objeto con
+    // `emailVerified` para que la app muestre (o no) el aviso de verificación.
+    // El login NO se bloquea aunque el correo no esté verificado.
+    json_response([
+        'token'         => $token,
+        'emailVerified' => !empty($user['email_verified_at']),
+    ], 200);
 }
 
 function resetPassword(PDO $pdo) {
@@ -877,7 +984,10 @@ function sendChatMessage(PDO $pdo) {
          VALUES (?, ?, ?, ?)'
     )->execute([$key, $me['id'], $peer['id'], $message]);
 
-    notify_user($pdo, $peer['email'], null, 'chat', $me['name'] . ' te envió un mensaje.');
+    // entity_id = correo de quien escribe: al tocar la notificación, el
+    // cliente abre directamente el hilo con esta persona.
+    notify_user($pdo, $peer['email'], null, 'chat',
+        $me['name'] . ' te envió un mensaje.', 'user', $me['email']);
 
     text_response('Message sent', 200);
 }
@@ -1120,6 +1230,21 @@ function applyLeave(PDO $pdo, string $teamId) {
         json_response(['error' => 'startDate and endDate are required'], 400);
     }
 
+    // Mismas reglas de negocio que el flujo nuevo (/leave-requests):
+    // no se piden permisos para fechas ya pasadas y las fechas deben caer en
+    // un día laboral (lunes a sábado; el domingo no).
+    $ls = date('Y-m-d', strtotime((string) $leave['startDate']));
+    $le = date('Y-m-d', strtotime((string) $leave['endDate']));
+    if ($le < $ls) {
+        json_response(['error' => 'La fecha de término no puede ser anterior a la de inicio.'], 400);
+    }
+    if ($ls < date('Y-m-d')) {
+        json_response(['error' => 'No puedes solicitar un permiso para una fecha que ya pasó.'], 400);
+    }
+    if (!is_working_day($ls) || !is_working_day($le)) {
+        json_response(['error' => 'El inicio y el término deben ser un día laboral (lunes a sábado).'], 400);
+    }
+
     $leaveId = generate_id();
     $stmt = $pdo->prepare(
         'INSERT INTO leaves (id, team_id, email, start_date, end_date, reason, status) VALUES (?, ?, ?, ?, ?, ?, ?)'
@@ -1171,15 +1296,31 @@ function leaveResult(PDO $pdo, string $leaveId) {
 
 function listNotifications(PDO $pdo) {
     $user = require_auth($pdo);
-    // Aprovecha el sondeo de la campana para emitir los recordatorios de
-    // anuncios que le tocan hoy a esta persona (ver internal_announcements.php).
+    // Aprovecha el sondeo de la campana para emitir los recordatorios que le
+    // tocan hoy a esta persona: de anuncios (internal_announcements.php) y de
+    // eventos próximos del calendario (events.php).
     ia_dispatch_due_reminders($pdo, $user['id']);
+    event_dispatch_due_reminders($pdo, $user['id']);
     $stmt = $pdo->prepare(
-        'SELECT id, team_id AS teamId, type, message, read_at AS readAt, created_at AS createdAt
+        'SELECT id, team_id AS teamId, type,
+                entity_type AS entityType, entity_id AS entityId,
+                message, read_at AS readAt, created_at AS createdAt
          FROM notifications WHERE email = ? ORDER BY created_at DESC, id DESC LIMIT 100'
     );
     $stmt->execute([$user['email']]);
-    json_response(['notifications' => $stmt->fetchAll()]);
+    $rows = $stmt->fetchAll();
+
+    // Conteo real de no leídas (no el de la página de 100): la campana y
+    // cualquier contador de la app deben mostrar el mismo número.
+    $countStmt = $pdo->prepare(
+        'SELECT COUNT(*) FROM notifications WHERE email = ? AND read_at IS NULL'
+    );
+    $countStmt->execute([$user['email']]);
+
+    json_response([
+        'notifications' => $rows,
+        'unreadCount' => (int) $countStmt->fetchColumn(),
+    ]);
 }
 
 function markNotificationRead(PDO $pdo, string $id) {
@@ -1220,13 +1361,15 @@ function build_department_payload(PDO $pdo, array $dept): array {
 // directorio y ficha de un compañero).
 function build_public_user_payload(array $user, ?array $department): array {
     return [
-        'id'         => $user['id'],
-        'name'       => $user['name'],
-        'email'      => $user['email'],
-        'role'       => $user['role'],
-        'position'   => $user['position'],
-        'photoUrl'   => $user['photo_path'] ? UPLOAD_URL_BASE . $user['photo_path'] : null,
-        'department' => $department,
+        'id'            => $user['id'],
+        'name'          => $user['name'],
+        'email'         => $user['email'],
+        'role'          => $user['role'],
+        'position'      => $user['position'],
+        'photoUrl'      => $user['photo_path'] ? UPLOAD_URL_BASE . $user['photo_path'] : null,
+        'department'    => $department,
+        // Verificación de correo (023): la app la usa para el aviso.
+        'emailVerified' => !empty($user['email_verified_at']),
     ];
 }
 

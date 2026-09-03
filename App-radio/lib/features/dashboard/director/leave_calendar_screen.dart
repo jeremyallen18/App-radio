@@ -6,6 +6,7 @@ import 'package:doliv_social/models/leave_request.dart';
 import 'package:doliv_social/models/models.dart';
 import 'package:doliv_social/services/leave_service.dart';
 import 'package:doliv_social/services/team_service.dart';
+import 'package:doliv_social/shared/calendar/date_pickers.dart';
 
 /// Calendario de ausencias del equipo (solo director). Muestra en qué días
 /// hay gente de permiso, vacaciones o incapacidad, para no dejar un área
@@ -125,6 +126,7 @@ class _LeaveCalendarScreenState extends State<LeaveCalendarScreen> {
               firstDay: DateTime.utc(2020, 1, 1),
               lastDay: DateTime.utc(2035, 12, 31),
               focusedDay: _focusedDay,
+              locale: kCalendarLocale,
               calendarFormat: _format,
               availableCalendarFormats: const {
                 CalendarFormat.month: 'Mes',
@@ -132,12 +134,17 @@ class _LeaveCalendarScreenState extends State<LeaveCalendarScreen> {
                 CalendarFormat.week: 'Semana',
               },
               startingDayOfWeek: StartingDayOfWeek.monday,
+              weekendDays: kWorkingWeekendDays,
+              enabledDayPredicate: tableCalendarWorkingDay,
               selectedDayPredicate: (d) => isSameDay(_selectedDay, d),
               eventLoader: _forDay,
-              onDaySelected: (sel, foc) => setState(() {
-                _selectedDay = sel;
-                _focusedDay = foc;
-              }),
+              onDaySelected: (sel, foc) {
+                if (!isWorkingDay(sel)) return;
+                setState(() {
+                  _selectedDay = sel;
+                  _focusedDay = foc;
+                });
+              },
               onFormatChanged: (f) => setState(() => _format = f),
               onPageChanged: (foc) {
                 _focusedDay = foc;

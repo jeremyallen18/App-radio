@@ -32,6 +32,10 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
   bool _loading = true;
   String? _error;
 
+  /// Bloquea taps repetidos (o taps mientras la transición corre) para que
+  /// no se apilen dos rutas por una sola acción del usuario.
+  bool _navigating = false;
+
   @override
   void initState() {
     super.initState();
@@ -68,13 +72,24 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
   }
 
   void _openArea(DepartmentInfo department) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ColleagueDirectoryScreen(
-          initialScope: DepartmentScope(department.id),
-        ),
-      ),
-    );
+    if (_navigating) return;
+    _navigating = true;
+    // `pushReplacement`, no `push`: al entrar al área desde una ficha, el
+    // directorio del área SUSTITUYE a esta ficha en la pila. Sin esto,
+    // directorio -> ficha -> área -> ficha -> área... crece sin límite
+    // (cada salto recrea la pantalla y vuelve a pedir datos), que es la
+    // causa del bucle de navegación / consumo de RAM. Con la sustitución la
+    // pila se queda en "directorio de origen" + "pantalla actual", y el
+    // botón atrás sigue llevando al directorio desde el que se empezó.
+    Navigator.of(context)
+        .pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => ColleagueDirectoryScreen(
+              initialScope: DepartmentScope(department.id),
+            ),
+          ),
+        )
+        .then((_) => _navigating = false);
   }
 
   @override

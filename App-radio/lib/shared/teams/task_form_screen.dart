@@ -5,6 +5,7 @@ import 'package:doliv_social/models/dept_task.dart';
 import 'package:doliv_social/models/models.dart';
 import 'package:doliv_social/services/team_service.dart';
 import 'package:doliv_social/shared/teams/user_picker_sheet.dart';
+import 'package:doliv_social/shared/calendar/date_pickers.dart';
 
 /// Único formulario de creación/edición de tareas. Lo usan director y manager
 /// para: crear tarea, crear subtarea (`parentId`) y editar (`existing`).
@@ -92,8 +93,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
 
   Future<void> _pickDue() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await pickWorkingDate(
+      context,
       firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 3),
       initialDate: _due ?? now,
@@ -104,8 +105,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
 
   Future<void> _pickRecurrenceUntil() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await pickWorkingDate(
+      context,
       firstDate: now,
       lastDate: DateTime(now.year + 3),
       initialDate: _recurrenceUntil ?? now,

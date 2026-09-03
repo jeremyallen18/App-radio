@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/core/api_config.dart';
+import 'package:doliv_social/core/notifications_controller.dart';
+import 'package:doliv_social/core/route_refresh.dart';
 import 'package:doliv_social/shared/auth/login.dart';
+import 'package:doliv_social/shared/notifications/notification_router.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -13,7 +16,8 @@ class NotificationsScreen extends StatefulWidget {
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
+class _NotificationsScreenState extends State<NotificationsScreen>
+    with RouteAwareRefresh<NotificationsScreen> {
   List<dynamic> _notifications = [];
   bool _loading = true;
   bool _hasError = false;
@@ -23,6 +27,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     super.initState();
     _fetchNotifications();
   }
+
+  @override
+  void onRouteReenter() => _fetchNotifications();
 
   Future<void> _fetchNotifications() async {
     setState(() {
@@ -42,6 +49,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           _notifications = decoded['notifications'] ?? [];
           _loading = false;
         });
+        // Mantiene la campana (y cualquier contador) sincronizados con lo que
+        // esta pantalla acaba de cargar.
+        final int? serverUnread = (decoded['unreadCount'] as num?)?.toInt();
+        if (serverUnread != null) {
+          NotificationsController.instance.setUnread(serverUnread);
+        } else {
+          NotificationsController.instance.setUnreadFromList(_notifications);
+        }
       } else {
         setState(() {
           _hasError = true;
@@ -65,10 +80,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         Uri.parse('$kBaseUrl/notifications/${notification['id']}/read'),
         headers: <String, String>{'Authorization': token ?? ''},
       );
-      if (response.statusCode == 200 && mounted) {
-        setState(() => notification['readAt'] = DateTime.now().toIso8601String());
+      if (response.statusCode == 200) {
+        NotificationsController.instance.decrement();
+        if (mounted) {
+          setState(() =>
+              notification['readAt'] = DateTime.now().toIso8601String());
+        }
       }
     } catch (_) {}
+  }
+
+  /// Toque en una notificación: se marca como leída y se abre la pantalla
+  /// correspondiente a su tipo (ver [NotificationRouter]).
+  Future<void> _onTapNotification(dynamic notification) async {
+    await _markRead(notification);
+    if (!mounted) return;
+    await NotificationRouter.open(context, notification as Map);
   }
 
   @override
@@ -108,7 +135,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           message: n['message']?.toString() ?? '',
           createdAt: n['createdAt']?.toString(),
           unread: n['readAt'] == null,
-          onTap: () => _markRead(n),
+          onTap: () => _onTapNotification(n),
         );
       },
     );

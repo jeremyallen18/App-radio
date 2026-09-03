@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/leave_request.dart';
 import 'package:doliv_social/services/leave_service.dart';
+import 'package:doliv_social/shared/calendar/date_pickers.dart';
 
 /// Formulario para solicitar un permiso (vacaciones / incapacidad / permiso).
 /// La incapacidad EXIGE evidencia antes de poder enviar.
@@ -32,25 +33,38 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
     super.dispose();
   }
 
+  /// Vacaciones y permiso no pueden empezar en el pasado. La incapacidad sí
+  /// (es retroactiva por naturaleza y la evidencia la respalda).
+  bool get _allowsPast => _type == LeaveType.incapacidad;
+
   int get _businessDays {
     final s = _start, e = _end;
     if (s == null || e == null || e.isBefore(s)) return 0;
     var count = 0;
     for (var d = s; !d.isAfter(e); d = d.add(const Duration(days: 1))) {
-      if (d.weekday <= DateTime.friday) count++;
+      // Semana laboral lunes a sábado: solo el domingo no cuenta.
+      if (d.weekday != DateTime.sunday) count++;
     }
     return count;
   }
 
   Future<void> _pickDate({required bool isStart}) async {
     final now = DateTime.now();
-    final initial = isStart
-        ? (_start ?? now)
-        : (_end ?? _start ?? now);
-    final picked = await showDatePicker(
-      context: context,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 2),
+    final today = dateOnly(now);
+    final DateTime first = _allowsPast ? DateTime(now.year - 1) : today;
+    // Para vacaciones, el término no puede pasar de un mes desde el inicio.
+    final DateTime last = (!isStart &&
+            _type == LeaveType.vacaciones &&
+            _start != null)
+        ? oneCalendarMonthMaxEnd(_start!)
+        : DateTime(now.year + 2);
+    var initial = isStart ? (_start ?? now) : (_end ?? _start ?? now);
+    if (initial.isBefore(first)) initial = first;
+    if (initial.isAfter(last)) initial = last;
+    final picked = await pickWorkingDate(
+      context,
+      firstDate: first,
+      lastDate: last,
       initialDate: initial,
       helpText: isStart ? 'Fecha de inicio' : 'Fecha de término',
     );
@@ -59,6 +73,11 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
       if (isStart) {
         _start = picked;
         if (_end != null && _end!.isBefore(picked)) _end = picked;
+        // Recorta un término que ahora quede fuera del mes permitido.
+        if (_type == LeaveType.vacaciones && _end != null) {
+          final max = oneCalendarMonthMaxEnd(picked);
+          if (_end!.isAfter(max)) _end = max;
+        }
       } else {
         _end = picked;
       }
@@ -98,6 +117,18 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
     if (_end == null) return 'Debes seleccionar una fecha de término.';
     if (_end!.isBefore(_start!)) {
       return 'La fecha de término no puede ser anterior a la fecha de inicio.';
+    }
+    if (_start!.weekday == DateTime.sunday || _end!.weekday == DateTime.sunday) {
+      return 'El inicio y el término deben ser un día laboral (lunes a sábado).';
+    }
+    if (!_allowsPast && _start!.isBefore(dateOnly(DateTime.now()))) {
+      return _type == LeaveType.vacaciones
+          ? 'No puedes solicitar vacaciones para una fecha que ya pasó.'
+          : 'No puedes solicitar un permiso para una fecha que ya pasó.';
+    }
+    if (_type == LeaveType.vacaciones &&
+        _end!.isAfter(oneCalendarMonthMaxEnd(_start!))) {
+      return 'Las vacaciones no pueden abarcar más de un mes.';
     }
     if (_type.requiresEvidence && _evidence == null) {
       return 'Debes adjuntar evidencia para solicitar una incapacidad.';
@@ -180,7 +211,20 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
                   ),
                 ),
             ],
-            onChanged: (v) => setState(() => _type = v ?? _type),
+            onChanged: (v) => setState(() {
+              _type = v ?? _type;
+              final today = dateOnly(DateTime.now());
+              // Al cambiar a un tipo que no admite pasado, descarta fechas ya
+              // pasadas; y recorta el término si excede el mes de vacaciones.
+              if (!_allowsPast) {
+                if (_start != null && _start!.isBefore(today)) _start = null;
+                if (_end != null && _end!.isBefore(today)) _end = null;
+              }
+              if (_type == LeaveType.vacaciones && _start != null && _end != null) {
+                final max = oneCalendarMonthMaxEnd(_start!);
+                if (_end!.isAfter(max)) _end = max;
+              }
+            }),
           ),
           const SizedBox(height: AppSpacing.lg),
 

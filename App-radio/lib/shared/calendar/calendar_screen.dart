@@ -5,9 +5,11 @@ import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/calendar_event.dart';
 import 'package:doliv_social/models/models.dart';
 import 'package:doliv_social/services/calendar_service.dart';
+import 'package:doliv_social/core/route_refresh.dart';
 import 'package:doliv_social/core/session.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 import 'package:doliv_social/shared/calendar/calendar_tiles.dart';
+import 'package:doliv_social/shared/calendar/date_pickers.dart';
 import 'package:doliv_social/shared/calendar/event_form_screen.dart';
 
 /// Calendario: actividades a entregar (tareas con fecha límite) y eventos.
@@ -23,7 +25,8 @@ class CalendarScreen extends StatefulWidget {
   State<CalendarScreen> createState() => _CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<CalendarScreen> {
+class _CalendarScreenState extends State<CalendarScreen>
+    with RouteAwareRefresh<CalendarScreen> {
   AppRole _role = AppRole.employee;
   List<DepartmentInfo> _departments = [];
 
@@ -47,6 +50,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
     _bootstrap();
+  }
+
+  @override
+  void onRouteReenter() {
+    if (!_loading) _load();
   }
 
   Future<void> _bootstrap() async {
@@ -125,6 +133,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (created == true) _load();
   }
 
+  Future<void> _editEvent(CalendarEvent event) async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => EventFormScreen(event: event)),
+    );
+    if (saved == true) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = _selectedDay ?? _focusedDay;
@@ -163,6 +178,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 firstDay: DateTime.utc(2020, 1, 1),
                 lastDay: DateTime.utc(2035, 12, 31),
                 focusedDay: _focusedDay,
+                locale: kCalendarLocale,
                 calendarFormat: _format,
                 availableCalendarFormats: const {
                   CalendarFormat.month: 'Mes',
@@ -170,12 +186,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   CalendarFormat.week: 'Semana',
                 },
                 startingDayOfWeek: StartingDayOfWeek.monday,
+                // Domingo no laboral: se pinta atenuado y no se puede seleccionar.
+                weekendDays: kWorkingWeekendDays,
+                enabledDayPredicate: tableCalendarWorkingDay,
                 selectedDayPredicate: (d) => isSameDay(_selectedDay, d),
                 eventLoader: _markersFor,
-                onDaySelected: (sel, foc) => setState(() {
-                  _selectedDay = sel;
-                  _focusedDay = foc;
-                }),
+                onDaySelected: (sel, foc) {
+                  if (!isWorkingDay(sel)) return;
+                  setState(() {
+                    _selectedDay = sel;
+                    _focusedDay = foc;
+                  });
+                },
                 onFormatChanged: (f) => setState(() => _format = f),
                 onPageChanged: (foc) {
                   _focusedDay = foc;
@@ -215,7 +237,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 )
               else ...[
                 for (final e in dayEvents) ...[
-                  CalendarEventTile(event: e),
+                  CalendarEventTile(
+                    event: e,
+                    onEdit: _canManage ? () => _editEvent(e) : null,
+                  ),
                   const SizedBox(height: AppSpacing.sm),
                 ],
                 for (final a in dayActs) ...[

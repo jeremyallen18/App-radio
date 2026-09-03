@@ -17,6 +17,9 @@ import 'package:doliv_social/core/Routes.dart';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb, kReleaseMode;
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart' show Intl;
+import 'package:intl/date_symbol_data_local.dart' show initializeDateFormatting;
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/design/gallery/component_gallery_screen.dart';
 import 'package:doliv_social/shared/teams/create_join_team/create-team.dart';
@@ -26,9 +29,16 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:doliv_social/core/connectivity_gate.dart';
 import 'package:doliv_social/core/audio/radio_player.dart';
+import 'package:doliv_social/core/route_refresh.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Formateo de fechas/números en español de México para toda la app
+  // (calendarios, `intl` DateFormat, table_calendar). Debe correr antes de
+  // `runApp` para que el primer frame ya salga localizado.
+  Intl.defaultLocale = 'es_MX';
+  await initializeDateFormatting('es_MX', null);
 
   // just_audio no trae implementación nativa para Windows ni Linux (solo
   // Android/iOS/macOS/Web). just_audio_media_kit le agrega esas dos
@@ -99,6 +109,15 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
+      navigatorObservers: [routeObserver],
+      // Todos los widgets de calendario/fecha del sistema en español.
+      locale: const Locale('es'),
+      supportedLocales: const [Locale('es'), Locale('en')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       // El centrado a ancho fijo en escritorio ahora lo decide cada pantalla
       // (ver `AppScaffold.centerOnDesktop`): las pantallas de formulario/
       // lectura siguen centradas y angostas, pero el shell principal

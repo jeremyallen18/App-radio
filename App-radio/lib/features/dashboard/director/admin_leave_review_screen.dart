@@ -202,18 +202,25 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.warning_amber_rounded,
-                              size: 16, color: AppColors.warning),
+                          const Padding(
+                            padding: EdgeInsets.only(top: 1),
+                            child: Icon(Icons.warning_amber_rounded,
+                                size: 16, color: AppColors.warning),
+                          ),
                           const SizedBox(width: 6),
-                          Text(
-                            '${r.deptOverlaps.length} '
-                            '${r.deptOverlaps.length == 1 ? 'persona del área ya tiene' : 'personas del área ya tienen'} '
-                            'una ausencia que se cruza con estas fechas',
-                            style: const TextStyle(
-                                color: AppColors.warning,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12),
+                          Expanded(
+                            child: Text(
+                              '${r.deptOverlaps.length} '
+                              '${r.deptOverlaps.length == 1 ? 'persona del área ya tiene' : 'personas del área ya tienen'} '
+                              'una ausencia que se cruza con estas fechas',
+                              softWrap: true,
+                              style: const TextStyle(
+                                  color: AppColors.warning,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12),
+                            ),
                           ),
                         ],
                       ),

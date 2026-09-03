@@ -5,6 +5,7 @@ import 'package:doliv_social/models/models.dart';
 import 'package:doliv_social/models/internal_announcement.dart';
 import 'package:doliv_social/services/internal_announcement_service.dart';
 import 'package:doliv_social/services/team_service.dart';
+import 'package:doliv_social/shared/calendar/date_pickers.dart';
 
 /// Formulario para que el DIRECTOR publique o edite un anuncio interno.
 ///
@@ -92,8 +93,8 @@ class _InternalAnnouncementFormScreenState
 
   Future<void> _pickEventDate() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await pickWorkingDate(
+      context,
       initialDate: _eventDate ?? now,
       firstDate: now.subtract(const Duration(days: 1)),
       lastDate: DateTime(now.year + 2),

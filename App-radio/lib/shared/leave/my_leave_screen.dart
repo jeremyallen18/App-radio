@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'package:doliv_social/core/route_refresh.dart';
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/leave_request.dart';
 import 'package:doliv_social/services/leave_service.dart';
+import 'package:doliv_social/shared/leave/absence_justification_screen.dart';
 import 'package:doliv_social/shared/leave/leave_detail_screen.dart';
 import 'package:doliv_social/shared/leave/leave_form_screen.dart';
 
@@ -15,7 +17,8 @@ class MyLeaveScreen extends StatefulWidget {
   State<MyLeaveScreen> createState() => _MyLeaveScreenState();
 }
 
-class _MyLeaveScreenState extends State<MyLeaveScreen> {
+class _MyLeaveScreenState extends State<MyLeaveScreen>
+    with RouteAwareRefresh<MyLeaveScreen> {
   List<LeaveRequest> _items = const [];
   bool _loading = true;
   String? _error;
@@ -25,6 +28,9 @@ class _MyLeaveScreenState extends State<MyLeaveScreen> {
     super.initState();
     _load();
   }
+
+  @override
+  void onRouteReenter() => _load();
 
   Future<void> _load() async {
     setState(() {
@@ -60,6 +66,17 @@ class _MyLeaveScreenState extends State<MyLeaveScreen> {
       appBar: AppBar(
         leading: const AppBackButton(),
         title: const Text('Mis permisos'),
+        actions: [
+          IconButton(
+            tooltip: 'Justificar faltas',
+            icon: const Icon(Icons.event_busy_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const AbsenceJustificationScreen(),
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openForm,

@@ -6,6 +6,7 @@ import 'package:doliv_social/design/tokens/colors.dart';
 import 'package:doliv_social/design/tokens/spacing.dart';
 import 'package:doliv_social/shared/board/dashboard.dart';
 import 'package:doliv_social/features/dashboard/role_dashboard_router.dart';
+import 'package:doliv_social/shared/auth/verify_email_banner.dart';
 
 // ignore_for_file: prefer_const_constructors
 
@@ -55,7 +56,16 @@ class _BottomNavBarState extends State<BottomNavBar> {
   @override
   Widget build(BuildContext context) {
     final bool isDesktop = AppBreakpoints.isDesktop(context);
-    final Widget content = IndexedStack(index: currentPageIndex, children: _pages);
+    // El aviso de "verifica tu correo" va arriba de todo el contenido, en
+    // ambos layouts. Se oculta solo si la cuenta ya está verificada.
+    final Widget content = Column(
+      children: [
+        const VerifyEmailBanner(),
+        Expanded(
+          child: IndexedStack(index: currentPageIndex, children: _pages),
+        ),
+      ],
+    );
 
     // En escritorio, con espacio de sobra a los lados y el mouse como
     // entrada principal, una barra lateral fija se siente como una app de

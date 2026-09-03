@@ -5,29 +5,39 @@ import 'package:http/http.dart' as http;
 
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/models.dart';
+import 'package:doliv_social/models/calendar_event.dart';
 import 'package:doliv_social/services/calendar_service.dart';
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 import 'package:doliv_social/shared/calendar/location_picker_map.dart';
+import 'package:doliv_social/shared/calendar/date_pickers.dart';
 
-/// Formulario para que el DIRECTOR cree un evento del calendario.
+/// Formulario para que el DIRECTOR cree o EDITE un evento del calendario.
 ///
 /// Un evento es `General` (toda la empresa) o de `Áreas específicas`. Al
 /// activar "Con ubicación" se exige elegir área(s), un punto en el mapa, un
 /// radio y una hora de entrada: ese día, para los miembros de esas áreas, la
 /// entrada de asistencia se registra en el lugar y a la hora del evento.
+///
+/// Si se pasa [event], el formulario entra en modo edición: precarga los
+/// datos y guarda contra `POST /events/{id}` (no crea uno nuevo).
 class EventFormScreen extends StatefulWidget {
-  const EventFormScreen({super.key});
+  const EventFormScreen({super.key, this.event});
+
+  final CalendarEvent? event;
 
   @override
   State<EventFormScreen> createState() => _EventFormScreenState();
 }
+
+const List<int> _kReminderChoices = [7, 5, 3, 2];
 
 class _EventFormScreenState extends State<EventFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _title = TextEditingController();
   final _description = TextEditingController();
   final _label = TextEditingController();
+  final _locationText = TextEditingController();
 
   DateTime? _date;
   TimeOfDay? _startTime;
@@ -43,14 +53,55 @@ class _EventFormScreenState extends State<EventFormScreen> {
   double? _lng;
   double _radiusM = 50;
   TimeOfDay? _entryTime;
+  final Set<int> _reminderOffsets = {..._kReminderChoices};
 
   bool _saving = false;
+
+  bool get _isEditing => widget.event != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.event;
+    if (e != null) {
+      _title.text = e.title;
+      _description.text = e.description ?? '';
+      _label.text = e.locationLabel ?? '';
+      _locationText.text = e.locationText ?? '';
+      _date = e.date;
+      _startTime = _parseTime(e.startTime);
+      _endTime = _parseTime(e.endTime);
+      _byAreas = e.scope == 'areas';
+      _selectedAreas.addAll(e.areas.map((a) => a.id));
+      _hasLocation = e.hasLocation;
+      _lat = e.latitude;
+      _lng = e.longitude;
+      _radiusM = (e.radiusM ?? 50).toDouble();
+      _entryTime = _parseTime(e.entryTime);
+      if (e.reminderOffsets.isNotEmpty) {
+        _reminderOffsets
+          ..clear()
+          ..addAll(e.reminderOffsets.where(_kReminderChoices.contains));
+      }
+      if (_byAreas) _loadDepartments();
+    }
+  }
+
+  static TimeOfDay? _parseTime(String? hhmm) {
+    if (hhmm == null || !hhmm.contains(':')) return null;
+    final parts = hhmm.split(':');
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return null;
+    return TimeOfDay(hour: h, minute: m);
+  }
 
   @override
   void dispose() {
     _title.dispose();
     _description.dispose();
     _label.dispose();
+    _locationText.dispose();
     super.dispose();
   }
 
@@ -86,8 +137,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await pickWorkingDate(
+      context,
       initialDate: _date ?? now,
       firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 3),
@@ -151,6 +202,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
       'date': _fmtDate(_date!),
       'description': _description.text.trim(),
       'scope': _byAreas ? 'areas' : 'general',
+      'locationText': _locationText.text.trim(),
+      'reminderOffsets': (_reminderOffsets.toList()..sort((a, b) => b - a)).join(','),
       if (_startTime != null) 'startTime': _fmtTime(_startTime!),
       if (_endTime != null) 'endTime': _fmtTime(_endTime!),
       if (_byAreas) 'areas': _selectedAreas.toList(),
@@ -165,7 +218,11 @@ class _EventFormScreenState extends State<EventFormScreen> {
     };
 
     try {
-      await CalendarApi.createEvent(body);
+      if (_isEditing) {
+        await CalendarApi.updateEvent(widget.event!.id, body);
+      } else {
+        await CalendarApi.createEvent(body);
+      }
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } on CalendarException catch (e) {
@@ -187,7 +244,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
       padding: EdgeInsets.zero,
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: const Text('Nuevo evento'),
+        title: Text(_isEditing ? 'Editar evento' : 'Nuevo evento'),
       ),
       body: Form(
         key: _formKey,
@@ -230,6 +287,37 @@ class _EventFormScreenState extends State<EventFormScreen> {
               label: 'Hora de fin (opcional)',
               value: _endTime != null ? _fmtTime(_endTime!) : '—',
               onTap: () => _pickTime((t) => _endTime = t, _endTime),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            AppTextField(
+              controller: _locationText,
+              hintText: 'Lugar (opcional)',
+              prefixIcon: const Icon(Icons.place_outlined),
+              validator: (v) => (v != null && v.trim().length > 255)
+                  ? 'El lugar es demasiado largo (máx. 255).'
+                  : null,
+            ),
+            const SizedBox(height: AppSpacing.xl),
+
+            const SectionHeader(title: 'Recordatorios'),
+            const Text(
+              'Se avisará a la audiencia estos días antes del evento.',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                for (final d in _kReminderChoices)
+                  AppFilterChip(
+                    label: '$d días',
+                    selected: _reminderOffsets.contains(d),
+                    onTap: () => setState(() {
+                      if (!_reminderOffsets.remove(d)) _reminderOffsets.add(d);
+                    }),
+                  ),
+              ],
             ),
             const SizedBox(height: AppSpacing.xl),
 
@@ -354,7 +442,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
             ),
             const SizedBox(height: AppSpacing.xl),
             AppButton(
-              label: 'Crear evento',
+              label: _isEditing ? 'Guardar cambios' : 'Crear evento',
               loading: _saving,
               onPressed: _saving ? null : _save,
             ),

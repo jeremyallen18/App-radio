@@ -71,19 +71,11 @@ function leave_valid_date(?string $value): ?string {
     return $d;
 }
 
-// Cuenta los días laborales (lunes a viernes) del rango, ambos inclusive.
-// Calendario configurable de la empresa: hoy es lun-vie. Diseñado para poder
-// sumar festivos / calendarios por empleado más adelante sin rediseñar.
+// Cuenta los días laborales del rango, ambos inclusive. La semana laboral de
+// Radio Doliv es LUNES A SÁBADO (solo el domingo no cuenta); ver
+// is_working_day()/working_days_between() en helpers.php.
 function leave_business_days(string $start, string $end): int {
-    $from = new DateTimeImmutable($start);
-    $to = new DateTimeImmutable($end);
-    if ($to < $from) return 0;
-    $days = 0;
-    for ($d = $from; $d <= $to; $d = $d->modify('+1 day')) {
-        $dow = (int) $d->format('N'); // 1 (lun) .. 7 (dom)
-        if ($dow <= 5) $days++;
-    }
-    return $days;
+    return working_days_between($start, $end);
 }
 
 // "del 1 al 5 de septiembre" / "el 20 de septiembre de 2026".
@@ -181,6 +173,29 @@ function leave_has_overlap(PDO $pdo, string $employeeId, string $start, string $
     return (bool) $stmt->fetch();
 }
 
+// Primera solicitud ACTIVA (pendiente o aprobada) del empleado cuyo rango
+// efectivo (el aprobado si existe, si no el solicitado) se cruza con
+// [start, end]. Devuelve la fila o null. A diferencia de leave_has_overlap(),
+// esta cuenta también las PENDIENTES: se usa al CREAR para no dejar apilar
+// dos ausencias que se pisan (permiso/vacaciones/incapacidad). Dos días
+// adyacentes que NO se tocan (fin = inicio-1) no son solape.
+function leave_first_conflict(PDO $pdo, string $employeeId, string $start, string $end, ?string $excludeId = null): ?array {
+    $sql = "SELECT * FROM leave_requests
+            WHERE employee_id = ?
+              AND status IN ('pendiente','aprobado')
+              AND COALESCE(approved_start_date, requested_start_date) <= ?
+              AND COALESCE(approved_end_date, requested_end_date) >= ?";
+    $params = [$employeeId, $end, $start];
+    if ($excludeId !== null) {
+        $sql .= ' AND id <> ?';
+        $params[] = $excludeId;
+    }
+    $sql .= ' ORDER BY COALESCE(approved_start_date, requested_start_date) ASC LIMIT 1';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetch() ?: null;
+}
+
 // ---- integración con asistencia -------------------------------------
 // Usadas desde attendance.php. Un permiso `aprobado` cuyo rango aprobado
 // cubre $date exime del registro de asistencia ese día.
@@ -253,6 +268,7 @@ function leave_store_evidence(array $file): array {
 //         evidence (archivo; OBLIGATORIO si type = incapacidad).
 function leaveRequestCreate(PDO $pdo) {
     $user = leave_require_requester($pdo);
+    require_verified_email($user); // crear solicitudes exige correo verificado
 
     $type = trim($_POST['type'] ?? '');
     if (!in_array($type, LEAVE_TYPES, true)) {
@@ -267,37 +283,85 @@ function leaveRequestCreate(PDO $pdo) {
         leave_fail('La fecha de término no puede ser anterior a la fecha de inicio.', 400);
     }
 
-    // Evita el reenvío accidental de una solicitud idéntica (mismo tipo y mismo
-    // rango) que sigue pendiente. Comprobación previa para el caso normal; el
-    // índice único uq_leave_pendiente es el backstop de concurrencia (dos
-    // envíos simultáneos por doble toque / reintento de red). Se hace ANTES de
-    // procesar el archivo para no mover la evidencia en balde.
-    $dup = $pdo->prepare(
-        "SELECT id FROM leave_requests
-          WHERE employee_id = ? AND type = ? AND requested_start_date = ?
-            AND requested_end_date = ? AND status = 'pendiente'"
-    );
-    $dup->execute([$user['id'], $type, $start, $end]);
-    if ($dup->fetch()) {
-        leave_fail('Ya enviaste una solicitud igual (mismo tipo y fechas) que sigue pendiente de revisión.', 409);
+    // El inicio y el término deben caer en un día laboral (lunes a sábado);
+    // el domingo no es laboral. Un rango de varios días puede ABARCAR un
+    // domingo, pero no empezar ni terminar en él.
+    if (!is_working_day($start) || !is_working_day($end)) {
+        leave_fail('El inicio y el término deben ser un día laboral (lunes a sábado).', 400);
+    }
+
+    // No se puede pedir vacaciones ni un permiso para una fecha que ya pasó
+    // (una incapacidad SÍ puede ser retroactiva: la evidencia la respalda).
+    // La justificación de faltas pasadas va por su módulo propio.
+    $today = date('Y-m-d'); // zona horaria del servidor (-06:00, México)
+    if (in_array($type, ['vacaciones', 'permiso'], true) && $start < $today) {
+        leave_fail('No puedes solicitar ' . ($type === 'vacaciones' ? 'vacaciones' : 'un permiso')
+            . ' para una fecha que ya pasó.', 400);
+    }
+
+    // Vacaciones: máximo un mes de calendario (p. ej. 15-ene a 15-feb sí;
+    // 15-ene a 16-feb no). Se ajusta al último día del mes cuando el día de
+    // inicio no existe en el mes siguiente.
+    if ($type === 'vacaciones') {
+        $maxEnd = one_calendar_month_max_end($start);
+        if ($end > $maxEnd) {
+            leave_fail('Las vacaciones no pueden abarcar más de un mes. '
+                . 'Con este inicio, la última fecha posible es el ' . $maxEnd . '.', 400);
+        }
     }
 
     $reason = trim($_POST['reason'] ?? '');
     if (mb_strlen($reason) > 1000) $reason = mb_substr($reason, 0, 1000);
 
     // Incapacidad: la evidencia es obligatoria ANTES de poder enviar.
-    $evidence = null;
     $hasFile = !empty($_FILES['evidence']) && $_FILES['evidence']['error'] !== UPLOAD_ERR_NO_FILE;
     if ($type === 'incapacidad' && !$hasFile) {
         leave_fail('Debes adjuntar evidencia para solicitar una incapacidad.', 400);
     }
-    if ($hasFile) {
-        $evidence = leave_store_evidence($_FILES['evidence']);
-    }
 
     $days = leave_business_days($start, $end);
     $id = generate_id();
+    $evidence = null;
+
+    // Sección crítica: se bloquea la fila del propio empleado para serializar
+    // dos envíos simultáneos suyos (doble toque, dos dispositivos) y así el
+    // control de solape y de duplicado no se pueda esquivar por carrera.
+    $pdo->beginTransaction();
     try {
+        $lock = $pdo->prepare('SELECT id FROM users WHERE id = ? FOR UPDATE');
+        $lock->execute([$user['id']]);
+
+        // Reenvío accidental de una solicitud idéntica que sigue pendiente.
+        $dup = $pdo->prepare(
+            "SELECT id FROM leave_requests
+              WHERE employee_id = ? AND type = ? AND requested_start_date = ?
+                AND requested_end_date = ? AND status = 'pendiente'"
+        );
+        $dup->execute([$user['id'], $type, $start, $end]);
+        if ($dup->fetch()) {
+            $pdo->rollBack();
+            leave_fail('Ya enviaste una solicitud igual (mismo tipo y fechas) que sigue pendiente de revisión.', 409);
+        }
+
+        // Solape con otra ausencia activa (pendiente o aprobada) del empleado:
+        // no se pueden tener vacaciones/permiso/incapacidad encimados.
+        $conflict = leave_first_conflict($pdo, $user['id'], $start, $end);
+        if ($conflict) {
+            $pdo->rollBack();
+            $cs = $conflict['approved_start_date'] ?: $conflict['requested_start_date'];
+            $ce = $conflict['approved_end_date'] ?: $conflict['requested_end_date'];
+            leave_fail('Estas fechas se cruzan con tu ' . leave_type_label($conflict['type'])
+                . ' ' . leave_human_range($cs, $ce)
+                . ' (' . leave_status_label($conflict['status']) . ').', 409,
+                'OVERLAP');
+        }
+
+        // Evidencia: se procesa ya dentro de la sección crítica, después de
+        // pasar todas las validaciones, para no mover el archivo en balde.
+        if ($hasFile) {
+            $evidence = leave_store_evidence($_FILES['evidence']);
+        }
+
         $stmt = $pdo->prepare(
             'INSERT INTO leave_requests
                (id, employee_id, type, requested_start_date, requested_end_date, requested_days,
@@ -310,13 +374,14 @@ function leaveRequestCreate(PDO $pdo) {
             $evidence['path'] ?? null,
             $evidence['mime'] ?? null,
         ]);
+
+        $pdo->commit();
     } catch (PDOException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        if ($evidence && !empty($evidence['path'])) {
+            @unlink(EVIDENCE_DIR . basename($evidence['path']));
+        }
         if ($e->getCode() === '23000') {
-            // Perdió la carrera contra otra solicitud idéntica simultánea: no
-            // dejes huérfana la evidencia que se acababa de guardar.
-            if ($evidence && !empty($evidence['path'])) {
-                @unlink(EVIDENCE_DIR . basename($evidence['path']));
-            }
             leave_fail('Ya enviaste una solicitud igual (mismo tipo y fechas) que sigue pendiente de revisión.', 409);
         }
         throw $e;
@@ -493,6 +558,16 @@ function adminLeaveRequestApprove(PDO $pdo, string $id) {
     $end = leave_valid_date($body['approvedEndDate'] ?? '') ?? $row['requested_end_date'];
     if ($end < $start) {
         leave_fail('La fecha de término aprobada no puede ser anterior a la fecha de inicio.', 400);
+    }
+    if (!is_working_day($start) || !is_working_day($end)) {
+        leave_fail('El inicio y el término autorizados deben ser un día laboral (lunes a sábado).', 400);
+    }
+    // Vacaciones: el periodo autorizado tampoco puede pasar de un mes.
+    if ($row['type'] === 'vacaciones') {
+        $maxEnd = one_calendar_month_max_end($start);
+        if ($end > $maxEnd) {
+            leave_fail('Las vacaciones no pueden abarcar más de un mes (última fecha posible: ' . $maxEnd . ').', 400);
+        }
     }
     if (leave_has_overlap($pdo, $emp['id'], $start, $end, $id)) {
         leave_fail('Ya existe una ausencia autorizada durante este periodo.', 409);

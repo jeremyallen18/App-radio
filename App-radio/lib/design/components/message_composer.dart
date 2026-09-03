@@ -11,11 +11,21 @@ class MessageComposer extends StatelessWidget {
     required this.controller,
     required this.onSend,
     this.hintText = 'Escribe un mensaje…',
+    this.onToggleEmoji,
+    this.emojiActive = false,
   });
 
   final TextEditingController controller;
   final VoidCallback onSend;
   final String hintText;
+
+  /// Si se pasa, muestra un botón de emojis a la izquierda del campo. El
+  /// selector de emojis vive en la pantalla que usa el composer (no aquí),
+  /// para no acoplar este widget a un panel concreto.
+  final VoidCallback? onToggleEmoji;
+
+  /// Estado visual del botón de emojis (abierto / cerrado).
+  final bool emojiActive;
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +36,20 @@ class MessageComposer extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            if (onToggleEmoji != null) ...[
+              IconButton(
+                onPressed: onToggleEmoji,
+                visualDensity: VisualDensity.compact,
+                tooltip: emojiActive ? 'Cerrar emojis' : 'Emojis',
+                icon: Icon(
+                  emojiActive
+                      ? Icons.keyboard_outlined
+                      : Icons.emoji_emotions_outlined,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+            ],
             Expanded(
               child: Container(
                 constraints: const BoxConstraints(maxHeight: 120),

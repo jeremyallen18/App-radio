@@ -16,6 +16,8 @@
 require __DIR__ . '/config.php';
 require __DIR__ . '/helpers.php';
 require __DIR__ . '/internal_announcements.php';
+require __DIR__ . '/events.php';
 
-$sent = ia_dispatch_due_reminders($pdo, null);
-fwrite(STDOUT, date('c') . "  recordatorios emitidos: $sent\n");
+$ia = ia_dispatch_due_reminders($pdo, null);
+$ev = event_dispatch_due_reminders($pdo, null);
+fwrite(STDOUT, date('c') . "  recordatorios emitidos: anuncios=$ia eventos=$ev\n");

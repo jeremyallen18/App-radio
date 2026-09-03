@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/design/design.dart';
+import 'package:doliv_social/shared/calendar/date_pickers.dart';
 
 class ApplyLeave extends StatefulWidget {
   final String teamid;
@@ -98,10 +99,11 @@ class _ApplyLeaveState extends State<ApplyLeave> {
 
   Future<void> _pickDate(TextEditingController controller) async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: now.subtract(const Duration(days: 1)),
+    final today = dateOnly(now);
+    final picked = await pickWorkingDate(
+      context,
+      initialDate: today,
+      firstDate: today, // no se piden permisos para fechas ya pasadas
       lastDate: DateTime(now.year + 2),
     );
     if (picked == null) return;

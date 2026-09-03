@@ -69,6 +69,11 @@ class UserProfile {
   final String? photoUrl;
   final DepartmentInfo? department;
 
+  /// Si el correo de esta cuenta está verificado (backend `emailVerified`,
+  /// migración 023). Un backend anterior no manda el campo: en ese caso se
+  /// asume `true` para no mostrar un aviso incorrecto.
+  final bool emailVerified;
+
   UserProfile({
     required this.id,
     required this.name,
@@ -77,6 +82,7 @@ class UserProfile {
     this.position,
     this.photoUrl,
     this.department,
+    this.emailVerified = true,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -91,6 +97,8 @@ class UserProfile {
       department: deptJson is Map<String, dynamic>
           ? DepartmentInfo.fromJson(deptJson)
           : null,
+      emailVerified:
+          json.containsKey('emailVerified') ? json['emailVerified'] == true : true,
     );
   }
 

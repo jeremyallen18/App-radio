@@ -18,6 +18,7 @@ import 'package:doliv_social/features/dashboard/director/admin_location_screen.d
 import 'package:doliv_social/features/dashboard/director/admin_schedule_screen.dart';
 import 'package:doliv_social/features/dashboard/director/leave_calendar_screen.dart';
 import 'package:doliv_social/features/dashboard/director/admin_leave_screen.dart';
+import 'package:doliv_social/features/dashboard/director/admin_absence_screen.dart';
 import 'package:doliv_social/features/dashboard/director/team_admin_screen.dart';
 import 'package:doliv_social/features/dashboard/director/site_content/site_content_auth_gate.dart';
 import 'package:doliv_social/features/dashboard/director/site_content/site_content_hub.dart';
@@ -336,6 +337,12 @@ List<AppMenuSection> _directorSections(void Function(Widget) push) {
           title: 'Gestión de permisos',
           subtitle: 'Revisar y aprobar solicitudes de empleados',
           onTap: () => push(const AdminLeaveScreen()),
+        ),
+        AppMenuEntry(
+          icon: Icons.event_busy_outlined,
+          title: 'Justificaciones de faltas',
+          subtitle: 'Revisar las faltas que justifican los empleados',
+          onTap: () => push(const AdminAbsenceScreen()),
         ),
         AppMenuEntry(
           icon: Icons.calendar_month_outlined,

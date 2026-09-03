@@ -6,8 +6,11 @@ import 'package:doliv_social/models/calendar_event.dart';
 /// Tarjeta de un evento del día en el calendario: título, horario, descripción
 /// y las insignias de alcance / ubicación / hora de entrada.
 class CalendarEventTile extends StatelessWidget {
-  const CalendarEventTile({super.key, required this.event});
+  const CalendarEventTile({super.key, required this.event, this.onEdit});
   final CalendarEvent event;
+
+  /// Si se pasa (solo director), la tarjeta abre la edición del evento.
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -16,6 +19,7 @@ class CalendarEventTile extends StatelessWidget {
       if (event.endTime != null) '– ${event.endTime!}',
     ].join(' ');
     return AppCard(
+      onTap: onEdit,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -35,11 +39,32 @@ class CalendarEventTile extends StatelessWidget {
               ),
               if (event.hasLocation)
                 const AppBadge(label: 'Con ubicación', variant: AppBadgeVariant.info),
+              if (onEdit != null)
+                const Padding(
+                  padding: EdgeInsets.only(left: AppSpacing.sm),
+                  child: Icon(Icons.edit_outlined,
+                      size: 16, color: AppColors.accent),
+                ),
             ],
           ),
           if (timeLabel.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(timeLabel, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          ],
+          if ((event.locationText ?? '').isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.place_outlined,
+                    size: 13, color: AppColors.textMuted),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(event.locationText!,
+                      style: const TextStyle(
+                          color: AppColors.textMuted, fontSize: 12)),
+                ),
+              ],
+            ),
           ],
           if ((event.description ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),

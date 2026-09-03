@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:doliv_social/design/design.dart';
-import 'package:doliv_social/core/storeToken.dart';
 import 'package:doliv_social/core/Routes.dart';
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/session.dart';
@@ -46,13 +45,21 @@ class _LoginState extends State<Login> {
     setState(() => _isLoading = false);
     if (response.statusCode == 200) {
 
-      dynamic generateResponse = jsonDecode(response.body);
-      Token.fromJson(generateResponse);
-      await secureStorage.writeSecureData(key,generateResponse);
+      final dynamic decoded = jsonDecode(response.body);
+      // El backend nuevo responde { token, emailVerified }; el viejo devolvía
+      // el token como string a secas. Se admiten ambas formas.
+      final String accessToken =
+          decoded is Map ? decoded['token'].toString() : decoded.toString();
+      final bool emailVerified =
+          decoded is Map ? decoded['emailVerified'] == true : true;
+
+      await secureStorage.writeSecureData(key, accessToken);
       await secureStorage.writeSecureData(rememberMeKey, _rememberMe ? '1' : '0');
+      await secureStorage.writeSecureData(
+          emailVerifiedKey, emailVerified ? '1' : '0');
       // No bloquea el login: si /user/me falla, el rol simplemente queda
       // sin cachear y se puede volver a pedir más adelante.
-      unawaited(Session.fetchCurrentUser(generateResponse));
+      unawaited(Session.fetchCurrentUser(accessToken));
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Inicio de sesión exitoso"),),);

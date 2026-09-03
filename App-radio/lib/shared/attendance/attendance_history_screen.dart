@@ -4,6 +4,7 @@ import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/attendance.dart';
 import 'package:doliv_social/services/attendance_service.dart';
 import 'package:doliv_social/shared/attendance/correction_request_screen.dart';
+import 'package:doliv_social/shared/calendar/date_pickers.dart';
 
 /// Historial de asistencia del empleado. Los registros son inmutables: un
 /// cambio de horario posterior no altera lo ya registrado (el backend usa el
@@ -63,8 +64,8 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   }
 
   Future<void> _pickRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
+    final picked = await pickWorkingDateRange(
+      context,
       firstDate: DateTime(2024),
       lastDate: DateTime.now(),
       initialDateRange: DateTimeRange(start: _from, end: _to),

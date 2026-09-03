@@ -44,6 +44,9 @@ class _ColleagueDirectoryScreenState extends State<ColleagueDirectoryScreen> {
   bool _loading = true;
   String? _error;
 
+  /// Impide apilar dos fichas por un doble toque en la misma fila.
+  bool _opening = false;
+
   /// Distingue "cargando la pantalla" de "reconsultando por un cambio de
   /// búsqueda": lo segundo no debe reemplazar la lista por un spinner de
   /// pantalla completa mientras se escribe.
@@ -116,14 +119,18 @@ class _ColleagueDirectoryScreenState extends State<ColleagueDirectoryScreen> {
   }
 
   void _openProfile(UserProfile colleague) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ColleagueProfileScreen(
-          colleagueId: colleague.id,
-          preview: colleague,
-        ),
-      ),
-    );
+    if (_opening) return;
+    _opening = true;
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (_) => ColleagueProfileScreen(
+              colleagueId: colleague.id,
+              preview: colleague,
+            ),
+          ),
+        )
+        .then((_) => _opening = false);
   }
 
   /// Nombre del área que se está viendo, para el contador de resultados.

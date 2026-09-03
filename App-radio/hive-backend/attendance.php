@@ -758,15 +758,16 @@ function adminAttendanceEmployee(PDO $pdo, string $employeeId) {
     ]);
 }
 
-// Recuento por tipo de día en [from, to]. Días laborales = lunes a viernes
-// (mismo calendario que leave_business_days).
+// Recuento por tipo de día en [from, to]. Días laborales = lunes a sábado
+// (mismo calendario que leave_business_days / is_working_day; solo el
+// domingo no cuenta).
 function attendance_range_summary(PDO $pdo, string $employeeId, string $from, string $to): array {
     $start = new DateTimeImmutable($from);
     $end = new DateTimeImmutable($to);
     $laborales = $asistencias = $vacaciones = $incapacidades = $permisos = $faltas = 0;
 
     for ($d = $start; $d <= $end; $d = $d->modify('+1 day')) {
-        if ((int) $d->format('N') > 5) continue; // fin de semana
+        if ((int) $d->format('N') === 7) continue; // domingo (único día no laboral)
         $wd = $d->format('Y-m-d');
         $laborales++;
 
@@ -787,9 +788,13 @@ function attendance_range_summary(PDO $pdo, string $employeeId, string $from, st
         if ($stmt->fetch()) {
             $asistencias++;
         } elseif ($wd < date('Y-m-d')) {
-            // Solo cuenta como falta un día laboral ya pasado sin asistencia
-            // ni permiso.
-            $faltas++;
+            // Día laboral ya pasado sin asistencia ni permiso: es falta, SALVO
+            // que el trabajador la haya justificado y el director la aprobara.
+            if (absence_is_justified($pdo, $employeeId, $wd)) {
+                $permisos++;
+            } else {
+                $faltas++;
+            }
         }
     }
 
@@ -877,6 +882,81 @@ function adminScheduleSave(PDO $pdo, string $employeeId) {
         'success'  => true,
         'message'  => 'Horario guardado correctamente',
         'schedule' => attendance_schedule_payload(attendance_schedule_for($pdo, $emp['id'])),
+    ]);
+}
+
+// POST /admin/schedules/bulk — asigna EL MISMO horario a varios trabajadores
+// en una sola operación (solo director). body:
+//   { employeeIds: [...], entryTime, exitTime, mealTime, mealMaxMinutes }
+// Idempotente (upsert), atómico para errores de BD; los ids inexistentes se
+// devuelven en `failed` sin bloquear al resto. Cambiar el horario NO altera
+// la asistencia ya registrada (el backend congela el horario por día).
+function adminScheduleBulkSave(PDO $pdo) {
+    $admin = attendance_admin_guard($pdo);
+    require_role($admin, ['director']);
+
+    $body = request_body();
+    $ids = $body['employeeIds'] ?? [];
+    if (is_string($ids)) {
+        $ids = array_filter(array_map('trim', explode(',', $ids)));
+    }
+    if (!is_array($ids) || !$ids) {
+        error_response('Selecciona al menos un trabajador.', 400);
+    }
+    $ids = array_values(array_unique(array_map('strval', $ids)));
+    if (count($ids) > 200) {
+        error_response('Demasiados trabajadores en una sola operación (máx. 200).', 400);
+    }
+
+    $src = is_array($body['schedule'] ?? null) ? $body['schedule'] : $body;
+    $entry = attendance_valid_time((string) ($src['entryTime'] ?? ''));
+    $exit  = attendance_valid_time((string) ($src['exitTime'] ?? ''));
+    $meal  = attendance_valid_time((string) ($src['mealTime'] ?? ''));
+    $max   = (int) ($src['mealMaxMinutes'] ?? 0);
+    if (!$entry || !$exit || !$meal) {
+        error_response('Horario inválido: usa el formato HH:MM (por ejemplo 09:00).', 400);
+    }
+    if ($max < 1 || $max > 240) {
+        error_response('El límite de comida debe estar entre 1 y 240 minutos.', 400);
+    }
+
+    $applied = [];
+    $failed = [];
+    $pdo->beginTransaction();
+    try {
+        $chk = $pdo->prepare("SELECT id, role FROM users WHERE id = ?");
+        $up = $pdo->prepare(
+            'INSERT INTO employee_schedules
+               (employee_id, entry_time, exit_time, meal_time, meal_max_minutes, updated_by)
+             VALUES (?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+               entry_time = VALUES(entry_time), exit_time = VALUES(exit_time),
+               meal_time = VALUES(meal_time), meal_max_minutes = VALUES(meal_max_minutes),
+               updated_by = VALUES(updated_by)'
+        );
+        foreach ($ids as $eid) {
+            $chk->execute([$eid]);
+            $u = $chk->fetch();
+            if (!$u || !in_array($u['role'], ['employee', 'manager'], true)) {
+                $failed[] = $eid;
+                continue;
+            }
+            $up->execute([$eid, $entry, $exit, $meal, $max, $admin['id']]);
+            $applied[] = $eid;
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+
+    json_response([
+        'success' => true,
+        'message' => count($applied) . ' de ' . count($ids) . ' horarios asignados'
+            . (count($failed) ? ' (' . count($failed) . ' sin asignar).' : '.'),
+        'appliedCount' => count($applied),
+        'applied' => $applied,
+        'failed'  => $failed,
     ]);
 }
 
@@ -970,7 +1050,7 @@ function attendance_period_stats(PDO $pdo, array $employee, string $from, string
     $vac = $inc = $perm = 0;
 
     for ($d = $start; $d <= $end; $d = $d->modify('+1 day')) {
-        if ((int) $d->format('N') > 5) continue; // fin de semana
+        if ((int) $d->format('N') === 7) continue; // domingo (único día no laboral)
         $wd = $d->format('Y-m-d');
         $business++;
 
@@ -995,7 +1075,12 @@ function attendance_period_stats(PDO $pdo, array $employee, string $from, string
                 $lateMin += (int) $sum['lateMinutes'];
             }
         } elseif ($wd < $today) {
-            $absent++;
+            // Una falta justificada y aprobada no cuenta como ausencia.
+            if (absence_is_justified($pdo, $employee['id'], $wd)) {
+                $perm++;
+            } else {
+                $absent++;
+            }
         }
     }
 

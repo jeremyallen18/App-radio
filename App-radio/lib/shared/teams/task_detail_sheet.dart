@@ -174,6 +174,7 @@ class _TaskDetailSheetState extends State<TaskDetailSheet> {
             runSpacing: 4,
             children: [
               _tag(t.statusLabel),
+              if (t.completedLate) _tag('Retardo', icon: Icons.timer_off_outlined),
               _tag('Revisión: ${t.reviewStatusLabel}'),
               if (t.assignedTo != null)
                 _tag(t.assignedTo!.name, icon: Icons.person_outline),

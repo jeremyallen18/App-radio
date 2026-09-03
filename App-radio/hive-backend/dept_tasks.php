@@ -55,8 +55,10 @@ function dept_task_next_due(string $recurrence, ?string $from): string {
         case 'monthly':
             return date('Y-m-d', strtotime('+1 month', $base));
         case 'weekdays':
+            // "Días laborales" de Radio Doliv = lunes a sábado; solo se salta
+            // el domingo (N == 7). Ver is_working_day() en helpers.php.
             $next = strtotime('+1 day', $base);
-            while (in_array((int) date('N', $next), [6, 7], true)) {
+            while ((int) date('N', $next) === 7) {
                 $next = strtotime('+1 day', $next);
             }
             return date('Y-m-d', $next);
@@ -128,6 +130,9 @@ function dept_task_payload(PDO $pdo, array $row): array {
         'dueDate'         => $row['due_date'],
         'completedBy'     => dept_task_mini_user($pdo, $row['completed_by']),
         'completedAt'     => $row['completed_at'],
+        // Entregada fuera de plazo (migración 021). La tarea sigue
+        // 'completada'; la app muestra una insignia "Retardo".
+        'completedLate'   => (bool) ($row['completed_late'] ?? 0),
         'createdAt'       => $row['created_at'],
         'subtaskCount'    => (int) ($sub['total'] ?? 0),
         'subtaskDoneCount'=> (int) ($sub['done'] ?? 0),
@@ -574,6 +579,7 @@ function deptTaskSetStatus(PDO $pdo, string $id) {
         // Reabrir / mover a en_progreso: limpia el cierre y la revisión.
         $stmt = $pdo->prepare(
             "UPDATE dept_tasks SET status = ?, completed_by = NULL, completed_at = NULL,
+               completed_late = 0,
                review_status = 'sin_revision', review_note = NULL,
                reviewed_by = NULL, reviewed_at = NULL
              WHERE id = ?"
@@ -614,9 +620,13 @@ function deptTaskSetStatus(PDO $pdo, string $id) {
     // la comprobación previa) una gana y la otra recibe rowCount()===0, así no
     // se dispara dos veces dept_task_spawn_next() / la notificación ni se
     // pisan evidencias.
+    // `completed_late` lo decide el servidor: 1 si se cierra pasada la fecha
+    // límite (due_date es una fecha; el plazo vence al final de ese día).
+    // Nunca se toma un valor del cliente.
     $stmt = $pdo->prepare(
         "UPDATE dept_tasks
             SET status = 'completada', completed_by = ?, completed_at = NOW(),
+                completed_late = (due_date IS NOT NULL AND NOW() > CONCAT(due_date, ' 23:59:59')),
                 evidence_path = ?, evidence_mime = ?, review_status = ?,
                 review_note = NULL, reviewed_by = NULL, reviewed_at = NULL
           WHERE id = ? AND status <> 'completada'"

@@ -194,6 +194,36 @@ class AttendanceApi {
     );
   }
 
+  /// Asigna el MISMO horario a varios trabajadores en una sola operación
+  /// (solo director). Devuelve cuántos se aplicaron y los ids que no.
+  static Future<({int applied, List<String> failed, String message})>
+      bulkSaveSchedule({
+    required List<String> employeeIds,
+    required String entryTime,
+    required String exitTime,
+    required String mealTime,
+    required int mealMaxMinutes,
+  }) async {
+    final res = await _post(
+      Uri.parse('$kBaseUrl/admin/schedules/bulk'),
+      {
+        'employeeIds': employeeIds.join(','),
+        'entryTime': entryTime,
+        'exitTime': exitTime,
+        'mealTime': mealTime,
+        'mealMaxMinutes': mealMaxMinutes.toString(),
+      },
+    );
+    final d = jsonDecode(res.body) as Map<String, dynamic>;
+    return (
+      applied: (d['appliedCount'] as num?)?.toInt() ?? 0,
+      failed: ((d['failed'] as List?) ?? const [])
+          .map((e) => e.toString())
+          .toList(),
+      message: d['message']?.toString() ?? 'Horarios asignados.',
+    );
+  }
+
   // ---- resumen mensual ----------------------------------------------
 
   /// Resumen de asistencia del mes ([month] = `YYYY-MM`, por defecto el mes

@@ -79,9 +79,34 @@ function event_payload(PDO $pdo, array $e): array {
         'longitude'     => $e['longitude'] !== null ? (float) $e['longitude'] : null,
         'radiusM'       => $e['radius_m'] !== null ? (int) $e['radius_m'] : null,
         'locationLabel' => $e['location_label'],
+        // Lugar del evento en texto libre (024), para cualquier evento.
+        'locationText'  => $e['location_text'] ?? null,
+        // Días de antelación de los recordatorios automáticos (024).
+        'reminderOffsets' => event_parse_offsets($e['reminder_offsets'] ?? ''),
         'entryTime'     => $e['entry_time'] ? substr($e['entry_time'], 0, 5) : null,
         'areas'         => array_map(fn($a) => ['id' => $a['id'], 'name' => $a['name']], $areas),
     ];
+}
+
+// Antelaciones válidas para los recordatorios de evento.
+const EVENT_REMINDER_OFFSETS_ALLOWED = [7, 5, 3, 2];
+
+// Normaliza el CSV/lista de antelaciones: solo valores permitidos, ordenados
+// de mayor a menor y sin repetir. Si queda vacío, usa el conjunto completo.
+function event_parse_offsets($raw): array {
+    if (is_string($raw)) {
+        $raw = array_map('trim', explode(',', $raw));
+    }
+    $out = [];
+    foreach ((array) $raw as $v) {
+        $n = (int) $v;
+        if (in_array($n, EVENT_REMINDER_OFFSETS_ALLOWED, true) && !in_array($n, $out, true)) {
+            $out[] = $n;
+        }
+    }
+    if (!$out) $out = EVENT_REMINDER_OFFSETS_ALLOWED;
+    rsort($out);
+    return $out;
 }
 
 // Eventos visibles para $user en el rango [$from,$to].
@@ -187,6 +212,13 @@ function event_body_or_fail(PDO $pdo): array {
     $lat = $lng = $radius = $entryTime = null;
     $label = trim((string) ($body['locationLabel'] ?? '')) ?: null;
 
+    // Lugar en texto libre (independiente de la geocerca). Máx. 255.
+    $locationText = trim((string) ($body['locationText'] ?? ''));
+    if (mb_strlen($locationText) > 255) $locationText = mb_substr($locationText, 0, 255);
+    $locationText = $locationText !== '' ? $locationText : null;
+
+    $reminderOffsets = implode(',', event_parse_offsets($body['reminderOffsets'] ?? ''));
+
     if ($hasLocation) {
         if ($scope !== 'areas' || !$areaIds) {
             error_response('Un evento con ubicación debe especificar las áreas que asistirán.', 400);
@@ -217,24 +249,148 @@ function event_body_or_fail(PDO $pdo): array {
         'latitude'    => $lat,
         'longitude'   => $lng,
         'radius_m'    => $radius,
-        'location_label' => $label,
+        'location_label'   => $label,
+        'location_text'    => $locationText,
+        'reminder_offsets' => $reminderOffsets,
         'entry_time'  => $entryTime,
         'area_ids'    => $scope === 'areas' ? $areaIds : [],
     ];
 }
 
-// Notifica a los miembros de las áreas asignadas (incluye a sus managers, que
-// también tienen department_id). Solo para eventos por áreas.
-function event_notify_areas(PDO $pdo, array $areaIds, string $title, string $eventDate): void {
-    if (!$areaIds) return;
-    $in = implode(',', array_fill(0, count($areaIds), '?'));
-    $stmt = $pdo->prepare("SELECT email FROM users WHERE department_id IN ($in)");
-    $stmt->execute(array_values($areaIds));
-    $fecha = date('d/m/Y', strtotime($eventDate));
-    foreach ($stmt->fetchAll() as $r) {
-        notify_user($pdo, $r['email'], null, 'event_created',
-            'Nuevo evento: ' . mb_substr($title, 0, 120) . ' (' . $fecha . ')');
+// Usuarios (id,email) a los que va dirigido un evento: 'general' => toda la
+// plantilla (manager/employee); 'areas' => miembros de esos departamentos
+// (los managers también, por su department_id).
+function event_audience_users(PDO $pdo, string $scope, array $areaIds): array {
+    if ($scope === 'areas') {
+        if (!$areaIds) return [];
+        $in = implode(',', array_fill(0, count($areaIds), '?'));
+        $stmt = $pdo->prepare(
+            "SELECT id, email FROM users
+             WHERE role IN ('manager','employee') AND department_id IN ($in)"
+        );
+        $stmt->execute(array_values($areaIds));
+        return $stmt->fetchAll();
     }
+    return $pdo->query(
+        "SELECT id, email FROM users WHERE role IN ('manager','employee')"
+    )->fetchAll();
+}
+
+// Aviso inmediato "nuevo evento" a la audiencia (general o por áreas). La
+// notificación es de tipo `event_created` y lleva a la pantalla de calendario.
+function event_notify_new(PDO $pdo, string $eventId, string $scope, array $areaIds, string $title, string $eventDate): void {
+    $fecha = date('d/m/Y', strtotime($eventDate));
+    foreach (event_audience_users($pdo, $scope, $areaIds) as $u) {
+        notify_user($pdo, $u['email'], null, 'event_created',
+            'Nuevo evento: ' . mb_substr($title, 0, 120) . ' (' . $fecha . ')',
+            'event', $eventId);
+    }
+}
+
+// Publica (o actualiza) el anuncio interno enlazado a un evento. Todo evento
+// aparece así en el tablero de anuncios; al editar el evento se actualiza el
+// mismo anuncio (uq_ia_event), al borrarlo la FK ON DELETE CASCADE lo elimina.
+function event_sync_announcement(PDO $pdo, string $eventId): void {
+    $stmt = $pdo->prepare('SELECT * FROM events WHERE id = ?');
+    $stmt->execute([$eventId]);
+    $e = $stmt->fetch();
+    if (!$e) return;
+
+    $areaIds = $e['scope'] === 'areas' ? event_area_ids($pdo, $eventId) : [];
+
+    // Cuerpo del anuncio: descripción del evento + fecha/hora + lugar.
+    $lines = [];
+    if (trim((string) $e['description']) !== '') $lines[] = trim((string) $e['description']);
+    $when = date('d/m/Y', strtotime($e['event_date']));
+    if ($e['start_time']) {
+        $when .= ' · ' . substr($e['start_time'], 0, 5)
+            . ($e['end_time'] ? '–' . substr($e['end_time'], 0, 5) : '');
+    }
+    $lines[] = '📅 ' . $when;
+    if (!empty($e['location_text'])) $lines[] = '📍 ' . $e['location_text'];
+    $body = implode("\n", $lines);
+
+    // event_at: fecha del evento + hora de inicio (o mediodía si no hay), para
+    // que el anuncio desaparezca de los tableros un día después del evento.
+    $eventAt = $e['event_date'] . ' ' . ($e['start_time'] ?: '12:00:00');
+
+    $existing = $pdo->prepare('SELECT id FROM internal_announcements WHERE event_id = ?');
+    $existing->execute([$eventId]);
+    $iaId = $existing->fetchColumn();
+
+    if ($iaId) {
+        $pdo->prepare(
+            'UPDATE internal_announcements
+                SET title = ?, body = ?, scope = ?, event_at = ?, location_label = ?
+              WHERE id = ?'
+        )->execute([$e['title'], $body, $e['scope'], $eventAt, $e['location_text'], $iaId]);
+        $pdo->prepare('DELETE FROM internal_announcement_areas WHERE announcement_id = ?')->execute([$iaId]);
+    } else {
+        $iaId = generate_id();
+        $pdo->prepare(
+            'INSERT INTO internal_announcements
+               (id, title, body, scope, requires_confirmation, event_at, location_label, created_by, event_id)
+             VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)'
+        )->execute([$iaId, $e['title'], $body, $e['scope'], $eventAt, $e['location_text'], $e['created_by'], $eventId]);
+    }
+
+    foreach ($areaIds as $deptId) {
+        $pdo->prepare(
+            'INSERT IGNORE INTO internal_announcement_areas (announcement_id, department_id) VALUES (?, ?)'
+        )->execute([$iaId, $deptId]);
+    }
+}
+
+// Emite los recordatorios automáticos de eventos próximos (7/5/3/2 días
+// antes, según reminder_offsets de cada evento). Mismo patrón perezoso que
+// ia_dispatch_due_reminders(): se llama al consultar notificaciones (con
+// $onlyUserId) y desde el cron (sin él). Idempotente: event_reminders_sent
+// garantiza un aviso por (evento, antelación, usuario). Los eventos borrados
+// o pasados no generan nada; los creados/editados después del umbral solo
+// disparan las antelaciones cuyo día objetivo no es anterior a su creación.
+function event_dispatch_due_reminders(PDO $pdo, ?string $onlyUserId = null): int {
+    $today = date('Y-m-d');
+    $events = $pdo->query(
+        "SELECT id, title, event_date, start_time, scope, reminder_offsets,
+                location_text, DATE(created_at) AS created_date
+           FROM events WHERE event_date >= '" . $today . "'"
+    )->fetchAll();
+    if (!$events) return 0;
+
+    $ins = $pdo->prepare(
+        'INSERT IGNORE INTO event_reminders_sent (event_id, offset_days, user_id) VALUES (?, ?, ?)'
+    );
+    $sent = 0;
+
+    foreach ($events as $e) {
+        $areaIds = $e['scope'] === 'areas' ? event_area_ids($pdo, $e['id']) : [];
+        $audience = event_audience_users($pdo, $e['scope'], $areaIds);
+        if ($onlyUserId !== null) {
+            $audience = array_values(array_filter($audience, fn($u) => $u['id'] === $onlyUserId));
+        }
+        if (!$audience) continue;
+
+        $daysLeft = (int) floor((strtotime($e['event_date']) - strtotime($today)) / 86400);
+        $whenTxt = $daysLeft <= 0 ? 'hoy' : ($daysLeft === 1 ? 'mañana' : "en $daysLeft días");
+        $fecha = date('d/m/Y', strtotime($e['event_date']));
+
+        foreach (event_parse_offsets($e['reminder_offsets']) as $off) {
+            $target = date('Y-m-d', strtotime($e['event_date'] . " -$off days"));
+            if ($target > $today) continue;                 // aún no toca
+            if ($target < $e['created_date']) continue;      // el evento no existía entonces
+
+            foreach ($audience as $u) {
+                $ins->execute([$e['id'], $off, $u['id']]);
+                if ($ins->rowCount() === 0) continue;        // ya avisado (o carrera)
+                $msg = 'Recordatorio: ' . mb_substr($e['title'], 0, 100)
+                    . ' — ' . $whenTxt . ' (' . $fecha . ')';
+                if (!empty($e['location_text'])) $msg .= ' · ' . $e['location_text'];
+                notify_user($pdo, $u['email'], null, 'event_reminder', $msg, 'event', $e['id']);
+                $sent++;
+            }
+        }
+    }
+    return $sent;
 }
 
 function eventCreate(PDO $pdo) {
@@ -246,23 +402,27 @@ function eventCreate(PDO $pdo) {
     $stmt = $pdo->prepare(
         'INSERT INTO events
            (id, title, description, event_date, start_time, end_time, scope,
-            has_location, latitude, longitude, radius_m, location_label, entry_time, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            has_location, latitude, longitude, radius_m, location_label, location_text,
+            reminder_offsets, entry_time, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $id, $data['title'], $data['description'], $data['event_date'],
         $data['start_time'], $data['end_time'], $data['scope'], $data['has_location'],
         $data['latitude'], $data['longitude'], $data['radius_m'],
-        $data['location_label'], $data['entry_time'], $user['id'],
+        $data['location_label'], $data['location_text'], $data['reminder_offsets'],
+        $data['entry_time'], $user['id'],
     ]);
 
     foreach ($data['area_ids'] as $deptId) {
         $stmt = $pdo->prepare('INSERT IGNORE INTO event_areas (event_id, department_id) VALUES (?, ?)');
         $stmt->execute([$id, $deptId]);
     }
-    if ($data['scope'] === 'areas') {
-        event_notify_areas($pdo, $data['area_ids'], $data['title'], $data['event_date']);
-    }
+
+    // Todo evento se publica también como anuncio interno y avisa a su
+    // audiencia (general = toda la empresa; areas = los departamentos).
+    event_sync_announcement($pdo, $id);
+    event_notify_new($pdo, $id, $data['scope'], $data['area_ids'], $data['title'], $data['event_date']);
 
     $stmt = $pdo->prepare('SELECT * FROM events WHERE id = ?');
     $stmt->execute([$id]);
@@ -282,14 +442,16 @@ function eventUpdate(PDO $pdo, string $id) {
     $data = event_body_or_fail($pdo);
     $stmt = $pdo->prepare(
         'UPDATE events SET title=?, description=?, event_date=?, start_time=?, end_time=?,
-           scope=?, has_location=?, latitude=?, longitude=?, radius_m=?, location_label=?, entry_time=?
+           scope=?, has_location=?, latitude=?, longitude=?, radius_m=?, location_label=?,
+           location_text=?, reminder_offsets=?, entry_time=?
          WHERE id=?'
     );
     $stmt->execute([
         $data['title'], $data['description'], $data['event_date'],
         $data['start_time'], $data['end_time'], $data['scope'], $data['has_location'],
         $data['latitude'], $data['longitude'], $data['radius_m'],
-        $data['location_label'], $data['entry_time'], $id,
+        $data['location_label'], $data['location_text'], $data['reminder_offsets'],
+        $data['entry_time'], $id,
     ]);
 
     $pdo->prepare('DELETE FROM event_areas WHERE event_id = ?')->execute([$id]);
@@ -297,6 +459,10 @@ function eventUpdate(PDO $pdo, string $id) {
         $stmt = $pdo->prepare('INSERT IGNORE INTO event_areas (event_id, department_id) VALUES (?, ?)');
         $stmt->execute([$id, $deptId]);
     }
+
+    // Mantiene el anuncio interno enlazado al día con los datos nuevos (no
+    // vuelve a notificar; eso solo pasa al crear).
+    event_sync_announcement($pdo, $id);
 
     $stmt = $pdo->prepare('SELECT * FROM events WHERE id = ?');
     $stmt->execute([$id]);

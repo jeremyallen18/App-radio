@@ -20,10 +20,53 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
   bool _loading = true;
   String? _error;
 
+  /// Modo de selección múltiple para asignar el mismo horario a varios.
+  bool _selectMode = false;
+  final Set<String> _selected = {};
+
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  void _toggleSelectMode() {
+    setState(() {
+      _selectMode = !_selectMode;
+      _selected.clear();
+    });
+  }
+
+  void _toggleOne(String id) {
+    setState(() {
+      if (!_selected.remove(id)) _selected.add(id);
+    });
+  }
+
+  void _selectAllOrNone() {
+    setState(() {
+      if (_selected.length == _rows.length) {
+        _selected.clear();
+      } else {
+        _selected
+          ..clear()
+          ..addAll(_rows.map((r) => r.employeeId));
+      }
+    });
+  }
+
+  Future<void> _assignToSelected() async {
+    if (_selected.isEmpty) return;
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      builder: (_) => _ScheduleEditor(bulkIds: _selected.toList()),
+    );
+    if (result == true && mounted) {
+      _toggleSelectMode();
+      _load();
+    }
   }
 
   Future<void> _load() async {
@@ -62,8 +105,32 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-        leading: const AppBackButton(),
-        title: const Text('Horarios de empleados'),
+        leading: _selectMode
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                tooltip: 'Salir de selección',
+                onPressed: _toggleSelectMode,
+              )
+            : const AppBackButton(),
+        title: Text(_selectMode
+            ? '${_selected.length} seleccionados'
+            : 'Horarios de empleados'),
+        actions: [
+          if (_canEdit && _rows.isNotEmpty && !_selectMode)
+            IconButton(
+              icon: const Icon(Icons.checklist_rtl),
+              tooltip: 'Asignar a varios',
+              onPressed: _toggleSelectMode,
+            ),
+          if (_selectMode)
+            TextButton(
+              onPressed: _selectAllOrNone,
+              child: Text(
+                _selected.length == _rows.length ? 'Ninguno' : 'Todos',
+                style: const TextStyle(color: AppColors.accentStrong),
+              ),
+            ),
+        ],
       ),
       body: Builder(
         builder: (context) {
@@ -91,30 +158,52 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
               itemBuilder: (_, i) {
                 if (i == 0) {
                   return Text(
-                    _canEdit
-                        ? 'Toca un empleado para editar su horario.'
-                        : 'Solo el director puede modificar los horarios.',
+                    !_canEdit
+                        ? 'Solo el director puede modificar los horarios.'
+                        : _selectMode
+                            ? 'Elige a los empleados y asigna el mismo horario a todos.'
+                            : 'Toca un empleado para editar su horario, o usa la lista para asignar a varios.',
                     style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                   );
                 }
                 final row = _rows[i - 1];
                 return _ScheduleRowCard(
                   row: row,
-                  onTap: _canEdit ? () => _edit(row) : null,
+                  selectMode: _selectMode,
+                  selected: _selected.contains(row.employeeId),
+                  onTap: !_canEdit
+                      ? null
+                      : _selectMode
+                          ? () => _toggleOne(row.employeeId)
+                          : () => _edit(row),
                 );
               },
             ),
           );
         },
       ),
+      floatingActionButton: (_selectMode && _selected.isNotEmpty)
+          ? FloatingActionButton.extended(
+              onPressed: _assignToSelected,
+              icon: const Icon(Icons.schedule),
+              label: Text('Asignar horario (${_selected.length})'),
+            )
+          : null,
     );
   }
 }
 
 class _ScheduleRowCard extends StatelessWidget {
-  const _ScheduleRowCard({required this.row, this.onTap});
+  const _ScheduleRowCard({
+    required this.row,
+    this.onTap,
+    this.selectMode = false,
+    this.selected = false,
+  });
   final EmployeeScheduleRow row;
   final VoidCallback? onTap;
+  final bool selectMode;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -123,6 +212,13 @@ class _ScheduleRowCard extends StatelessWidget {
       onTap: onTap,
       child: Row(
         children: [
+          if (selectMode) ...[
+            Icon(
+              selected ? Icons.check_box : Icons.check_box_outline_blank,
+              color: selected ? AppColors.accent : AppColors.textMuted,
+            ),
+            const SizedBox(width: AppSpacing.md),
+          ],
           IdentityAvatar(id: row.name),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -152,7 +248,7 @@ class _ScheduleRowCard extends StatelessWidget {
               ],
             ),
           ),
-          if (onTap != null)
+          if (onTap != null && !selectMode)
             const Icon(Icons.edit_outlined, color: AppColors.accent, size: 18),
         ],
       ),
@@ -160,9 +256,13 @@ class _ScheduleRowCard extends StatelessWidget {
   }
 }
 
+/// Hoja de edición de horario. Con [row] edita a una persona; con [bulkIds]
+/// asigna el MISMO horario a todos esos ids en una operación.
 class _ScheduleEditor extends StatefulWidget {
-  const _ScheduleEditor({required this.row});
-  final EmployeeScheduleRow row;
+  const _ScheduleEditor({this.row, this.bulkIds})
+      : assert(row != null || bulkIds != null);
+  final EmployeeScheduleRow? row;
+  final List<String>? bulkIds;
 
   @override
   State<_ScheduleEditor> createState() => _ScheduleEditorState();
@@ -176,10 +276,12 @@ class _ScheduleEditorState extends State<_ScheduleEditor> {
   bool _saving = false;
   String? _error;
 
+  bool get _isBulk => widget.bulkIds != null;
+
   @override
   void initState() {
     super.initState();
-    final s = widget.row.schedule;
+    final s = widget.row?.schedule;
     _entry = s?.entryTime ?? '09:00';
     _exit = s?.exitTime ?? '17:00';
     _meal = s?.mealTime ?? '14:00';
@@ -220,17 +322,29 @@ class _ScheduleEditorState extends State<_ScheduleEditor> {
       _error = null;
     });
     try {
-      await AttendanceApi.saveSchedule(
-        widget.row.employeeId,
-        entryTime: _entry,
-        exitTime: _exit,
-        mealTime: _meal,
-        mealMaxMinutes: limit,
-      );
+      String message = 'Horario guardado correctamente';
+      if (_isBulk) {
+        final r = await AttendanceApi.bulkSaveSchedule(
+          employeeIds: widget.bulkIds!,
+          entryTime: _entry,
+          exitTime: _exit,
+          mealTime: _meal,
+          mealMaxMinutes: limit,
+        );
+        message = r.message;
+      } else {
+        await AttendanceApi.saveSchedule(
+          widget.row!.employeeId,
+          entryTime: _entry,
+          exitTime: _exit,
+          mealTime: _meal,
+          mealMaxMinutes: limit,
+        );
+      }
       if (!mounted) return;
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Horario guardado correctamente')),
+        SnackBar(content: Text(message)),
       );
     } on AttendanceException catch (e) {
       if (!mounted) return;
@@ -255,7 +369,9 @@ class _ScheduleEditorState extends State<_ScheduleEditor> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Horario de ${widget.row.name}',
+            _isBulk
+                ? 'Asignar horario a ${widget.bulkIds!.length} empleados'
+                : 'Horario de ${widget.row!.name}',
             style: const TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w800,

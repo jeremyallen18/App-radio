@@ -4,6 +4,7 @@ import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/attendance.dart';
 import 'package:doliv_social/services/attendance_service.dart';
 import 'package:doliv_social/shared/attendance/attendance_history_screen.dart';
+import 'package:doliv_social/shared/calendar/date_pickers.dart';
 
 /// Panel administrativo de asistencia (director y manager). Muestra SOLO
 /// empleados — el director nunca aparece aquí como empleado. El manager ve
@@ -49,8 +50,8 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await pickWorkingDate(
+      context,
       firstDate: DateTime(2024),
       lastDate: DateTime.now(),
       initialDate: _date,

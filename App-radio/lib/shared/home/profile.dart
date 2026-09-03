@@ -10,6 +10,7 @@ import 'package:doliv_social/shared/directory/colleague_directory_screen.dart';
 import 'package:doliv_social/shared/home/profile_hero.dart';
 import 'package:doliv_social/shared/home/profile_widgets.dart';
 import 'package:doliv_social/core/audio/radio_player.dart';
+import 'package:doliv_social/core/notifications_controller.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -30,6 +31,9 @@ class _ProfileState extends State<Profile> {
   _ProfileTab _tab = _ProfileTab.equipos;
   final ImagePicker _picker = ImagePicker();
 
+  /// El director no participa en equipos: se le oculta esa sección del perfil.
+  bool get _isDirector => _profile?.role == AppRole.director;
+
   @override
   void initState() {
     super.initState();
@@ -46,6 +50,9 @@ class _ProfileState extends State<Profile> {
       _completedCount = overview.completedCount;
       _teams = overview.teams;
       _loading = false;
+      // El director no tiene pestaña "Equipos": si era la seleccionada por
+      // defecto, se mueve a "Mi área".
+      if (_isDirector && _tab == _ProfileTab.equipos) _tab = _ProfileTab.area;
     });
   }
 
@@ -109,6 +116,7 @@ class _ProfileState extends State<Profile> {
     if (confirmed != true || !mounted) return;
     // Cortar la transmisión en vivo: no debe seguir sonando tras cerrar sesión.
     await RadioPlayer.instance.stop();
+    NotificationsController.instance.clear();
     await secureStorage.deleteSecureData(key);
     await secureStorage.deleteSecureData(rememberMeKey);
     if (!mounted) return;
@@ -203,12 +211,13 @@ class _ProfileState extends State<Profile> {
                       label: 'Completadas',
                     ),
                   ),
-                  Expanded(
-                    child: ProfileStatItem(
-                      value: _teams.length.toString(),
-                      label: 'Equipos',
+                  if (!_isDirector)
+                    Expanded(
+                      child: ProfileStatItem(
+                        value: _teams.length.toString(),
+                        label: 'Equipos',
+                      ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -218,11 +227,12 @@ class _ProfileState extends State<Profile> {
         const Divider(height: 1, color: AppColors.surfaceBorder),
         Row(
           children: [
-            ProfileTabButton(
-              label: 'Equipos',
-              selected: _tab == _ProfileTab.equipos,
-              onTap: () => setState(() => _tab = _ProfileTab.equipos),
-            ),
+            if (!_isDirector)
+              ProfileTabButton(
+                label: 'Equipos',
+                selected: _tab == _ProfileTab.equipos,
+                onTap: () => setState(() => _tab = _ProfileTab.equipos),
+              ),
             ProfileTabButton(
               label: 'Mi área',
               selected: _tab == _ProfileTab.area,
