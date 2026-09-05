@@ -233,3 +233,45 @@ Revisar la sección `flutter_launcher_icons` / `flutter_native_splash` y
   firma que el drawer espera (`onPushScreen`, `onPushNamed`).
 - **Pestaña Directorio** necesita `UserProfile`; el cargador nuevo es el
   único código realmente nuevo de este trabajo.
+
+---
+
+## Addendum 2026-09-05 — Se re-agregan chat, mensajes y gráficas
+
+A petición del usuario se restauran desde `App-radio` tres áreas que el
+recorte inicial había eliminado. Disposición "como en App-radio".
+
+**Archivos restaurados verbatim de App-radio:**
+
+- Chat: `lib/shared/chat/chat.dart`, `chatHistory.dart`;
+  `lib/services/chat_service.dart`
+- Componentes de diseño: `chat_bubble.dart`, `message_composer.dart`,
+  `emoji_picker_panel.dart`, `emoji_catalog.dart`, `day_divider.dart`,
+  `unread_count_badge.dart` (y sus `export` en `design/design.dart`)
+- Gráficas: `lib/shared/home/progress.dart`, `progress_widgets.dart`,
+  `personal_progress_view.dart`, `director_performance_view.dart`,
+  `lib/shared/home/progress/{completion_gauge,department_stack_bars,
+  progress_sections,weekly_rhythm_chart}.dart`
+
+**`pubspec.yaml`:** vuelve `fl_chart: ^1.2.0`.
+
+**Navegación:** `BottomNavBar` vuelve a 4 pestañas —
+**Progreso** (`ProgressChart`) · **Tablero** (`dashb_mem`) ·
+**Directorio** · **Perfil**. `_profileIndex = 3`, pestaña inicial = Tablero.
+
+**Chat (igual que App-radio):**
+
+- FAB de mensajes en `dashb_mem` con contador de no leídas
+  (`ChatService.unreadTotal`, timer de 15 s) → abre `ChatScreenfetch`.
+- Entrada "Chat del departamento" (sección "Comunicación") en
+  `app_menu_drawer.dart`.
+- Botón "Enviar mensaje" en `colleague_profile_screen.dart` → `ChatScreen`.
+- Botones "Chat" (líder y no líder) en `team_detail_widgets.dart`.
+- **No** se restauran "Salir" (permiso/leave) ni "Recursos" — siguen fuera
+  de alcance.
+
+**Menú:** nueva entrada "Mi progreso" → `ProgressChart` en la sección
+"Mis tareas".
+
+**Verificación:** `flutter analyze` 0 errores; `flutter test` y
+`flutter build web` OK.
