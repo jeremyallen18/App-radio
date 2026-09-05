@@ -74,6 +74,39 @@ function site_handle_image(string $field, string $subdir, string $labelForName, 
     return 'assets/img/' . $subdir . '/' . $fileName;
 }
 
+// Igual que site_handle_image pero para archivos de audio (episodios de
+// podcast). Guarda en assets/audio/$subdir dentro de RADIODOLIV_PAGINA_PATH.
+function site_handle_audio(string $field, string $subdir, string $labelForName, string $existingPath): string {
+    if (empty($_FILES[$field]) || $_FILES[$field]['error'] === UPLOAD_ERR_NO_FILE) {
+        return $existingPath;
+    }
+
+    $file = $_FILES[$field];
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        error_response('No se pudo subir el audio', 400);
+    }
+
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $allowed = ['mp3', 'wav', 'm4a', 'ogg'];
+    if (!in_array($ext, $allowed, true)) {
+        error_response('Solo se permiten archivos de audio mp3, wav, m4a u ogg', 400);
+    }
+
+    $targetDir = RADIODOLIV_PAGINA_PATH . '/assets/audio/' . $subdir;
+    if (!is_dir($targetDir) && !mkdir($targetDir, 0755, true) && !is_dir($targetDir)) {
+        error_response('No se pudo preparar la carpeta de destino del audio', 500);
+    }
+
+    $base = site_slugify($labelForName !== '' ? $labelForName : pathinfo($file['name'], PATHINFO_FILENAME));
+    $fileName = $base . '-' . substr(bin2hex(random_bytes(4)), 0, 8) . '.' . $ext;
+
+    if (!move_uploaded_file($file['tmp_name'], $targetDir . '/' . $fileName)) {
+        error_response('No se pudo guardar el audio en el servidor', 500);
+    }
+
+    return 'assets/audio/' . $subdir . '/' . $fileName;
+}
+
 // Devuelve el valor de la cabecera X-Api-Key sin importar cómo la exponga el
 // servidor (variable $_SERVER o getallheaders()), o null si no vino.
 function site_request_api_key(): ?string {
@@ -640,11 +673,13 @@ function site_save_podcast_episodes(PDO $pdo, int $podcastId): void {
     foreach ($rows as $row) {
         $title = trim((string) ($row['title'] ?? ''));
         if ($title === '') continue;
+        $existingAudio = trim((string) ($row['audio_url'] ?? ''));
+        $audioUrl = site_handle_audio("episode_audio_$order", 'podcasts', $title, $existingAudio);
         $insert->execute([
             $podcastId,
             $title,
             trim((string) ($row['description'] ?? '')),
-            trim((string) ($row['audio_url'] ?? '')),
+            $audioUrl,
             trim((string) ($row['category_label'] ?? '')),
             $order++,
         ]);
