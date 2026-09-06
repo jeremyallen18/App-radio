@@ -61,3 +61,56 @@ function fcm_http_post(string $url, array $headers, string $body): array {
     curl_close($ch);
     return [$status, (string) $resp];
 }
+
+function fcm_access_token(): string {
+    $cacheFile = __DIR__ . '/private/fcm-token.cache';
+    $now = fcm_now();
+
+    if (is_file($cacheFile)) {
+        $c = json_decode((string) file_get_contents($cacheFile), true);
+        if (is_array($c) && isset($c['token'], $c['exp']) && $c['exp'] > $now + 60) {
+            return (string) $c['token'];
+        }
+    }
+
+    $sa = fcm_service_account();
+    if ($sa === null) {
+        throw new RuntimeException('FCM service account not configured');
+    }
+
+    $header = fcm_b64url(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+    $claim = fcm_b64url(json_encode([
+        'iss'   => $sa['client_email'],
+        'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+        'aud'   => 'https://oauth2.googleapis.com/token',
+        'iat'   => $now,
+        'exp'   => $now + 3600,
+    ]));
+
+    $signature = '';
+    if (!openssl_sign("$header.$claim", $signature, $sa['private_key'], OPENSSL_ALGO_SHA256)) {
+        throw new RuntimeException('FCM JWT signing failed');
+    }
+    $jwt = "$header.$claim." . fcm_b64url($signature);
+
+    [$status, $body] = fcm_http_post(
+        'https://oauth2.googleapis.com/token',
+        ['Content-Type: application/x-www-form-urlencoded'],
+        http_build_query([
+            'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            'assertion'  => $jwt,
+        ])
+    );
+
+    $data = json_decode($body, true);
+    if ($status !== 200 || !is_array($data) || !isset($data['access_token'])) {
+        throw new RuntimeException('FCM token exchange failed (HTTP ' . $status . '): ' . $body);
+    }
+
+    @file_put_contents($cacheFile, json_encode([
+        'token' => $data['access_token'],
+        'exp'   => $now + (int) ($data['expires_in'] ?? 3600),
+    ]));
+
+    return (string) $data['access_token'];
+}
