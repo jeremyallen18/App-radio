@@ -52,3 +52,10 @@ node_modules/
 hive-backend/.env
 hive-backend/uploads/*
 !hive-backend/uploads/.gitkeep
+
+# Firebase / FCM (backend)
+hive-backend/private/fcm-service-account.json
+hive-backend/private/fcm-token.cache
+
+# Throwaway test/debug scripts
+/scratchpad/

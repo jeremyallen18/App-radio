@@ -48,6 +48,17 @@ $DB_PASS = env_get('DB_PASS') ?: '';
 
 define('APP_BASE_PATH', env_get('APP_BASE_PATH') !== null ? env_get('APP_BASE_PATH') : '/hive-backend');
 
+// Origen público del backend (esquema + host + ruta base), SIN barra final,
+// p. ej. https://doliv.site/hive-backend. Se usa para construir enlaces que se
+// mandan por correo (verificación de cuenta): esos enlaces NO deben depender de
+// la cabecera Host, que la controla quien hace la petición (host-header
+// poisoning). Déjalo vacío en local: se cae a detectar host/esquema del request.
+define('PUBLIC_BASE_URL', rtrim((string) (env_get('PUBLIC_BASE_URL') ?: ''), '/'));
+
+// ID del proyecto Firebase para el envío de push (FCM HTTP v1). Vacío en
+// local o si aún no se configuró: deshabilita el push sin romper nada.
+define('FCM_PROJECT_ID', (string) (env_get('FCM_PROJECT_ID') ?: ''));
+
 define('SMTP_HOST', env_get('SMTP_HOST') ?: '');
 define('SMTP_PORT', (int) (env_get('SMTP_PORT') ?: 587));
 define('SMTP_USER', env_get('SMTP_USER') ?: '');
