@@ -114,3 +114,98 @@ function fcm_access_token(): string {
 
     return (string) $data['access_token'];
 }
+
+function push_title_for_type(string $type): string {
+    switch ($type) {
+        case 'chat':
+            return 'Nuevo mensaje';
+        case 'dept_task':
+        case 'task_assigned':
+            return 'Tarea';
+        case 'event_created':
+        case 'event_reminder':
+            return 'Evento';
+        case 'internal_announcement':
+        case 'internal_announcement_reminder':
+            return 'Anuncio';
+        case 'attendance_correction':
+            return 'Asistencia';
+        case 'absence_justification':
+        case 'absence_approved':
+        case 'absence_rejected':
+            return 'Ausencia';
+        case 'leave_approved':
+        case 'leave_rejected':
+        case 'leave_cancelled':
+            return 'Permiso';
+        case 'member_removed':
+        case 'team_deleted':
+        case 'leader_assigned':
+        case 'department_removed':
+        case 'department_assigned':
+        case 'department_manager_assigned':
+            return 'Equipo';
+        default:
+            return 'Radio Doliv';
+    }
+}
+
+function push_send_to_user(
+    PDO $pdo,
+    string $email,
+    string $title,
+    string $body,
+    array $data,
+    ?string $collapseKey = null
+): void {
+    if (!fcm_enabled()) {
+        return;
+    }
+
+    $stmt = $pdo->prepare('SELECT token FROM device_tokens WHERE email = ?');
+    $stmt->execute([$email]);
+    $tokens = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    if (!$tokens) {
+        return;
+    }
+
+    try {
+        $access = fcm_access_token();
+    } catch (Throwable $e) {
+        error_log('push: token exchange failed: ' . $e->getMessage());
+        return;
+    }
+
+    $payloadData = ['title' => $title, 'body' => $body];
+    foreach ($data as $k => $v) {
+        $payloadData[(string) $k] = (string) $v;
+    }
+
+    $url = 'https://fcm.googleapis.com/v1/projects/' . FCM_PROJECT_ID . '/messages:send';
+    $headers = ['Authorization: Bearer ' . $access, 'Content-Type: application/json'];
+
+    foreach ($tokens as $token) {
+        $android = ['priority' => 'high'];
+        if ($collapseKey !== null && $collapseKey !== '') {
+            $android['collapse_key'] = $collapseKey;
+        }
+        $message = ['message' => [
+            'token'   => $token,
+            'data'    => $payloadData,
+            'android' => $android,
+        ]];
+
+        try {
+            [$status, $respBody] = fcm_http_post($url, $headers, json_encode($message));
+        } catch (Throwable $e) {
+            error_log('push: send failed: ' . $e->getMessage());
+            continue;
+        }
+
+        if ($status === 404
+            || strpos($respBody, 'UNREGISTERED') !== false
+            || strpos($respBody, 'registration-token-not-registered') !== false) {
+            $pdo->prepare('DELETE FROM device_tokens WHERE token = ?')->execute([$token]);
+        }
+    }
+}
