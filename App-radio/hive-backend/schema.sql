@@ -55,6 +55,12 @@ CREATE TABLE IF NOT EXISTS users (
   -- verificadas (email_verified_at = created_at).
   email_verified_at DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  -- Índice para el barrido de cuentas sin verificar (migración 025): una
+  -- cuenta con email_verified_at IS NULL y más de 72 h de antigüedad se
+  -- borra automáticamente (cleanup_unverified_accounts() en helpers.php,
+  -- perezoso en signup + cron_cleanup_unverified.php). Nunca afecta a
+  -- cuentas verificadas.
+  KEY idx_users_unverified (email_verified_at, created_at),
   FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
@@ -202,6 +208,17 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   KEY idx_notifications_email (email, read_at)
 ) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS device_tokens (
+  id            BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  email         VARCHAR(255) NOT NULL,
+  token         VARCHAR(512) NOT NULL,
+  platform      ENUM('android','ios','web') NOT NULL DEFAULT 'android',
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_seen_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_token (token(191)),
+  KEY idx_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ----------------------------------------------------------------------------
 -- Anuncios del sitio público (RADIODOLIV_PAGINA/pages/anuncios.php). Ambos
@@ -695,6 +712,18 @@ CREATE TABLE IF NOT EXISTS radio_team (
   sort_order INT NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   UNIQUE KEY slug (slug)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS team_socials (
+  id INT NOT NULL AUTO_INCREMENT,
+  team_id INT NOT NULL,
+  label VARCHAR(50) NOT NULL,
+  icon VARCHAR(50) NOT NULL,
+  url VARCHAR(1000) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  KEY team_id (team_id),
+  CONSTRAINT team_socials_ibfk_1 FOREIGN KEY (team_id) REFERENCES radio_team (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Caja "Comentarios en vivo" del hero de Inicio, en tiempo real. Los
