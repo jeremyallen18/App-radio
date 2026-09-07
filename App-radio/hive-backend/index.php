@@ -952,7 +952,7 @@ function chatConversations(PDO $pdo) {
             'peerName'     => $peer['name'],
             'peerEmail'    => $peer['email'],
             'peerPhotoUrl' => $peer['photo_path'] ? UPLOAD_URL_BASE . $peer['photo_path'] : null,
-            'lastMessage'  => $r['body'],
+            'lastMessage'  => db_decrypt($r['body']),
             'lastAt'       => $r['created_at'],
             'lastFromMe'   => $r['sender_id'] === $me['id'],
             'unread'       => (int) $unreadStmt->fetchColumn(),
@@ -982,7 +982,7 @@ function chatThread(PDO $pdo, string $peerRef) {
     $stmt->execute([$key]);
     $messages = array_map(fn($r) => [
         'id'        => (int) $r['id'],
-        'message'   => $r['body'],
+        'message'   => db_decrypt($r['body']),
         'fromMe'    => $r['sender_id'] === $me['id'],
         'createdAt' => $r['created_at'],
         'readAt'    => $r['read_at'],
@@ -1020,7 +1020,7 @@ function sendChatMessage(PDO $pdo) {
     $pdo->prepare(
         'INSERT INTO chat_messages (conversation_key, sender_id, recipient_id, body)
          VALUES (?, ?, ?, ?)'
-    )->execute([$key, $me['id'], $peer['id'], $message]);
+    )->execute([$key, $me['id'], $peer['id'], db_encrypt($message)]);
 
     // entity_id = correo de quien escribe: al tocar la notificación, el
     // cliente abre directamente el hilo con esta persona. Estilo mensajería:
@@ -1345,7 +1345,7 @@ function applyLeave(PDO $pdo, string $teamId) {
         $user['email'],
         $leave['startDate'],
         $leave['endDate'],
-        $leave['reason'] ?? '',
+        db_encrypt($leave['reason'] ?? ''),
         'pending',
     ]);
 
@@ -1399,6 +1399,10 @@ function listNotifications(PDO $pdo) {
     );
     $stmt->execute([$user['email']]);
     $rows = $stmt->fetchAll();
+    foreach ($rows as &$row) {
+        $row['message'] = db_decrypt($row['message']);
+    }
+    unset($row);
 
     // Conteo real de no leídas (no el de la página de 100): la campana y
     // cualquier contador de la app deben mostrar el mismo número.

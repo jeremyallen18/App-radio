@@ -64,6 +64,27 @@ function absence_is_justified(PDO $pdo, string $employeeId, string $date): bool 
     return (bool) $stmt->fetch();
 }
 
+// Rangos [inicio,fin] de las justificaciones APROBADAS del empleado, para
+// resolver "¿está justificado el día X?" en memoria dentro de un bucle de
+// fechas — una consulta en vez de una por día (N+1). Combinar con
+// date_in_ranges().
+function absence_approved_ranges(PDO $pdo, string $employeeId): array {
+    $stmt = $pdo->prepare(
+        "SELECT start_date, end_date FROM absence_justifications
+          WHERE employee_id = ? AND status = 'aprobada'"
+    );
+    $stmt->execute([$employeeId]);
+    return $stmt->fetchAll(PDO::FETCH_NUM);
+}
+
+// ¿Alguno de esos rangos [inicio,fin] (fechas 'Y-m-d') cubre $date?
+function date_in_ranges(array $ranges, string $date): bool {
+    foreach ($ranges as $r) {
+        if ($r[0] <= $date && $date <= $r[1]) return true;
+    }
+    return false;
+}
+
 // Estado de justificación de un día concreto: 'ninguna' | 'pendiente' |
 // 'aprobada' | 'rechazada' (la más relevante si hay varias).
 function absence_day_justification_status(PDO $pdo, string $employeeId, string $date): string {
@@ -81,11 +102,11 @@ function absence_justification_payload(PDO $pdo, array $row, bool $includeEmploy
         'id'          => $row['id'],
         'startDate'   => $row['start_date'],
         'endDate'     => $row['end_date'],
-        'reason'      => $row['reason'],
+        'reason'      => db_decrypt($row['reason']),
         'status'      => $row['status'],
         'statusLabel' => absence_status_label($row['status']),
         'hasEvidence' => !empty($row['evidence_path']),
-        'reviewNote'  => $row['review_note'],
+        'reviewNote'  => db_decrypt($row['review_note']),
         'reviewedAt'  => $row['reviewed_at'],
         'createdAt'   => $row['created_at'],
     ];
@@ -107,16 +128,45 @@ function absence_justification_payload(PDO $pdo, array $row, bool $includeEmploy
 function absence_unjustified_runs(PDO $pdo, string $employeeId): array {
     $today = new DateTimeImmutable(date('Y-m-d'));
     $from  = $today->modify('-' . ABSENCE_LOOKBACK_DAYS . ' days');
+    $fromStr = $from->format('Y-m-d');
+    $todayStr = $today->format('Y-m-d');
 
     $runs = [];
     $curStart = null;
     $curEnd = null;
+    // Nada anterior al primer fichaje del empleado cuenta como falta.
+    $firstRecord = attendance_first_record_date($pdo, $employeeId);
+
+    // Todo lo que necesita el bucle, precargado en 3 consultas en vez de ~3 por
+    // día (N+1): días con 'entrada', permisos aprobados que solapan la ventana y
+    // justificaciones aprobadas.
+    $attStmt = $pdo->prepare(
+        "SELECT DISTINCT work_date FROM attendance
+          WHERE employee_id = ? AND type = 'entrada' AND work_date BETWEEN ? AND ?"
+    );
+    $attStmt->execute([$employeeId, $fromStr, $todayStr]);
+    $attended = array_fill_keys(array_column($attStmt->fetchAll(), 'work_date'), true);
+
+    $leaveStmt = $pdo->prepare(
+        "SELECT approved_start_date, approved_end_date FROM leave_requests
+          WHERE employee_id = ? AND status = 'aprobado'
+            AND approved_start_date <= ? AND approved_end_date >= ?"
+    );
+    $leaveStmt->execute([$employeeId, $todayStr, $fromStr]);
+    $leaveRanges = $leaveStmt->fetchAll(PDO::FETCH_NUM);
+
+    $justRanges = absence_approved_ranges($pdo, $employeeId);
 
     for ($d = $from; $d < $today; $d = $d->modify('+1 day')) {
         $wd = $d->format('Y-m-d');
         if ((int) $d->format('N') === 7) continue; // domingo: no rompe la racha
-        $isFalta = absence_day_is_falta($pdo, $employeeId, $wd)
-            && !absence_is_justified($pdo, $employeeId, $wd);
+        // Equivale a absence_day_is_falta() + !absence_is_justified(), resuelto
+        // en memoria: día laboral pasado, sin 'entrada', sin permiso aprobado y
+        // sin justificación aprobada, a partir del primer fichaje del empleado.
+        $isFalta = $firstRecord !== null && $wd >= $firstRecord
+            && !isset($attended[$wd])
+            && !date_in_ranges($leaveRanges, $wd)
+            && !date_in_ranges($justRanges, $wd);
         if ($isFalta) {
             $curStart = $curStart ?? $wd;
             $curEnd = $wd;
@@ -193,6 +243,12 @@ function absenceJustify(PDO $pdo) {
     if ($start < $limit) {
         leave_fail('Solo puedes justificar faltas de los últimos ' . ABSENCE_LOOKBACK_DAYS . ' días.', 400);
     }
+    // No hay faltas antes del primer fichaje del trabajador (mismo criterio que
+    // absence_unjustified_runs y los resúmenes de asistencia).
+    $firstRecord = attendance_first_record_date($pdo, $user['id']);
+    if ($firstRecord === null || $start < $firstRecord) {
+        leave_fail('Ese periodo es anterior a tu primer registro de asistencia; no hay faltas que justificar.', 400);
+    }
 
     // Todo día laboral del rango tiene que ser realmente una falta sin
     // justificar. Si algún día tiene asistencia o permiso aprobado, se rechaza.
@@ -249,7 +305,7 @@ function absenceJustify(PDO $pdo) {
              VALUES (?, ?, ?, ?, ?, ?, ?, "pendiente")'
         )->execute([
             $id, $user['id'], $start, $end,
-            $reason !== '' ? $reason : null,
+            db_encrypt($reason !== '' ? $reason : null),
             $evidence['path'], $evidence['mime'],
         ]);
 
@@ -354,11 +410,19 @@ function absence_admin_decide(PDO $pdo, string $id, string $decision): void {
         leave_fail('Debes indicar el motivo del rechazo.', 400);
     }
 
-    $pdo->prepare(
+    // Transición atómica: solo la aplica quien encuentra la justificación aún
+    // pendiente. Con dos peticiones simultáneas (o un doble toque que esquiva la
+    // comprobación previa) una gana y la otra recibe rowCount()===0, así no se
+    // notifica dos veces ni se envían mensajes contradictorios.
+    $upd = $pdo->prepare(
         'UPDATE absence_justifications
             SET status = ?, review_note = ?, reviewed_by = ?, reviewed_at = NOW()
           WHERE id = ? AND status = "pendiente"'
-    )->execute([$decision, $note !== '' ? mb_substr($note, 0, 1000) : null, $user['id'], $id]);
+    );
+    $upd->execute([$decision, db_encrypt($note !== '' ? mb_substr($note, 0, 1000) : null), $user['id'], $id]);
+    if ($upd->rowCount() === 0) {
+        leave_fail('Esta justificación ya fue procesada.', 409);
+    }
 
     $stmt = $pdo->prepare('SELECT name, email FROM users WHERE id = ?');
     $stmt->execute([$row['employee_id']]);

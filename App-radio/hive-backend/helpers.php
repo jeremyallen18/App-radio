@@ -459,6 +459,7 @@ function team_from_code(PDO $pdo, string $teamCode): ?array {
 // ir al tocar la notificación (ver migración 020). Si no se pasan, el cliente
 // cae al destino por categoría según $type.
 require_once __DIR__ . '/push.php';
+require_once __DIR__ . '/crypto.php';
 
 // $pushTitle/$pushBody (opcionales) sólo cambian lo que se ve en la
 // notificación push; la fila en `notifications` (y la lista in-app) siempre
@@ -479,7 +480,7 @@ function notify_user(
         'INSERT INTO notifications (team_id, email, type, message, entity_type, entity_id)
          VALUES (?, ?, ?, ?, ?, ?)'
     );
-    $stmt->execute([$teamId, $email, $type, $message, $entityType, $entityId]);
+    $stmt->execute([$teamId, $email, $type, db_encrypt($message), $entityType, $entityId]);
     $notifId = $pdo->lastInsertId();
 
     // Push best-effort: nunca debe afectar la respuesta ni el flujo que llamó.

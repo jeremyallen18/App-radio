@@ -133,9 +133,9 @@ function leave_request_payload(PDO $pdo, array $row, bool $includeEmployee = fal
         'approvedStartDate'   => $row['approved_start_date'],
         'approvedEndDate'     => $row['approved_end_date'],
         'approvedDays'        => $row['approved_days'] !== null ? (int) $row['approved_days'] : null,
-        'reason'              => $row['reason'],
-        'rejectionReason'     => $row['rejection_reason'],
-        'cancellationReason'  => $row['cancellation_reason'],
+        'reason'              => db_decrypt($row['reason']),
+        'rejectionReason'     => db_decrypt($row['rejection_reason']),
+        'cancellationReason'  => db_decrypt($row['cancellation_reason']),
         'hasEvidence'         => !empty($row['evidence_path']),
         'createdAt'           => $row['created_at'],
         'approvedAt'          => $row['approved_at'],
@@ -370,7 +370,7 @@ function leaveRequestCreate(PDO $pdo) {
         );
         $stmt->execute([
             $id, $user['id'], $type, $start, $end, $days,
-            $reason !== '' ? $reason : null,
+            db_encrypt($reason !== '' ? $reason : null),
             $evidence['path'] ?? null,
             $evidence['mime'] ?? null,
         ]);
@@ -432,7 +432,7 @@ function leaveRequestCancelByEmployee(PDO $pdo, string $id) {
          SET status = "cancelado", cancellation_reason = ?, cancelled_by = ?, cancelled_at = NOW()
          WHERE id = ?'
     );
-    $stmt->execute([mb_substr($reason, 0, 1000), $user['id'], $id]);
+    $stmt->execute([db_encrypt(mb_substr($reason, 0, 1000)), $user['id'], $id]);
     json_response([
         'success' => true,
         'message' => 'Solicitud cancelada.',
@@ -615,7 +615,7 @@ function adminLeaveRequestReject(PDO $pdo, string $id) {
          SET status = "rechazado", rejection_reason = ?, approved_by = ?, approved_at = NOW()
          WHERE id = ?'
     );
-    $stmt->execute([mb_substr($reason, 0, 1000), $director['id'], $id]);
+    $stmt->execute([db_encrypt(mb_substr($reason, 0, 1000)), $director['id'], $id]);
 
     notify_user($pdo, $emp['email'], null, 'leave_rejected',
         '❌ Tu solicitud de ' . leave_type_label($row['type']) . ' fue rechazada. Motivo: ' . $reason);
@@ -650,7 +650,7 @@ function adminLeaveRequestCancel(PDO $pdo, string $id) {
          SET status = "cancelado", cancellation_reason = ?, cancelled_by = ?, cancelled_at = NOW()
          WHERE id = ?'
     );
-    $stmt->execute([mb_substr($reason, 0, 1000), $director['id'], $id]);
+    $stmt->execute([db_encrypt(mb_substr($reason, 0, 1000)), $director['id'], $id]);
 
     notify_user($pdo, $emp['email'], null, 'leave_cancelled',
         '⚠️ Tu permiso de ' . leave_type_label($row['type']) . ' '
