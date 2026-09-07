@@ -75,7 +75,9 @@ for f in FUNCS; do
   echo "$f: index=$(grep -c "^function $f(" hive-backend/index.php) new=$(grep -c "^function $f(" hive-backend/NEWFILE) all=$(grep -rc "^function $f(" hive-backend/*.php | grep -v ':0' | wc -l)"
 done
 # conservation: index + all new files still total 62
-grep -hcE "^function " hive-backend/*.php | awk '{s+=$1} END {print "total functions:", s}'
+# split-set only: index + the 8 new modules must total 62 (a bare hive-backend/*.php
+   # glob would also count the ~13 pre-existing modules -> ~323, which is fine)
+   echo $(( $(grep -cE "^function " hive-backend/index.php) + $(for m in auth chat devices documents legacy_teams notifications org users; do grep -cE "^function " hive-backend/$m.php; done | paste -sd+) ))
 ```
 Expected: every function `index=0 new=1 all=1`; `total functions: 62`.
 
@@ -263,7 +265,7 @@ Run the shared procedure. `NEWFILE = users.php`.
 // el director crea la empresa y los departamentos y asigna manager/empleados.
 ```
 
-**Interfaces:** Consumes `require_auth`, `require_role`, `json_response`, `error_response`, `generate_id`, `build_public_user_payload` (users.php — cross-module, resolves globally; if `users.php` isn't extracted yet it's still in `index.php`). `get_the_company` / `build_department_payload` are consumed here and (the latter) by `users.php`. Produces the company + department handlers behind `/company/*` and `/department/*`.
+**Interfaces:** Consumes `require_auth`, `require_role`, `json_response`, `error_response`, `generate_id` (helpers.php). `get_the_company` / `build_department_payload` are defined here; `build_department_payload` is the one function consumed cross-module — by `users.php` (`build_user_profile_payload`), which resolves globally since both files are required before dispatch. `org.php` itself makes no call into another new module (an earlier draft wrongly listed `build_public_user_payload` here — that is `users.php`-internal only). Produces the company + department handlers behind `/company/*` and `/department/*`.
 
 Run the shared procedure. `NEWFILE = org.php`.
 
@@ -322,7 +324,7 @@ grep -c "DOCUMENT_ALLOWED_EXT\|DOCUMENT_MAX_BYTES" hive-backend/index.php   # ->
 - [ ] **Step 3: function conservation across the whole backend**
 
 ```bash
-grep -hcE "^function " hive-backend/*.php | awk '{s+=$1} END {print s}'   # -> 62
+echo $(( $(grep -cE "^function " hive-backend/index.php) + $(for m in auth chat devices documents legacy_teams notifications org users; do grep -cE "^function " hive-backend/$m.php; done | paste -sd+) ))   # -> 62 (split set only, not the whole *.php glob)
 ```
 And no duplicate definitions:
 ```bash
