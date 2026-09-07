@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/core/api_config.dart';
+import 'package:doliv_social/core/push/push_service.dart';
 import 'package:doliv_social/shared/auth/login.dart';
 
 /// Conversación privada 1 a 1 con un compañero.
@@ -24,6 +25,7 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _inputFocus = FocusNode();
   final List<Map<String, dynamic>> _messages = [];
   final ScrollController _scrollController = ScrollController();
   Timer? _pollTimer;
@@ -39,7 +41,15 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    PushService.instance.setActiveChatPeer(widget.peerEmail);
     _peerName = widget.peerName ?? _shortEmail(widget.peerEmail);
+    // El teclado del sistema y nuestro panel de emojis son excluyentes: si el
+    // campo recupera el foco (el usuario toca el campo), se cierra el panel.
+    _inputFocus.addListener(() {
+      if (_inputFocus.hasFocus && _emojiOpen) {
+        setState(() => _emojiOpen = false);
+      }
+    });
     _fetchMessages();
     // Sondeo cada 5 s (antes 3 s, demasiado agresivo) y solo mientras este
     // hilo es la pantalla visible: si hay otra pantalla encima, no se
@@ -142,6 +152,19 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  /// Alterna entre el teclado del sistema y el panel de emojis de la app.
+  /// Nunca deja los dos abiertos: al abrir el panel se cierra el teclado; al
+  /// cerrarlo (icono de teclado) se devuelve el foco para reabrir el teclado.
+  void _toggleEmoji() {
+    if (_emojiOpen) {
+      setState(() => _emojiOpen = false);
+      _inputFocus.requestFocus();
+    } else {
+      _inputFocus.unfocus();
+      setState(() => _emojiOpen = true);
+    }
+  }
+
   void _insertEmoji(String emoji) {
     final sel = _controller.selection;
     final text = _controller.text;
@@ -214,9 +237,10 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           MessageComposer(
             controller: _controller,
+            focusNode: _inputFocus,
             onSend: _sendMessage,
             emojiActive: _emojiOpen,
-            onToggleEmoji: () => setState(() => _emojiOpen = !_emojiOpen),
+            onToggleEmoji: _toggleEmoji,
           ),
           if (_emojiOpen)
             EmojiPickerPanel(onEmojiSelected: _insertEmoji),
@@ -230,6 +254,8 @@ class _ChatScreenState extends State<ChatScreen> {
     _pollTimer?.cancel();
     _scrollController.dispose();
     _controller.dispose();
+    _inputFocus.dispose();
+    PushService.instance.setActiveChatPeer(null);
     super.dispose();
   }
 }

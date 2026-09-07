@@ -11,6 +11,7 @@ import 'package:doliv_social/shared/home/profile_hero.dart';
 import 'package:doliv_social/shared/home/profile_widgets.dart';
 import 'package:doliv_social/core/audio/radio_player.dart';
 import 'package:doliv_social/core/notifications_controller.dart';
+import 'package:doliv_social/core/push/push_service.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -117,6 +118,7 @@ class _ProfileState extends State<Profile> {
     // Cortar la transmisión en vivo: no debe seguir sonando tras cerrar sesión.
     await RadioPlayer.instance.stop();
     NotificationsController.instance.clear();
+    await PushService.instance.disable();
     await secureStorage.deleteSecureData(key);
     await secureStorage.deleteSecureData(rememberMeKey);
     if (!mounted) return;
@@ -125,13 +127,16 @@ class _ProfileState extends State<Profile> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const LoadingState();
+    if (_loading) {
+      return const SafeArea(child: DesktopCenter(child: _ProfileSkeleton()));
+    }
 
     // Esta pantalla es una pestaña de `BottomNavBar`, no un `AppScaffold`:
     // el área segura y el centrado en escritorio los tiene que poner ella.
     return SafeArea(
       child: DesktopCenter(
-        child: RefreshIndicator(onRefresh: _load, child: _buildContent()),
+        child: RefreshIndicator(
+            onRefresh: _load, color: AppColors.accent, child: _buildContent()),
       ),
     );
   }
@@ -151,7 +156,8 @@ class _ProfileState extends State<Profile> {
           uploadingPhoto: _uploadingPhoto,
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -183,7 +189,9 @@ class _ProfileState extends State<Profile> {
                   spacing: AppSpacing.sm,
                   runSpacing: AppSpacing.sm,
                   children: [
-                    AppBadge(label: profile.role.label, variant: AppBadgeVariant.info),
+                    AppBadge(
+                        label: profile.role.label,
+                        variant: AppBadgeVariant.info),
                     if (profile.department != null)
                       AppBadge(label: profile.department!.name),
                     if (profile.leadsOwnDepartment)
@@ -246,7 +254,8 @@ class _ProfileState extends State<Profile> {
           ],
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
           child: _buildTabContent(),
         ),
       ],
@@ -269,9 +278,11 @@ class _ProfileState extends State<Profile> {
               padding: EdgeInsets.zero,
               child: Column(
                 children: [
-                  _accountRow('Editar foto de perfil', Icons.edit_square, _editProfilePhoto),
+                  _accountRow('Editar foto de perfil', Icons.edit_square,
+                      _editProfilePhoto),
                   const Divider(height: 1, color: AppColors.surfaceBorder),
-                  _accountRow('Seguridad', Icons.security, () => _comingSoon('Seguridad')),
+                  _accountRow('Seguridad', Icons.security,
+                      () => _comingSoon('Seguridad')),
                   const Divider(height: 1, color: AppColors.surfaceBorder),
                   _accountRow(
                     'Sugerencias y comentarios',
@@ -293,7 +304,10 @@ class _ProfileState extends State<Profile> {
                     SizedBox(width: 10),
                     Text(
                       "Cerrar sesión",
-                      style: TextStyle(color: AppColors.error, fontSize: 16, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                          color: AppColors.error,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -318,13 +332,43 @@ class _ProfileState extends State<Profile> {
                 const SizedBox(width: AppSpacing.md),
                 Text(
                   label,
-                  style: const TextStyle(fontSize: 15.0, color: AppColors.textPrimary),
+                  style: const TextStyle(
+                      fontSize: 15.0, color: AppColors.textPrimary),
                 ),
               ],
             ),
-            const Icon(Icons.arrow_forward_ios_outlined, size: 16.0, color: AppColors.textMuted),
+            const Icon(Icons.arrow_forward_ios_outlined,
+                size: 16.0, color: AppColors.textMuted),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Marcador de posición mientras carga el perfil: reproduce a grandes rasgos
+/// la silueta de la pantalla (avatar, nombre, tarjetas) con un barrido suave.
+class _ProfileSkeleton extends StatelessWidget {
+  const _ProfileSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSkeletonGroup(
+      child: ListView(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        children: const [
+          Center(child: SkeletonBox(width: 96, height: 96, radius: 48)),
+          SizedBox(height: AppSpacing.lg),
+          Center(child: SkeletonLine(width: 180, height: 18)),
+          SizedBox(height: AppSpacing.sm),
+          Center(child: SkeletonLine(width: 120)),
+          SizedBox(height: AppSpacing.xxl),
+          SkeletonBox(height: 72, radius: AppRadius.card),
+          SizedBox(height: AppSpacing.md),
+          SkeletonBox(height: 72, radius: AppRadius.card),
+          SizedBox(height: AppSpacing.md),
+          SkeletonBox(height: 120, radius: AppRadius.card),
+        ],
       ),
     );
   }
