@@ -2,6 +2,10 @@
 // Mensajería directa 1 a 1 entre usuarios (ver migración 016). No hay sala
 // global: cada quien solo ve las conversaciones en las que participa. El
 // cuerpo del mensaje se guarda cifrado en reposo (db_encrypt, ver crypto.php).
+// Modelo: cada mensaje es privado entre `sender_id` y `recipient_id`.
+// `conversation_key` = los dos ids ordenados y unidos por ':' — así la
+// autorización es estructural: solo se puede leer un hilo cuyo key contenga
+// el id de quien pregunta (chat_convo_key() siempre lo arma con {yo, otro}).
 
 function chat_convo_key(string $a, string $b): string {
     return $a < $b ? "$a:$b" : "$b:$a";

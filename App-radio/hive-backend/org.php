@@ -2,6 +2,9 @@
 // Estructura organizacional de Radio Doliv: un único registro en `companies`,
 // N `departments` colgando, y usuarios con role/position/department_id. Solo
 // el director crea la empresa y los departamentos y asigna manager/empleados.
+// El resto de módulos (dashboards por rol, anuncios, reportes, workflow de
+// tareas director->manager->employee) se construyen sobre esta base — ver
+// Actualizacion.md para el resto del alcance, todavía pendiente.
 
 function build_department_payload(PDO $pdo, array $dept): array {
     $stmt = $pdo->prepare('SELECT COUNT(*) AS n FROM users WHERE department_id = ?');

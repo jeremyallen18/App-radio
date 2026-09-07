@@ -244,8 +244,6 @@ function home(PDO $pdo) {
     json_response(['message' => 'Hello World']);
 }
 
-// ---- handlers: auth (moved to auth.php) --------------------------------
-
 function sendName(PDO $pdo) {
     $user = require_auth($pdo);
     raw_json_response($user['name']);
