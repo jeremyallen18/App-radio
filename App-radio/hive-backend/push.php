@@ -49,7 +49,8 @@ function fcm_http_post(string $url, array $headers, string $body): array {
         CURLOPT_HTTPHEADER     => $headers,
         CURLOPT_POSTFIELDS     => $body,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_TIMEOUT        => 5,
     ]);
     $resp = curl_exec($ch);
     if ($resp === false) {
@@ -107,10 +108,17 @@ function fcm_access_token(): string {
         throw new RuntimeException('FCM token exchange failed (HTTP ' . $status . '): ' . $body);
     }
 
-    @file_put_contents($cacheFile, json_encode([
+    // Escritura atómica: se escribe a un temporal y se renombra encima, para
+    // que un lector concurrente nunca vea un JSON a medias.
+    $tmp = $cacheFile . '.' . getmypid() . '.tmp';
+    if (@file_put_contents($tmp, json_encode([
         'token' => $data['access_token'],
         'exp'   => $now + (int) ($data['expires_in'] ?? 3600),
-    ]));
+    ])) !== false) {
+        if (!@rename($tmp, $cacheFile)) {
+            @unlink($tmp);
+        }
+    }
 
     return (string) $data['access_token'];
 }
@@ -162,6 +170,13 @@ function push_send_to_user(
         return;
     }
 
+    // Cortacircuitos por petición: en PHP-FPM/mod_php una función `static` se
+    // reinicia en cada petición (proceso/script nuevo), así que este contador
+    // sólo agrupa los envíos de ESTA petición. Si FCM falla 5 veces seguidas
+    // (timeouts, excepciones de transporte o respuestas no-2xx) se abandona el
+    // resto de envíos para no arriesgar un fatal por max_execution_time.
+    static $consecutiveFailures = 0;
+
     // Backstop: PDO corre en ERRMODE_EXCEPTION (config.php), así que el SELECT
     // y el DELETE de purga pueden lanzar PDOException. push_send_to_user NUNCA
     // debe propagar — cualquier fallo se registra y la función retorna normal.
@@ -188,6 +203,10 @@ function push_send_to_user(
         $url = 'https://fcm.googleapis.com/v1/projects/' . FCM_PROJECT_ID . '/messages:send';
         $headers = ['Authorization: Bearer ' . $access, 'Content-Type: application/json'];
 
+        // Se reintenta el canje del token de acceso como mucho una vez por
+        // llamada (token revocado que sigue cacheado ~55 min).
+        $retriedAuth = false;
+
         foreach ($tokens as $token) {
             $android = ['priority' => 'high'];
             if ($collapseKey !== null && $collapseKey !== '') {
@@ -198,12 +217,51 @@ function push_send_to_user(
                 'data'    => $payloadData,
                 'android' => $android,
             ]];
+            $payload = json_encode($message);
 
             try {
-                [$status, $respBody] = fcm_http_post($url, $headers, json_encode($message));
+                [$status, $respBody] = fcm_http_post($url, $headers, $payload);
             } catch (Throwable $e) {
                 error_log('push: send failed: ' . $e->getMessage());
+                if (++$consecutiveFailures >= 5) {
+                    error_log('push: circuit breaker tripped, skipping remaining sends this request');
+                    return;
+                }
                 continue;
+            }
+
+            // Token de acceso revocado: invalidar el cache y reintentar ESTE
+            // token una sola vez con un token recién canjeado.
+            if (($status === 401 || $status === 403) && !$retriedAuth) {
+                $retriedAuth = true;
+                @unlink(__DIR__ . '/private/fcm-token.cache');
+                try {
+                    $access = fcm_access_token();
+                } catch (Throwable $e) {
+                    error_log('push: token re-fetch failed: ' . $e->getMessage());
+                    break;
+                }
+                $headers = ['Authorization: Bearer ' . $access, 'Content-Type: application/json'];
+                try {
+                    [$status, $respBody] = fcm_http_post($url, $headers, $payload);
+                } catch (Throwable $e) {
+                    error_log('push: send failed: ' . $e->getMessage());
+                    if (++$consecutiveFailures >= 5) {
+                        error_log('push: circuit breaker tripped, skipping remaining sends this request');
+                        return;
+                    }
+                    continue;
+                }
+            }
+
+            if ($status < 200 || $status >= 300) {
+                error_log('push: FCM HTTP ' . $status . ': ' . substr($respBody, 0, 500));
+                if (++$consecutiveFailures >= 5) {
+                    error_log('push: circuit breaker tripped, skipping remaining sends this request');
+                    return;
+                }
+            } else {
+                $consecutiveFailures = 0;
             }
 
             if ($status === 404

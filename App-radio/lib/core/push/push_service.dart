@@ -43,7 +43,7 @@ Future<void> ensureFirebaseInitialized() async {
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await ensureFirebaseInitialized();
-    await PushService.instance.handleRemoteMessage(message);
+    await PushService.instance.handleRemoteMessage(message, background: true);
   } catch (e) {
     debugPrint('firebaseMessagingBackgroundHandler failed: $e');
   }
@@ -55,8 +55,14 @@ class PushService {
 
   bool _wired = false;
   bool _localReady = false;
+  bool _coldStartHandled = false;
   String? _activeChatPeerEmail;
   String? _lastToken;
+
+  // Se guardan para que un segundo paso por `_wireOnce()` (posible si un
+  // `await` posterior lanza y `init()` reintenta) no duplique la suscripción.
+  StreamSubscription<RemoteMessage>? _onMessageSub;
+  StreamSubscription<RemoteMessage>? _onMessageOpenedAppSub;
 
   /// Lo fija/limpia la pantalla de un hilo de chat (Task 10).
   void setActiveChatPeer(String? email) => _activeChatPeerEmail = email;
@@ -122,10 +128,12 @@ class PushService {
     if (_wired) return;
 
     await _ensureLocalNotifications();
+    await _handleColdStartLaunch();
 
     // Listeners de FCM: solo tienen sentido en el isolate de primer plano.
-    FirebaseMessaging.onMessage.listen(handleRemoteMessage);
-    FirebaseMessaging.onMessageOpenedApp.listen(
+    // Se registran con guarda de campo para no re-suscribir en un reintento.
+    _onMessageSub ??= FirebaseMessaging.onMessage.listen(handleRemoteMessage);
+    _onMessageOpenedAppSub ??= FirebaseMessaging.onMessageOpenedApp.listen(
       (m) => _routeTo(normalizePushData(_asObjectMap(m.data))),
     );
 
@@ -139,13 +147,49 @@ class PushService {
     _wired = true;
   }
 
+  /// Arranque en frío: los mensajes son data-only, así que FCM nunca dibuja una
+  /// notificación de bandeja y `onMessageOpenedApp` / `getInitialMessage()` no
+  /// disparan. La única notificación tocable es la de flutter_local_notifications
+  /// y, en frío, `onDidReceiveNotificationResponse` tampoco corre: hay que
+  /// consultar `getNotificationAppLaunchDetails()`. Se hace una sola vez y nunca
+  /// en el isolate de segundo plano (este método solo lo llama `_wireOnce()`).
+  Future<void> _handleColdStartLaunch() async {
+    if (_coldStartHandled) return;
+    _coldStartHandled = true;
+    try {
+      final launch =
+          await _localNotifications.getNotificationAppLaunchDetails();
+      final p = launch?.notificationResponse?.payload;
+      if ((launch?.didNotificationLaunchApp ?? false) &&
+          p != null &&
+          p.isNotEmpty) {
+        // Enrutar DESPUÉS de que exista el navigator: en el arranque
+        // `appNavigatorKey.currentContext` es null.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          try {
+            _routeTo(normalizePushData(
+              json.decode(p) as Map<Object?, Object?>,
+            ));
+          } catch (_) {}
+        });
+      }
+    } catch (_) {}
+  }
+
   /// Refresca el badge y, salvo que el hilo esté abierto, dibuja la
   /// notificación local. Público porque también lo llama el background handler.
-  Future<void> handleRemoteMessage(RemoteMessage message) async {
+  Future<void> handleRemoteMessage(
+    RemoteMessage message, {
+    bool background = false,
+  }) async {
     try {
       final data = normalizePushData(_asObjectMap(message.data));
 
-      unawaited(NotificationsController.instance.refresh(force: true));
+      // En el isolate de segundo plano ningún widget escucha el controlador:
+      // refrescar allí es una ronda HTTP autenticada desperdiciada.
+      if (!background) {
+        unawaited(NotificationsController.instance.refresh(force: true));
+      }
 
       if (!shouldShowLocalNotification(data, _activeChatPeerEmail)) return;
 

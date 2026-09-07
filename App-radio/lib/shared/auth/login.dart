@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:doliv_social/design/design.dart';
@@ -87,7 +89,11 @@ class _LoginState extends State<Login> {
       // No bloquea el login: si /user/me falla, el rol simplemente queda
       // sin cachear y se puede volver a pedir más adelante.
       unawaited(Session.fetchCurrentUser(accessToken));
-      unawaited(PushService.instance.init());
+      // Igual que en main.dart: el push solo aplica en Android nativo; en
+      // escritorio/web `init()` fallaría y dejaría un log de error en cada login.
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        unawaited(PushService.instance.init());
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

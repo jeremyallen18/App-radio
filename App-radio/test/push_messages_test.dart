@@ -74,6 +74,30 @@ void main() {
       expect(a, isNot(b));
     });
 
+    test('chat cases with a non-empty entityId ignore notifId', () {
+      final a = localNotificationId(
+        {'type': 'chat', 'entityId': 'ana@doliv.test', 'notifId': '1'},
+      );
+      final b = localNotificationId(
+        {'type': 'chat', 'entityId': 'ana@doliv.test', 'notifId': '2'},
+      );
+      final base = localNotificationId(
+        {'type': 'chat', 'entityId': 'ana@doliv.test'},
+      );
+      expect(a, base);
+      expect(b, base);
+    });
+
+    test('empty entityId falls back to notifId so rows do not collide', () {
+      final a = localNotificationId(
+        {'type': 'event_created', 'entityId': '', 'notifId': '101'},
+      );
+      final b = localNotificationId(
+        {'type': 'event_created', 'entityId': '', 'notifId': '102'},
+      );
+      expect(a, isNot(b));
+    });
+
     test('is a non-negative 31-bit int', () {
       final id = localNotificationId({'type': 'x', 'entityId': 'y'});
       expect(id, greaterThanOrEqualTo(0));

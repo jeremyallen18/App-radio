@@ -478,9 +478,11 @@ function notify_user(
 
     // Push best-effort: nunca debe afectar la respuesta ni el flujo que llamó.
     try {
+        // FCM sólo respeta 4 collapse keys distintas por dispositivo; una clave
+        // única por mensaje es peor que ninguna, así que sólo el chat colapsa.
         $collapse = ($type === 'chat' && $entityId)
             ? 'chat:' . $entityId
-            : 'notif:' . $notifId;
+            : null;
         push_send_to_user(
             $pdo,
             $email,
@@ -490,6 +492,7 @@ function notify_user(
                 'type'       => $type,
                 'entityType' => (string) $entityType,
                 'entityId'   => (string) $entityId,
+                'notifId'    => (string) $notifId,
             ],
             $collapse
         );

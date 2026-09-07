@@ -32,8 +32,15 @@ bool shouldShowLocalNotification(
 /// Id estable y no negativo (31 bits) para la notificación local, derivado de
 /// `tipo:entidad`, de modo que mensajes repetidos del mismo remitente/entidad
 /// se reemplacen en la bandeja en vez de apilarse. FNV-1a de 32 bits.
+///
+/// Muchos emisores del backend no traen `entityId`; en ese caso se siembra el
+/// hash con `notifId` (único por notificación) para que no colisionen todos.
 int localNotificationId(Map<String, String> data) {
-  final seed = '${data['type'] ?? ''}:${data['entityId'] ?? ''}';
+  final entityId = data['entityId'];
+  final entity = (entityId != null && entityId.isNotEmpty)
+      ? entityId
+      : (data['notifId'] ?? '');
+  final seed = '${data['type'] ?? ''}:$entity';
   var hash = 0x811c9dc5;
   for (final unit in seed.codeUnits) {
     hash ^= unit;

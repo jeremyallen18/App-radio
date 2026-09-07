@@ -281,3 +281,10 @@ Only these change when moving off the personal project: replace
 project, same `applicationId`), and drop in the client's
 `fcm-service-account.json` + `FCM_PROJECT_ID`. No code changes; existing
 device tokens re-register on next app start.
+
+- Delete `hive-backend/private/fcm-token.cache` right after swapping the
+  service account: a cached OAuth token minted for the old project keeps
+  authenticating against that project until it expires (~1 h), so sends
+  would silently fail against the new project until then.
+- Confirm the Firebase Cloud Messaging API (`fcm.googleapis.com`) is
+  enabled on the new project before the first send.

@@ -1044,6 +1044,9 @@ function deviceRegister(PDO $pdo) {
     if ($token === '') {
         error_response('token is required', 400);
     }
+    if (strlen($token) > 512) {
+        error_response('token too long', 400);
+    }
     $stmt = $pdo->prepare(
         'INSERT INTO device_tokens (email, token, platform)
          VALUES (?, ?, ?)
@@ -1059,13 +1062,16 @@ function deviceRegister(PDO $pdo) {
 // POST /devices/unregister — body { token }. Lo llama el cliente al cerrar
 // sesión. Idempotente.
 function deviceUnregister(PDO $pdo) {
-    require_auth($pdo);
+    $me = require_auth($pdo);
     $body = request_body();
     $token = trim((string) ($body['token'] ?? ''));
     if ($token === '') {
         error_response('token is required', 400);
     }
-    $pdo->prepare('DELETE FROM device_tokens WHERE token = ?')->execute([$token]);
+    // Acotado al dueño: un usuario no puede desregistrar el dispositivo de otro.
+    // Sigue siendo idempotente (0 filas borradas => {ok:true}).
+    $pdo->prepare('DELETE FROM device_tokens WHERE token = ? AND email = ?')
+        ->execute([$token, $me['email']]);
     json_response(['ok' => true]);
 }
 
