@@ -59,6 +59,11 @@ define('PUBLIC_BASE_URL', rtrim((string) (env_get('PUBLIC_BASE_URL') ?: ''), '/'
 // local o si aún no se configuró: deshabilita el push sin romper nada.
 define('FCM_PROJECT_ID', (string) (env_get('FCM_PROJECT_ID') ?: ''));
 
+// Clave de cifrado en reposo de columnas sensibles (ver crypto.php). 32 bytes
+// en base64. Vacía => las columnas se guardan/leen en plano. Genera una con:
+//   php -r "echo base64_encode(random_bytes(32));"
+define('DB_ENCRYPTION_KEY', (string) (env_get('DB_ENCRYPTION_KEY') ?: ''));
+
 define('SMTP_HOST', env_get('SMTP_HOST') ?: '');
 define('SMTP_PORT', (int) (env_get('SMTP_PORT') ?: 587));
 define('SMTP_USER', env_get('SMTP_USER') ?: '');
