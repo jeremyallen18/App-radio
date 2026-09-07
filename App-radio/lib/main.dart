@@ -2,6 +2,10 @@
 // only push here in dev branch
 // do not merge in main branch
 
+import 'dart:async';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:doliv_social/core/push/push_service.dart';
 import 'package:doliv_social/shared/board/dashboard.dart';
 import 'package:doliv_social/features/dashboard/director/dashboard_director.dart';
 import 'package:doliv_social/features/dashboard/employee/dashboard_employee.dart';
@@ -33,6 +37,20 @@ import 'package:doliv_social/core/route_refresh.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Push (FCM) solo está configurado para Android (ver firebase_options.dart,
+  // que lanza en otras plataformas). En Windows/Linux/Web se omite para no
+  // romper el arranque de la app. Nunca debe impedir llegar a `runApp`.
+  final bool supportsPush =
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+  if (supportsPush) {
+    try {
+      await ensureFirebaseInitialized();
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    } catch (e) {
+      debugPrint('Firebase/push init falló, se continúa sin push: $e');
+    }
+  }
 
   // Formateo de fechas/números en español de México para toda la app
   // (calendarios, `intl` DateFormat, table_calendar). Debe correr antes de
@@ -94,6 +112,9 @@ void main() async {
     await secureStorage.deleteSecureData(key);
     await secureStorage.deleteSecureData(rememberMeKey);
   }
+  if (hasSession && supportsPush) {
+    unawaited(PushService.instance.init());
+  }
   runApp(MyApp(hasSession: hasSession));
 }
 
@@ -109,6 +130,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
+      navigatorKey: appNavigatorKey,
       navigatorObservers: [routeObserver],
       // Todos los widgets de calendario/fecha del sistema en español.
       locale: const Locale('es'),

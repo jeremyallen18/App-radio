@@ -1,0 +1,225 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
+
+import 'package:doliv_social/core/api_config.dart';
+import 'package:doliv_social/core/notifications_controller.dart';
+import 'package:doliv_social/core/push/push_messages.dart';
+import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
+import 'package:doliv_social/firebase_options.dart';
+import 'package:doliv_social/shared/notifications/notification_router.dart';
+
+/// Navigator global: enruta un push tocado cuando no hay BuildContext a mano
+/// (app abierta desde frío).
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+
+const AndroidNotificationChannel _channel = AndroidNotificationChannel(
+  'doliv_default',
+  'Notificaciones',
+  description: 'Mensajes, tareas y avisos de Radio Doliv',
+  importance: Importance.high,
+);
+
+final FlutterLocalNotificationsPlugin _localNotifications =
+    FlutterLocalNotificationsPlugin();
+
+/// `Firebase.initializeApp` es un error si se llama dos veces con la app por
+/// defecto; este guard lo hace idempotente (main + background handler + init).
+Future<void> ensureFirebaseInitialized() async {
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
+}
+
+/// Handler de segundo plano / app cerrada. DEBE ser top-level y estar anotado.
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    await ensureFirebaseInitialized();
+    await PushService.instance.handleRemoteMessage(message);
+  } catch (e) {
+    debugPrint('firebaseMessagingBackgroundHandler failed: $e');
+  }
+}
+
+class PushService {
+  PushService._();
+  static final PushService instance = PushService._();
+
+  bool _wired = false;
+  String? _activeChatPeerEmail;
+  String? _lastToken;
+
+  /// Lo fija/limpia la pantalla de un hilo de chat (Task 10).
+  void setActiveChatPeer(String? email) => _activeChatPeerEmail = email;
+
+  /// Se llama UNA vez tras iniciar sesión (ya hay token de sesión guardado).
+  Future<void> init() async {
+    try {
+      await ensureFirebaseInitialized();
+      await _wireOnce();
+
+      final settings = await FirebaseMessaging.instance.requestPermission();
+      final status = settings.authorizationStatus;
+      if (status == AuthorizationStatus.denied ||
+          status == AuthorizationStatus.deniedPermanently) {
+        return; // la app funciona sin push; no se vuelve a preguntar
+      }
+
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) await _registerToken(token);
+
+      FirebaseMessaging.instance.onTokenRefresh.listen(_registerToken);
+    } catch (e) {
+      debugPrint('PushService.init failed: $e');
+    }
+  }
+
+  Future<void> _wireOnce() async {
+    if (_wired) return;
+    _wired = true;
+
+    // flutter_local_notifications 22: `initialize` recibe `settings` con nombre
+    // (antes era posicional) y `show` es totalmente nombrado.
+    await _localNotifications.initialize(
+      settings: const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      ),
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload == null || payload.isEmpty) return;
+        try {
+          _routeTo(normalizePushData(
+            json.decode(payload) as Map<Object?, Object?>,
+          ));
+        } catch (e) {
+          debugPrint('PushService payload decode failed: $e');
+        }
+      },
+    );
+
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(_channel);
+
+    FirebaseMessaging.onMessage.listen(handleRemoteMessage);
+    FirebaseMessaging.onMessageOpenedApp.listen(
+      (m) => _routeTo(normalizePushData(_asObjectMap(m.data))),
+    );
+
+    final initial = await FirebaseMessaging.instance.getInitialMessage();
+    if (initial != null) {
+      _routeTo(normalizePushData(_asObjectMap(initial.data)));
+    }
+  }
+
+  /// Refresca el badge y, salvo que el hilo esté abierto, dibuja la
+  /// notificación local. Público porque también lo llama el background handler.
+  Future<void> handleRemoteMessage(RemoteMessage message) async {
+    try {
+      final data = normalizePushData(_asObjectMap(message.data));
+
+      unawaited(NotificationsController.instance.refresh(force: true));
+
+      if (!shouldShowLocalNotification(data, _activeChatPeerEmail)) return;
+
+      final title =
+          (data['title'] ?? '').isNotEmpty ? data['title']! : 'Radio Doliv';
+      final tag = data['type'] == 'chat' ? 'chat:${data['entityId'] ?? ''}' : null;
+
+      await _localNotifications.show(
+        id: localNotificationId(data),
+        title: title,
+        body: data['body'] ?? '',
+        notificationDetails: NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channel.id,
+            _channel.name,
+            channelDescription: _channel.description,
+            importance: Importance.high,
+            priority: Priority.high,
+            tag: tag,
+          ),
+        ),
+        payload: json.encode(data),
+      );
+    } catch (e) {
+      debugPrint('PushService.handleRemoteMessage failed: $e');
+    }
+  }
+
+  void _routeTo(Map<String, String> data) {
+    try {
+      final context = appNavigatorKey.currentContext;
+      if (context == null) return;
+      // NotificationRouter lee 'type' / 'entityType' / 'entityId'.
+      NotificationRouter.open(context, data);
+    } catch (e) {
+      debugPrint('PushService._routeTo failed: $e');
+    }
+  }
+
+  Future<void> _registerToken(String token) async {
+    _lastToken = token;
+    final auth = await _sessionToken();
+    if (auth == null) return;
+    try {
+      await http.post(
+        Uri.parse('$kBaseUrl/devices/register'),
+        headers: {'Authorization': auth},
+        body: {'token': token, 'platform': 'android'},
+      );
+    } catch (_) {
+      // se reintenta en el próximo arranque de la app
+    }
+  }
+
+  /// Se llama al cerrar sesión, ANTES de borrar el token de sesión.
+  Future<void> disable() async {
+    try {
+      final auth = await _sessionToken();
+      final token = _lastToken ?? await _safeCurrentToken();
+      if (token != null && auth != null) {
+        try {
+          await http.post(
+            Uri.parse('$kBaseUrl/devices/unregister'),
+            headers: {'Authorization': auth},
+            body: {'token': token},
+          );
+        } catch (_) {}
+      }
+      try {
+        await FirebaseMessaging.instance.deleteToken();
+      } catch (_) {}
+      _lastToken = null;
+    } catch (e) {
+      debugPrint('PushService.disable failed: $e');
+    }
+  }
+
+  Future<String?> _sessionToken() async {
+    final stored = await secureStorage.readSecureData(key);
+    if (stored == null) return null;
+    final s = stored as String;
+    return s.isEmpty ? null : s;
+  }
+
+  Future<String?> _safeCurrentToken() async {
+    try {
+      return await FirebaseMessaging.instance.getToken();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Map<Object?, Object?> _asObjectMap(Map<String, dynamic> m) =>
+      m.map((k, v) => MapEntry<Object?, Object?>(k, v));
+}
