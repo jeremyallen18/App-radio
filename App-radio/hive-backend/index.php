@@ -72,7 +72,10 @@ $routes = [
     ['POST', '#^/leave/applyLeave/([^/]+)/?$#',                'applyLeave'],
     ['POST', '#^/leave/leaveResult/([^/]+)/?$#',               'leaveResult'],
     ['GET',  '#^/notifications/?$#',                          'listNotifications'],
+    ['POST', '#^/notifications/read-all/?$#',                 'markAllNotificationsRead'],
     ['POST', '#^/notifications/([^/]+)/read/?$#',             'markNotificationRead'],
+    ['POST', '#^/devices/register/?$#',                       'deviceRegister'],
+    ['POST', '#^/devices/unregister/?$#',                     'deviceUnregister'],
     ['GET',  '#^/user/me/?$#',                                'getMe'],
     ['POST', '#^/user/photo/?$#',                             'updateProfilePhoto'],
     // Directorio interno de la empresa: buscar compañeros y abrir la ficha
@@ -268,6 +271,15 @@ function signup(PDO $pdo) {
         text_response('All fields are required', 400);
     }
 
+    // Barrido perezoso: si el cron del host no está configurado, cada alta
+    // nueva limpia las cuentas sin verificar que ya pasaron las 72 h. Nunca
+    // debe impedir el registro, así que cualquier fallo se traga y se loguea.
+    try {
+        cleanup_unverified_accounts($pdo);
+    } catch (Throwable $e) {
+        error_log('[hive-backend] cleanup_unverified_accounts failed: ' . $e->getMessage());
+    }
+
     $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ?');
     $stmt->execute([$email]);
     $existing = $stmt->fetch();
@@ -290,7 +302,7 @@ function signup(PDO $pdo) {
 
     dispatch_verification_email($pdo, ['id' => $userId, 'name' => $name, 'email' => $email]);
 
-    text_response('Cuenta creada. Te enviamos un correo para verificar tu dirección; ya puedes iniciar sesión.', 200);
+    text_response('Cuenta creada. Te enviamos un correo para verificar tu dirección: ábrela para poder iniciar sesión.', 200);
 }
 
 // GET /verify-email?token=...  — el usuario abre este enlace desde su correo.
@@ -328,7 +340,10 @@ function verifyEmail(PDO $pdo) {
             ->execute([$row['user_id']]);
         $pdo->commit();
     } catch (Throwable $e) {
-        $pdo->rollBack();
+        // Si el fallo fue el propio commit() ya no hay transacción activa;
+        // rollBack() sin guard lanzaría una segunda excepción que taparía la
+        // original. Mismo patrón que el resto del backend.
+        if ($pdo->inTransaction()) $pdo->rollBack();
         throw $e;
     }
 
@@ -371,17 +386,38 @@ function login(PDO $pdo) {
         error_response('Invalid email or password', 401);
     }
 
+    // Correo sin verificar: NO se emite token. Se reenvía el enlace (con el
+    // límite anti-abuso de siempre) y se responde con un código que el
+    // cliente reconoce para mostrar el aviso de "verifica tu correo".
+    if (empty($user['email_verified_at'])) {
+        if (email_verification_send_allowed($pdo, $user['id'])) {
+            dispatch_verification_email($pdo, $user);
+        }
+        json_response([
+            'success' => false,
+            'code'    => 'EMAIL_UNVERIFIED',
+            'message' => 'Verifica tu correo antes de iniciar sesión. Te reenviamos el enlace; revisa tu bandeja y la carpeta de spam.',
+        ], 403);
+    }
+
     $token = generate_token();
     $stmt = $pdo->prepare('UPDATE users SET token = ? WHERE id = ?');
     $stmt->execute([$token, $user['id']]);
 
-    // Antes se devolvía el token como string a secas. Ahora va un objeto con
-    // `emailVerified` para que la app muestre (o no) el aviso de verificación.
+    // Contrato histórico: el cliente decodifica el cuerpo entero como el token.
+    // Los builds ya instalados (anteriores a la verificación de correo) hacen
+    // jsonDecode(body) y lo guardan tal cual, así que NO se puede devolver un
+    // objeto por defecto sin dejarlos fuera. Solo se manda {token, emailVerified}
+    // cuando el cliente lo pide con la cabecera X-Client-Features: login-object.
     // El login NO se bloquea aunque el correo no esté verificado.
-    json_response([
-        'token'         => $token,
-        'emailVerified' => !empty($user['email_verified_at']),
-    ], 200);
+    $features = $_SERVER['HTTP_X_CLIENT_FEATURES'] ?? '';
+    if (strpos($features, 'login-object') !== false) {
+        json_response([
+            'token'         => $token,
+            'emailVerified' => !empty($user['email_verified_at']),
+        ], 200);
+    }
+    raw_json_response($token, 200);
 }
 
 function resetPassword(PDO $pdo) {
@@ -798,7 +834,9 @@ function deleteTeam(PDO $pdo, string $teamId) {
 
         $pdo->commit();
     } catch (Throwable $e) {
-        $pdo->rollBack();
+        // Guard: si falló el propio commit() no queda transacción que revertir
+        // y un rollBack() a secas taparía la excepción original con otra.
+        if ($pdo->inTransaction()) $pdo->rollBack();
         throw $e;
     }
 
@@ -990,6 +1028,45 @@ function sendChatMessage(PDO $pdo) {
         $me['name'] . ' te envió un mensaje.', 'user', $me['email']);
 
     text_response('Message sent', 200);
+}
+
+// POST /devices/register — body { token, platform? }. Guarda el token FCM del
+// dispositivo para el usuario autenticado. Idempotente por token: si el mismo
+// dispositivo lo reenvía (o cambia de cuenta), se reasigna al usuario actual.
+function deviceRegister(PDO $pdo) {
+    $me = require_auth($pdo);
+    $body = request_body();
+    $token = trim((string) ($body['token'] ?? ''));
+    $platform = (string) ($body['platform'] ?? 'android');
+    if (!in_array($platform, ['android', 'ios', 'web'], true)) {
+        $platform = 'android';
+    }
+    if ($token === '') {
+        error_response('token is required', 400);
+    }
+    $stmt = $pdo->prepare(
+        'INSERT INTO device_tokens (email, token, platform)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+             email = VALUES(email),
+             platform = VALUES(platform),
+             last_seen_at = NOW()'
+    );
+    $stmt->execute([$me['email'], $token, $platform]);
+    json_response(['ok' => true]);
+}
+
+// POST /devices/unregister — body { token }. Lo llama el cliente al cerrar
+// sesión. Idempotente.
+function deviceUnregister(PDO $pdo) {
+    require_auth($pdo);
+    $body = request_body();
+    $token = trim((string) ($body['token'] ?? ''));
+    if ($token === '') {
+        error_response('token is required', 400);
+    }
+    $pdo->prepare('DELETE FROM device_tokens WHERE token = ?')->execute([$token]);
+    json_response(['ok' => true]);
 }
 
 // ---- handlers: resources ------------------------------------------------
@@ -1331,6 +1408,19 @@ function markNotificationRead(PDO $pdo, string $id) {
         json_response(['error' => 'Notification not found'], 404);
     }
     json_response(['message' => 'Notification marked as read']);
+}
+
+// "Limpiar" la pantalla de notificaciones: marca como leídas SOLO las que
+// todavía están sin leer de esta persona. Idempotente: si no hay ninguna sin
+// leer, responde 200 con updated = 0 (no es error).
+function markAllNotificationsRead(PDO $pdo) {
+    $user = require_auth($pdo);
+    $stmt = $pdo->prepare('UPDATE notifications SET read_at = NOW() WHERE email = ? AND read_at IS NULL');
+    $stmt->execute([$user['email']]);
+    json_response([
+        'message' => 'Notifications marked as read',
+        'updated' => $stmt->rowCount(),
+    ]);
 }
 
 // ---- handlers: organizational structure (companies/departments/roles) --
