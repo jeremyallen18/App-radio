@@ -64,6 +64,17 @@ function is_working_day(string $date): bool {
     return (int) (new DateTimeImmutable($date))->format('N') !== 7;
 }
 
+// Primer día con algún registro de asistencia del empleado ('Y-m-d'), o null si
+// nunca ha fichado. Las faltas solo se cuentan A PARTIR de esta fecha: los días
+// laborales anteriores (antes del alta del empleado o del arranque del control
+// de asistencia) no cuentan como falta.
+function attendance_first_record_date(PDO $pdo, string $employeeId): ?string {
+    $stmt = $pdo->prepare('SELECT MIN(work_date) FROM attendance WHERE employee_id = ?');
+    $stmt->execute([$employeeId]);
+    $v = $stmt->fetchColumn();
+    return ($v === false || $v === null) ? null : (string) $v;
+}
+
 // Nº de días laborales (lun-sáb) en [start, end], ambos inclusive.
 function working_days_between(string $start, string $end): int {
     $from = new DateTimeImmutable($start);
@@ -198,9 +209,48 @@ function email_verification_send_allowed(PDO $pdo, string $userId): bool {
     return (int) $stmt->fetchColumn() < EMAIL_VERIFICATION_MAX_PER_WINDOW;
 }
 
-// Base pública del backend para armar el enlace (http/https + host + ruta),
-// detectando el esquema real del request igual que UPLOAD_URL_BASE.
+// ---- limpieza automática de cuentas sin verificar --------------------
+//
+// Una cuenta creada que nunca abrió su enlace de verificación se conserva
+// como máximo 72 h; pasado ese plazo se borra (sus filas dependientes se
+// van con ella por las FK ON DELETE CASCADE). La condición
+// `email_verified_at IS NULL` deja fuera SIEMPRE a cualquier cuenta
+// verificada, así que ninguna cuenta activa puede caer aquí.
+const UNVERIFIED_ACCOUNT_TTL_HOURS = 72;
+
+// Borra las cuentas sin verificar que ya pasaron UNVERIFIED_ACCOUNT_TTL_HOURS
+// y hace higiene de tokens de verificación sueltos. Devuelve cuántas cuentas
+// se eliminaron. Idempotente y barata (índice idx_users_unverified).
+function cleanup_unverified_accounts(PDO $pdo): int {
+    $stmt = $pdo->prepare(
+        'DELETE FROM users
+          WHERE email_verified_at IS NULL
+            AND created_at < DATE_SUB(NOW(), INTERVAL ' . UNVERIFIED_ACCOUNT_TTL_HOURS . ' HOUR)'
+    );
+    $stmt->execute();
+    $removed = $stmt->rowCount();
+
+    // Tokens ya consumidos o caducados hace más de un día que hayan quedado
+    // sueltos (los de cuentas borradas se van solos por la FK).
+    $pdo->exec(
+        'DELETE FROM email_verifications
+          WHERE consumed_at IS NOT NULL
+             OR expires_at < DATE_SUB(NOW(), INTERVAL 1 DAY)'
+    );
+
+    return $removed;
+}
+
+// Base pública del backend para armar enlaces que salen por correo (esquema +
+// host + ruta). Si PUBLIC_BASE_URL está configurada en .env se usa TAL CUAL:
+// esos enlaces llevan un token de verificación y no pueden depender de la
+// cabecera Host, que la fija quien hace la petición (host-header poisoning).
+// Sin configurar (local/dev) se cae a detectar host y esquema del request,
+// igual que UPLOAD_URL_BASE.
 function backend_public_base_url(): string {
+    if (PUBLIC_BASE_URL !== '') {
+        return PUBLIC_BASE_URL;
+    }
     $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (($_SERVER['SERVER_PORT'] ?? null) == 443)
         || strcasecmp($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '', 'https') === 0;
@@ -408,6 +458,8 @@ function team_from_code(PDO $pdo, string $teamCode): ?array {
 // $entityType/$entityId (opcionales) dejan que el cliente sepa a qué pantalla
 // ir al tocar la notificación (ver migración 020). Si no se pasan, el cliente
 // cae al destino por categoría según $type.
+require_once __DIR__ . '/push.php';
+
 function notify_user(
     PDO $pdo,
     string $email,
@@ -422,6 +474,28 @@ function notify_user(
          VALUES (?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([$teamId, $email, $type, $message, $entityType, $entityId]);
+    $notifId = $pdo->lastInsertId();
+
+    // Push best-effort: nunca debe afectar la respuesta ni el flujo que llamó.
+    try {
+        $collapse = ($type === 'chat' && $entityId)
+            ? 'chat:' . $entityId
+            : 'notif:' . $notifId;
+        push_send_to_user(
+            $pdo,
+            $email,
+            push_title_for_type($type),
+            $message,
+            [
+                'type'       => $type,
+                'entityType' => (string) $entityType,
+                'entityId'   => (string) $entityId,
+            ],
+            $collapse
+        );
+    } catch (Throwable $e) {
+        error_log('notify_user push failed: ' . $e->getMessage());
+    }
 }
 
 // ---- organizational RBAC -------------------------------------------------
