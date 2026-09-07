@@ -54,6 +54,7 @@ class PushService {
   static final PushService instance = PushService._();
 
   bool _wired = false;
+  bool _localReady = false;
   String? _activeChatPeerEmail;
   String? _lastToken;
 
@@ -76,15 +77,19 @@ class PushService {
       final token = await FirebaseMessaging.instance.getToken();
       if (token != null) await _registerToken(token);
 
-      FirebaseMessaging.instance.onTokenRefresh.listen(_registerToken);
+      FirebaseMessaging.instance.onTokenRefresh
+          .listen(_registerToken, onError: (Object _) {});
     } catch (e) {
       debugPrint('PushService.init failed: $e');
     }
   }
 
-  Future<void> _wireOnce() async {
-    if (_wired) return;
-    _wired = true;
+  /// Inicializa el plugin de notificaciones locales y crea el canal
+  /// `doliv_default`. Idempotente y barato en repeticiones: lo llaman tanto el
+  /// wiring de primer plano como `handleRemoteMessage` (que también corre en el
+  /// isolate de segundo plano, donde `_wireOnce()` nunca se ejecuta).
+  Future<void> _ensureLocalNotifications() async {
+    if (_localReady) return;
 
     // flutter_local_notifications 22: `initialize` recibe `settings` con nombre
     // (antes era posicional) y `show` es totalmente nombrado.
@@ -110,6 +115,15 @@ class PushService {
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_channel);
 
+    _localReady = true;
+  }
+
+  Future<void> _wireOnce() async {
+    if (_wired) return;
+
+    await _ensureLocalNotifications();
+
+    // Listeners de FCM: solo tienen sentido en el isolate de primer plano.
     FirebaseMessaging.onMessage.listen(handleRemoteMessage);
     FirebaseMessaging.onMessageOpenedApp.listen(
       (m) => _routeTo(normalizePushData(_asObjectMap(m.data))),
@@ -119,6 +133,10 @@ class PushService {
     if (initial != null) {
       _routeTo(normalizePushData(_asObjectMap(initial.data)));
     }
+
+    // Solo se marca como cableado tras completar todo el wiring, para que un
+    // reintento de `init()` tras un fallo vuelva a intentarlo.
+    _wired = true;
   }
 
   /// Refresca el badge y, salvo que el hilo esté abierto, dibuja la
@@ -130,6 +148,10 @@ class PushService {
       unawaited(NotificationsController.instance.refresh(force: true));
 
       if (!shouldShowLocalNotification(data, _activeChatPeerEmail)) return;
+
+      // En el isolate de segundo plano `_wireOnce()` nunca corrió: hay que
+      // asegurar el plugin y el canal antes de `.show()`.
+      await _ensureLocalNotifications();
 
       final title =
           (data['title'] ?? '').isNotEmpty ? data['title']! : 'Radio Doliv';
@@ -168,17 +190,21 @@ class PushService {
   }
 
   Future<void> _registerToken(String token) async {
-    _lastToken = token;
-    final auth = await _sessionToken();
-    if (auth == null) return;
+    // Corre también desde `onTokenRefresh.listen(...)`: cualquier fallo aquí
+    // (secure storage, red, valor inesperado) NO debe volverse un error async
+    // sin capturar.
     try {
+      _lastToken = token;
+      final auth = await _sessionToken();
+      if (auth == null) return;
       await http.post(
         Uri.parse('$kBaseUrl/devices/register'),
         headers: {'Authorization': auth},
         body: {'token': token, 'platform': 'android'},
       );
-    } catch (_) {
+    } catch (e) {
       // se reintenta en el próximo arranque de la app
+      debugPrint('PushService._registerToken failed: $e');
     }
   }
 
