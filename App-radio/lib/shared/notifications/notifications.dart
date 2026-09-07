@@ -98,6 +98,46 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     await NotificationRouter.open(context, notification as Map);
   }
 
+  /// "Limpiar": borra TODAS las notificaciones de esta persona en el backend
+  /// y vacía la pantalla. La notificación es efímera; su contenido real vive
+  /// en la tarea/evento/mensaje que la originó.
+  Future<void> _clearAll() async {
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Limpiar notificaciones',
+      message: '¿Borrar todas tus notificaciones? Esta acción no se puede deshacer.',
+      confirmLabel: 'Limpiar',
+      danger: true,
+    );
+    if (confirmed != true || !mounted) return;
+
+    final token = await secureStorage.readSecureData(key);
+    try {
+      final response = await http.post(
+        Uri.parse('$kBaseUrl/notifications/clear'),
+        headers: <String, String>{'Authorization': token ?? ''},
+      );
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        setState(() => _notifications = []);
+        NotificationsController.instance.setUnread(0);
+      } else {
+        _showClearError();
+      }
+    } catch (_) {
+      if (mounted) _showClearError();
+    }
+  }
+
+  void _showClearError() {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('No se pudieron limpiar las notificaciones.')),
+      );
+    _fetchNotifications();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -105,6 +145,14 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         title: const Text('Notificaciones'),
         leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
+        actions: [
+          if (!_loading && !_hasError && _notifications.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.clear_all),
+              tooltip: 'Limpiar',
+              onPressed: _clearAll,
+            ),
+        ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       body: RefreshIndicator(
