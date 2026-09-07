@@ -73,6 +73,7 @@ $routes = [
     ['POST', '#^/leave/leaveResult/([^/]+)/?$#',               'leaveResult'],
     ['GET',  '#^/notifications/?$#',                          'listNotifications'],
     ['POST', '#^/notifications/read-all/?$#',                 'markAllNotificationsRead'],
+    ['POST', '#^/notifications/clear/?$#',                    'clearNotifications'],
     ['POST', '#^/notifications/([^/]+)/read/?$#',             'markNotificationRead'],
     ['POST', '#^/devices/register/?$#',                       'deviceRegister'],
     ['POST', '#^/devices/unregister/?$#',                     'deviceUnregister'],
@@ -1437,6 +1438,20 @@ function markAllNotificationsRead(PDO $pdo) {
     json_response([
         'message' => 'Notifications marked as read',
         'updated' => $stmt->rowCount(),
+    ]);
+}
+
+// "Limpiar" de verdad: borra TODAS las notificaciones de esta persona (la
+// notificación es efímera; la tarea/evento/mensaje real vive en su propia
+// tabla). Vacía la pantalla y de paso purga filas — `notifications` no tiene
+// otra política de retención. Idempotente: sin filas responde 200 deleted = 0.
+function clearNotifications(PDO $pdo) {
+    $user = require_auth($pdo);
+    $stmt = $pdo->prepare('DELETE FROM notifications WHERE email = ?');
+    $stmt->execute([$user['email']]);
+    json_response([
+        'message' => 'Notifications cleared',
+        'deleted' => $stmt->rowCount(),
     ]);
 }
 
