@@ -199,12 +199,13 @@ class PushService {
 
       final title =
           (data['title'] ?? '').isNotEmpty ? data['title']! : 'Radio Doliv';
+      final body = data['body'] ?? '';
       final tag = data['type'] == 'chat' ? 'chat:${data['entityId'] ?? ''}' : null;
 
       await _localNotifications.show(
         id: localNotificationId(data),
         title: title,
-        body: data['body'] ?? '',
+        body: body,
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             _channel.id,
@@ -213,6 +214,9 @@ class PushService {
             importance: Importance.high,
             priority: Priority.high,
             tag: tag,
+            // Mensajes largos y títulos de evento/rango de fechas se expanden
+            // al deslizar en vez de cortarse.
+            styleInformation: BigTextStyleInformation(body, contentTitle: title),
           ),
         ),
         payload: json.encode(data),

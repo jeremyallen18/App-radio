@@ -25,6 +25,8 @@ class NotificationTile extends StatelessWidget {
 
   ({IconData icon, Color color, String category}) get _meta {
     switch (type) {
+      case 'chat':
+        return (icon: Icons.chat_bubble_outline, color: AppColors.accent, category: 'Mensaje');
       case 'member_removed':
         return (icon: Icons.person_remove_outlined, color: AppColors.error, category: 'Equipo');
       case 'team_deleted':

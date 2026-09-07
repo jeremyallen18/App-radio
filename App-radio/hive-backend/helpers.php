@@ -460,6 +460,10 @@ function team_from_code(PDO $pdo, string $teamCode): ?array {
 // cae al destino por categoría según $type.
 require_once __DIR__ . '/push.php';
 
+// $pushTitle/$pushBody (opcionales) sólo cambian lo que se ve en la
+// notificación push; la fila en `notifications` (y la lista in-app) siempre
+// guarda $message. Se usan para el chat estilo mensajería: título = nombre de
+// quien escribe, cuerpo = texto del mensaje.
 function notify_user(
     PDO $pdo,
     string $email,
@@ -467,7 +471,9 @@ function notify_user(
     string $type,
     string $message,
     ?string $entityType = null,
-    ?string $entityId = null
+    ?string $entityId = null,
+    ?string $pushTitle = null,
+    ?string $pushBody = null
 ): void {
     $stmt = $pdo->prepare(
         'INSERT INTO notifications (team_id, email, type, message, entity_type, entity_id)
@@ -486,8 +492,8 @@ function notify_user(
         push_send_to_user(
             $pdo,
             $email,
-            push_title_for_type($type),
-            $message,
+            $pushTitle ?? push_title_for_type($type),
+            $pushBody ?? $message,
             [
                 'type'       => $type,
                 'entityType' => (string) $entityType,

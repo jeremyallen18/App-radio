@@ -128,20 +128,24 @@ function push_title_for_type(string $type): string {
         case 'chat':
             return 'Nuevo mensaje';
         case 'dept_task':
-        case 'task_assigned':
             return 'Tarea';
+        case 'task_assigned':
+            return 'Tarea asignada';
         case 'event_created':
-        case 'event_reminder':
             return 'Evento';
+        case 'event_reminder':
+            return 'Recordatorio de evento';
         case 'internal_announcement':
-        case 'internal_announcement_reminder':
             return 'Anuncio';
+        case 'internal_announcement_reminder':
+            return 'Recordatorio de anuncio';
         case 'attendance_correction':
             return 'Asistencia';
         case 'absence_justification':
+            return 'Ausencia';
         case 'absence_approved':
         case 'absence_rejected':
-            return 'Ausencia';
+            return 'Justificación revisada';
         case 'leave_approved':
         case 'leave_rejected':
         case 'leave_cancelled':

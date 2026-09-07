@@ -1023,9 +1023,16 @@ function sendChatMessage(PDO $pdo) {
     )->execute([$key, $me['id'], $peer['id'], $message]);
 
     // entity_id = correo de quien escribe: al tocar la notificación, el
-    // cliente abre directamente el hilo con esta persona.
+    // cliente abre directamente el hilo con esta persona. Estilo mensajería:
+    // el push muestra el nombre de quien escribe como título y el texto (o un
+    // adelanto) como cuerpo; la fila in-app guarda "Nombre: texto".
+    $preview = mb_substr($message, 0, 200);
+    if (mb_strlen($message) > 200) {
+        $preview .= '…';
+    }
     notify_user($pdo, $peer['email'], null, 'chat',
-        $me['name'] . ' te envió un mensaje.', 'user', $me['email']);
+        $me['name'] . ': ' . $preview, 'user', $me['email'],
+        $me['name'], $preview);
 
     text_response('Message sent', 200);
 }
