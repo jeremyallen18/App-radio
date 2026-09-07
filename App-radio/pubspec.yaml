@@ -90,6 +90,9 @@ dependencies:
   # (lib/shared/resources/team_documents_screen.dart). La descarga reutiliza
   # path_provider + share_plus, igual que el reporte de asistencia.
   file_picker: ^12.2.0
+  firebase_core: ^4.14.0
+  firebase_messaging: ^16.6.0
+  flutter_local_notifications: ^22.3.0
 
 
 
