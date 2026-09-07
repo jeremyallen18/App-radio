@@ -1,4 +1,5 @@
 <?php
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 // Cifra (o con --decrypt, descifra) las columnas sensibles existentes.
 // Idempotente: solo toca filas cuyo valor NO empieza por "v1:" (o, con
 // --decrypt, las que sí). Requiere DB_ENCRYPTION_KEY.
@@ -20,6 +21,15 @@ if (!db_encryption_enabled()) {
     exit(1);
 }
 $decrypt = in_array('--decrypt', $argv, true);
+
+$assumeYes = in_array('--yes', $argv, true);
+$mode = $decrypt ? 'DESCIFRAR' : 'CIFRAR';
+fwrite(STDERR, "migrate_encrypt_027: va a $mode columnas sensibles de hive_db IN SITU.\n");
+fwrite(STDERR, "Haz un mysqldump ANTES. Guarda DB_ENCRYPTION_KEY por separado del dump.\n");
+if (!$assumeYes) {
+    fwrite(STDERR, "Aborta: vuelve a ejecutar con --yes para confirmar.\n");
+    exit(1);
+}
 
 /** @var array<array{table:string,col:string}> */
 $targets = [
@@ -43,6 +53,16 @@ foreach ($targets as $t) {
     $pdo->beginTransaction();
     foreach ($rows as $i => $r) {
         $new = $decrypt ? db_decrypt($r['v']) : db_encrypt($r['v']);
+        if ($decrypt && $new === DB_DECRYPT_UNAVAILABLE) {
+            fwrite(STDERR, "ABORT: $table.$col id={$r['id']} no se pudo descifrar (¿clave equivocada?). Sin cambios en este lote.\n");
+            if ($pdo->inTransaction()) { $pdo->rollBack(); }
+            exit(1);
+        }
+        if (!$decrypt && strncmp((string) $new, 'v1:', 3) !== 0) {
+            fwrite(STDERR, "ABORT: $table.$col id={$r['id']} no se pudo cifrar (openssl). Sin cambios en este lote.\n");
+            if ($pdo->inTransaction()) { $pdo->rollBack(); }
+            exit(1);
+        }
         $upd->execute([$new, $r['id']]);
         $n++;
         if ($n % 200 === 0) { $pdo->commit(); $pdo->beginTransaction(); }
