@@ -10,24 +10,44 @@ import 'package:doliv_social/shared/calendar/date_pickers.dart';
 /// Único formulario de creación/edición de tareas. Lo usan director y manager
 /// para: crear tarea, crear subtarea (`parentId`) y editar (`existing`).
 /// El empleado nunca lo abre (solo marca completadas desde el tablero).
+///
+/// Tres paneles: *Qué* (título y descripción), *Quién y cuándo* (responsable
+/// y fecha límite con atajos) y *Opciones* (evidencia, repetición). El botón
+/// de guardar va fijo abajo.
 class TaskFormScreen extends StatefulWidget {
   const TaskFormScreen({
     super.key,
-    required this.departmentId,
+    this.departmentId,
     this.parentId,
     this.existing,
     this.members = const [],
+    this.asDirector = false,
+    this.departments = const [],
   });
 
-  final String departmentId;
+  /// Departamento de la tarea. Puede venir vacío solo cuando el director
+  /// abre el formulario desde su lista de departamentos: entonces lo elige
+  /// aquí.
+  final String? departmentId;
   final String? parentId;
   final DeptTask? existing;
 
-  /// Empleados del departamento, para el selector "Asignar a".
+  /// Gente del departamento, para el selector "Responsable" (manager).
   final List<UserProfile> members;
+
+  /// Director creando una tarea principal: elige DEPARTAMENTO, no persona.
+  /// El backend se la asigna al manager de esa área, que la desglosa.
+  final bool asDirector;
+
+  /// Departamentos a elegir (solo en modo director).
+  final List<DepartmentInfo> departments;
 
   bool get isSubtask => parentId != null;
   bool get isEdit => existing != null;
+
+  /// El director elige departamento en tareas principales; en subtareas
+  /// (desglosando una tarea de un manager) actúa como manager.
+  bool get picksDepartment => asDirector && !isSubtask;
 
   @override
   State<TaskFormScreen> createState() => _TaskFormScreenState();
@@ -37,6 +57,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   late final TextEditingController _title;
   late final TextEditingController _description;
   UserProfile? _assignee;
+  String? _departmentId;
   DateTime? _due;
   bool _requiresEvidence = false;
   TaskRecurrence _recurrence = TaskRecurrence.none;
@@ -51,6 +72,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   void initState() {
     super.initState();
     final e = widget.existing;
+    _departmentId = e?.departmentId ?? widget.departmentId;
     _title = TextEditingController(text: e?.title ?? '');
     _description = TextEditingController(text: e?.description ?? '');
     _due = e?.dueDate;
@@ -124,9 +146,14 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
 
   Future<void> _save() async {
     if (_title.text.trim().isEmpty) {
-      setState(() => _error = 'El título de la tarea es obligatorio.');
+      setState(() => _error = 'Ponle un título a la tarea.');
       return;
     }
+    if (_departmentId == null || _departmentId!.isEmpty) {
+      setState(() => _error = 'Elige el departamento que hará la tarea.');
+      return;
+    }
+    FocusScope.of(context).unfocus();
     setState(() {
       _saving = true;
       _error = null;
@@ -148,11 +175,12 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         );
       } else {
         await DeptTaskApi.create(
-          departmentId: widget.departmentId,
+          departmentId: _departmentId,
           parentId: widget.parentId,
           title: _title.text,
           description: _description.text,
-          assignedTo: _assignee?.id,
+          // En modo director el backend asigna al manager del departamento.
+          assignedTo: widget.picksDepartment ? null : _assignee?.id,
           dueDate: _due,
           requiresEvidence: _requiresEvidence,
           recurrence: recurrence,
@@ -170,123 +198,190 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     }
   }
 
+  static DateTime _today() {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month, n.day);
+  }
+
+  static bool _sameDay(DateTime? a, DateTime b) =>
+      a != null && a.year == b.year && a.month == b.month && a.day == b.day;
+
+  static String _fmt(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
   @override
   Widget build(BuildContext context) {
     final title = widget.isEdit
         ? 'Editar tarea'
         : (widget.isSubtask ? 'Nueva subtarea' : 'Nueva tarea');
+    final today = _today();
+    final tomorrow = today.add(const Duration(days: 1));
+
     return AppScaffold(
-      appBar: AppBar(leading: const AppBackButton(), title: Text(title)),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxl,
+      appBar: AppBar(automaticallyImplyLeading: false, title: Text(title)),
+      padding: EdgeInsets.zero,
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
+              ),
+            AppButton(
+              label: widget.isEdit ? 'Guardar cambios' : (widget.isSubtask ? 'Crear subtarea' : 'Crear tarea'),
+              loading: _saving,
+              onPressed: _saving ? null : _save,
+            ),
+          ],
         ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xl),
         children: [
           if (widget.isSubtask && !widget.isEdit)
             const Padding(
-              padding: EdgeInsets.only(bottom: AppSpacing.lg),
-              child: Text(
-                'Esta subtarea quedará dentro de la tarea principal seleccionada.',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+              padding: EdgeInsets.only(bottom: AppSpacing.md),
+              child: Row(
+                children: [
+                  Icon(Icons.subdirectory_arrow_right_rounded, size: 16, color: AppColors.textMuted),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Quedará dentro de la tarea principal seleccionada.',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    ),
+                  ),
+                ],
               ),
             ),
-          const Text('Título', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-          const SizedBox(height: AppSpacing.sm),
-          AppTextField(controller: _title, hintText: 'Ej. Cobertura de elecciones'),
-          const SizedBox(height: AppSpacing.lg),
-          const Text('Descripción (opcional)', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-          const SizedBox(height: AppSpacing.sm),
-          AppTextField(controller: _description, hintText: 'Detalles de la tarea', maxLines: 4),
-          const SizedBox(height: AppSpacing.lg),
-          _RowTile(
-            icon: Icons.person_outline,
-            label: 'Asignar a',
-            value: _assignee?.name ?? 'Sin asignar',
-            onTap: _pickAssignee,
-            onClear: _assignee == null ? null : () => setState(() => _assignee = null),
+          _Panel(
+            title: 'Qué',
+            children: [
+              _Label('Título'),
+              AppTextField(controller: _title, hintText: 'Ej. Cobertura de elecciones'),
+              const SizedBox(height: AppSpacing.md),
+              _Label('Descripción', hint: 'opcional'),
+              AppTextField(controller: _description, hintText: 'Qué hay que hacer y qué entregar', maxLines: 4),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.only(left: 40, bottom: AppSpacing.sm),
-            child: Text(
-              _assignee == null
-                  ? 'Sin responsable, solo un manager podrá marcarla como completada.'
-                  : 'Solo ${_assignee!.name} podrá marcar esta tarea como completada.',
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-            ),
-          ),
-          _RowTile(
-            icon: Icons.event_outlined,
-            label: 'Fecha límite',
-            value: _due == null
-                ? 'Sin fecha'
-                : '${_due!.day.toString().padLeft(2, '0')}/${_due!.month.toString().padLeft(2, '0')}/${_due!.year}',
-            onTap: _pickDue,
-            onClear: _due == null ? null : () => setState(() => _due = null),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: _requiresEvidence,
-            onChanged: (v) => setState(() => _requiresEvidence = v),
-            title: const Text(
-              'Pedir evidencia al completar',
-              style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-            ),
-            subtitle: const Text(
-              'Habrá que adjuntar una foto o PDF para marcarla como completada.',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 11),
-            ),
-          ),
-          if (_allowRecurrence) ...[
-            const SizedBox(height: AppSpacing.md),
-            const Text('Repetición', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-            const SizedBox(height: AppSpacing.sm),
-            DropdownButtonFormField<TaskRecurrence>(
-              initialValue: _recurrence,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.repeat, color: AppColors.accent),
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-              items: [
-                for (final r in TaskRecurrence.values)
-                  DropdownMenuItem(value: r, child: Text(r.label)),
+          const SizedBox(height: AppSpacing.md),
+          _Panel(
+            title: 'Quién y cuándo',
+            children: [
+              if (widget.picksDepartment) ...[
+                _Label('Departamento'),
+                _DepartmentPicker(
+                  departments: widget.departments,
+                  selectedId: _departmentId,
+                  locked: widget.isEdit,
+                  onSelect: (id) => setState(() => _departmentId = id),
+                ),
+              ] else ...[
+                _Label('Responsable'),
+                _AssigneeTile(
+                  assignee: _assignee,
+                  onTap: _pickAssignee,
+                  onClear: _assignee == null ? null : () => setState(() => _assignee = null),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, left: 4),
+                  child: Text(
+                    _assignee == null
+                        ? 'Sin responsable, solo un manager podrá marcarla como completada.'
+                        : 'Solo ${_assignee!.name} podrá marcarla como completada.',
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  ),
+                ),
               ],
-              onChanged: (v) => setState(() {
-                _recurrence = v ?? TaskRecurrence.none;
-                if (_recurrence == TaskRecurrence.none) _recurrenceUntil = null;
-              }),
-            ),
-            if (_recurrence != TaskRecurrence.none)
-              _RowTile(
-                icon: Icons.event_repeat_outlined,
-                label: 'Repetir hasta',
-                value: _recurrenceUntil == null
-                    ? 'Sin límite'
-                    : '${_recurrenceUntil!.day.toString().padLeft(2, '0')}/${_recurrenceUntil!.month.toString().padLeft(2, '0')}/${_recurrenceUntil!.year}',
-                onTap: _pickRecurrenceUntil,
-                onClear: _recurrenceUntil == null
-                    ? null
-                    : () => setState(() => _recurrenceUntil = null),
+              const SizedBox(height: AppSpacing.md),
+              _Label('Fecha límite'),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  AppFilterChip(label: 'Sin fecha', selected: _due == null, onTap: () => setState(() => _due = null)),
+                  AppFilterChip(label: 'Hoy', selected: _sameDay(_due, today), onTap: () => setState(() => _due = today)),
+                  AppFilterChip(label: 'Mañana', selected: _sameDay(_due, tomorrow), onTap: () => setState(() => _due = tomorrow)),
+                  AppFilterChip(
+                    label: _due != null && !_sameDay(_due, today) && !_sameDay(_due, tomorrow)
+                        ? _fmt(_due!)
+                        : 'Elegir…',
+                    selected: _due != null && !_sameDay(_due, today) && !_sameDay(_due, tomorrow),
+                    onTap: _pickDue,
+                  ),
+                ],
               ),
-            if (_recurrence != TaskRecurrence.none)
-              const Padding(
-                padding: EdgeInsets.only(left: 40, top: 2),
-                child: Text(
-                  'Al cerrarse cada ocurrencia se crea la siguiente automáticamente.',
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _Panel(
+            title: 'Opciones',
+            children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _requiresEvidence,
+                onChanged: (v) => setState(() => _requiresEvidence = v),
+                secondary: const Icon(Icons.photo_camera_outlined, color: AppColors.accent),
+                title: const Text(
+                  'Pedir evidencia al completar',
+                  style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                subtitle: const Text(
+                  'Habrá que adjuntar una foto para marcarla como completada.',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                 ),
               ),
-          ],
-          if (_error != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
-          ],
-          const SizedBox(height: AppSpacing.xl),
-          AppButton(
-            label: widget.isEdit ? 'GUARDAR CAMBIOS' : 'CREAR',
-            loading: _saving,
-            onPressed: _saving ? null : _save,
+              if (_allowRecurrence) ...[
+                const SizedBox(height: AppSpacing.sm),
+                _Label('Repetición'),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    for (final r in TaskRecurrence.values)
+                      AppFilterChip(
+                        label: r.label,
+                        selected: _recurrence == r,
+                        onTap: () => setState(() {
+                          _recurrence = r;
+                          if (r == TaskRecurrence.none) _recurrenceUntil = null;
+                        }),
+                      ),
+                  ],
+                ),
+                if (_recurrence != TaskRecurrence.none) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  _Label('Repetir hasta'),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      AppFilterChip(
+                        label: 'Sin límite',
+                        selected: _recurrenceUntil == null,
+                        onTap: () => setState(() => _recurrenceUntil = null),
+                      ),
+                      AppFilterChip(
+                        label: _recurrenceUntil == null ? 'Elegir…' : _fmt(_recurrenceUntil!),
+                        selected: _recurrenceUntil != null,
+                        onTap: _pickRecurrenceUntil,
+                      ),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6, left: 4),
+                    child: Text(
+                      'Al cerrarse cada ocurrencia se crea la siguiente automáticamente.',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                    ),
+                  ),
+                ],
+              ],
+            ],
           ),
         ],
       ),
@@ -294,31 +389,188 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   }
 }
 
-class _RowTile extends StatelessWidget {
-  const _RowTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.onTap,
-    this.onClear,
+class _Panel extends StatelessWidget {
+  const _Panel({required this.title, required this.children});
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassPanel(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              title.toUpperCase(),
+              style: const TextStyle(
+                color: AppColors.accentStrong,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Label extends StatelessWidget {
+  const _Label(this.text, {this.hint});
+  final String text;
+  final String? hint;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm),
+      child: Row(
+        children: [
+          Text(text, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+          if (hint != null) ...[
+            const SizedBox(width: 6),
+            Text(hint!, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Chips de departamento (modo director) + nota de a quién le llegará.
+class _DepartmentPicker extends StatelessWidget {
+  const _DepartmentPicker({
+    required this.departments,
+    required this.selectedId,
+    required this.locked,
+    required this.onSelect,
   });
-  final IconData icon;
-  final String label;
-  final String value;
+
+  final List<DepartmentInfo> departments;
+  final String? selectedId;
+
+  /// Al editar no se cambia de departamento (la tarea ya está en su tablero).
+  final bool locked;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = departments.cast<DepartmentInfo?>().firstWhere(
+          (d) => d?.id == selectedId,
+          orElse: () => null,
+        );
+    final String note;
+    if (selected == null) {
+      note = departments.isEmpty
+          ? 'Todavía no hay departamentos. Créalos desde "Equipos y departamentos".'
+          : 'La tarea le llegará al manager del departamento, que la repartirá con su equipo.';
+    } else if ((selected.managerEmail ?? '').isEmpty) {
+      note = '${selected.name} aún no tiene manager: asigna uno antes de crear la tarea.';
+    } else {
+      note = 'Le llegará a ${selected.managerEmail} (manager de ${selected.name}) para que la reparta con su equipo.';
+    }
+    final noteColor = selected != null && (selected.managerEmail ?? '').isEmpty
+        ? AppColors.warning
+        : AppColors.textMuted;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (locked)
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Row(
+              children: [
+                const Icon(Icons.groups_2_outlined, size: 16, color: AppColors.textMuted),
+                const SizedBox(width: 6),
+                Text(
+                  selected?.name ?? 'Departamento',
+                  style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          )
+        else
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              for (final d in departments)
+                AppFilterChip(
+                  label: d.name,
+                  selected: d.id == selectedId,
+                  onTap: () => onSelect(d.id),
+                ),
+            ],
+          ),
+        Padding(
+          padding: const EdgeInsets.only(top: 6, left: 4),
+          child: Text(note, style: TextStyle(color: noteColor, fontSize: 11)),
+        ),
+      ],
+    );
+  }
+}
+
+class _AssigneeTile extends StatelessWidget {
+  const _AssigneeTile({required this.assignee, required this.onTap, this.onClear});
+  final UserProfile? assignee;
   final VoidCallback onTap;
   final VoidCallback? onClear;
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: AppColors.accent),
-      title: Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-      subtitle: Text(value, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
-      trailing: onClear != null
-          ? IconButton(onPressed: onClear, icon: const Icon(Icons.close, size: 18))
-          : const Icon(Icons.chevron_right, color: AppColors.textMuted),
-      onTap: onTap,
+    final a = assignee;
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.field),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.field),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.field),
+            border: Border.all(color: a == null ? AppColors.surfaceBorder : AppColors.accent.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            children: [
+              if (a == null)
+                const CircleAvatar(
+                  radius: 16,
+                  backgroundColor: AppColors.surfaceBorder,
+                  child: Icon(Icons.person_add_alt_1_outlined, size: 16, color: AppColors.textMuted),
+                )
+              else
+                IdentityAvatar(id: a.email, label: a.name, radius: 16, photoUrl: a.photoUrl),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  a?.name ?? 'Elegir a alguien del equipo',
+                  style: TextStyle(
+                    color: a == null ? AppColors.textMuted : AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (onClear != null)
+                IconButton(
+                  onPressed: onClear,
+                  tooltip: 'Quitar responsable',
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  visualDensity: VisualDensity.compact,
+                )
+              else
+                const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

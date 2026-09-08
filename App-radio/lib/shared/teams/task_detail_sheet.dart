@@ -5,6 +5,8 @@ import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/dept_task.dart';
 import 'package:doliv_social/services/team_service.dart';
+import 'package:doliv_social/shared/teams/widgets/task_visuals.dart';
+import 'package:doliv_social/shared/widgets/evidence_viewer.dart';
 
 /// Ficha de una tarea con su hilo de comentarios (aclaraciones entre el
 /// manager y el empleado asignado, sin salir a un chat aparte).
@@ -102,11 +104,25 @@ class _TaskDetailSheetState extends State<TaskDetailSheet> {
     }
   }
 
+  void _openEvidence() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => EvidenceViewer(
+          url: DeptTaskApi.evidenceUrl(widget.task.id),
+          title: 'Evidencia · ${widget.task.title}',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = widget.task;
     return AppScaffold(
-      appBar: AppBar(leading: const AppBackButton(), title: const Text('Detalle de la tarea')),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: Text(t.isSubtask ? 'Subtarea' : 'Tarea'),
+      ),
       padding: EdgeInsets.zero,
       body: Column(
         children: [
@@ -119,16 +135,28 @@ class _TaskDetailSheetState extends State<TaskDetailSheet> {
                         controller: _scroll,
                         padding: const EdgeInsets.all(AppSpacing.lg),
                         children: [
-                          _header(t),
-                          const SizedBox(height: AppSpacing.lg),
-                          const SectionHeader(title: 'Comentarios'),
-                          const SizedBox(height: AppSpacing.sm),
+                          _TaskHeader(task: t),
+                          const SizedBox(height: AppSpacing.md),
+                          _FactsGrid(task: t, onOpenEvidence: t.hasEvidence ? _openEvidence : null),
+                          if (t.wasRejected && (t.reviewNote ?? '').isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.md),
+                            _ReturnedNote(note: t.reviewNote!, by: t.reviewedBy?.name),
+                          ],
+                          const SizedBox(height: AppSpacing.xl),
+                          SectionHeader(
+                            title: 'Comentarios',
+                            action: _comments.isEmpty
+                                ? null
+                                : Text('${_comments.length}', style: const TextStyle(color: AppColors.textMuted)),
+                          ),
                           if (_comments.isEmpty)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                               child: Text(
-                                'Todavía no hay comentarios.',
-                                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                                widget.canComment
+                                    ? 'Aún no hay comentarios. Escribe el primero abajo.'
+                                    : 'Todavía no hay comentarios.',
+                                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                               ),
                             )
                           else
@@ -154,63 +182,230 @@ class _TaskDetailSheetState extends State<TaskDetailSheet> {
       ),
     );
   }
+}
 
-  Widget _header(DeptTask t) {
+/// Cabecera: riel de tono, chip de estado, título grande, descripción,
+/// cuenta atrás y barra de subtareas.
+class _TaskHeader extends StatelessWidget {
+  const _TaskHeader({required this.task});
+  final DeptTask task;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = TaskTone.of(task);
+    return GlassPanel(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              StatusRail(color: tone.color),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        StatusChip(tone: tone),
+                        const Spacer(),
+                        TaskFlags(task: task),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      task.title,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 20,
+                        height: 1.2,
+                        decoration: task.isDone ? TextDecoration.lineThrough : null,
+                        decorationColor: AppColors.textMuted,
+                      ),
+                    ),
+                    if ((task.description ?? '').isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(task.description!, style: const TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.4)),
+                    ],
+                    if (task.subtaskCount > 0) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      SubtaskProgress(done: task.subtaskDoneCount, total: task.subtaskCount),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Rejilla de datos de la tarea, dos por fila.
+class _FactsGrid extends StatelessWidget {
+  const _FactsGrid({required this.task, this.onOpenEvidence});
+  final DeptTask task;
+  final VoidCallback? onOpenEvidence;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = task;
+    final facts = <Widget>[
+      _Fact(
+        icon: Icons.person_outline_rounded,
+        label: 'Responsable',
+        value: t.assignedTo?.name ?? 'Sin asignar',
+        muted: t.assignedTo == null,
+      ),
+      _Fact(
+        icon: Icons.schedule_rounded,
+        label: 'Fecha límite',
+        value: t.dueDate == null ? 'Sin fecha' : t.dueLabel!,
+        muted: t.dueDate == null,
+        trailing: t.dueDate == null ? null : DueChip(task: t),
+      ),
+      _Fact(
+        icon: Icons.fact_check_outlined,
+        label: 'Revisión',
+        value: t.reviewStatusLabel,
+        valueColor: switch (t.reviewStatus) {
+          DeptTaskReviewStatus.aprobada => AppColors.success,
+          DeptTaskReviewStatus.rechazada => AppColors.error,
+          DeptTaskReviewStatus.pendienteRevision => AppColors.warning,
+          DeptTaskReviewStatus.sinRevision => null,
+        },
+      ),
+      if (t.isRecurring)
+        _Fact(icon: Icons.repeat_rounded, label: 'Repetición', value: t.recurrence.label),
+      if (t.requiresEvidence || t.hasEvidence)
+        _Fact(
+          icon: t.hasEvidence ? Icons.photo_outlined : Icons.attach_file_rounded,
+          label: 'Evidencia',
+          value: t.hasEvidence ? 'Ver foto' : 'Requerida al completar',
+          valueColor: t.hasEvidence ? AppColors.accentStrong : null,
+          muted: !t.hasEvidence,
+          onTap: onOpenEvidence,
+        ),
+      if (t.completedBy != null)
+        _Fact(
+          icon: Icons.task_alt_rounded,
+          label: t.completedLate ? 'Completada con retardo' : 'Completada por',
+          value: t.completedBy!.name,
+          valueColor: t.completedLate ? AppColors.error : null,
+        ),
+      if (t.createdBy != null)
+        _Fact(icon: Icons.edit_calendar_outlined, label: 'Creada por', value: t.createdBy!.name),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, c) {
+        final w = (c.maxWidth - AppSpacing.sm) / 2;
+        return Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [for (final f in facts) SizedBox(width: w, child: f)],
+        );
+      },
+    );
+  }
+}
+
+class _Fact extends StatelessWidget {
+  const _Fact({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.valueColor,
+    this.muted = false,
+    this.trailing,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? valueColor;
+  final bool muted;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(t.title,
-              style: const TextStyle(
-                  color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 16)),
-          if ((t.description ?? '').isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Text(t.description!,
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
-          ],
-          const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: 4,
+          Row(
             children: [
-              _tag(t.statusLabel),
-              if (t.completedLate) _tag('Retardo', icon: Icons.timer_off_outlined),
-              _tag('Revisión: ${t.reviewStatusLabel}'),
-              if (t.assignedTo != null)
-                _tag(t.assignedTo!.name, icon: Icons.person_outline),
-              if (t.dueLabel != null) _tag(t.dueLabel!, icon: Icons.event_outlined),
-              if (t.isRecurring) _tag(t.recurrence.label, icon: Icons.repeat),
-              if (t.requiresEvidence)
-                _tag('Requiere evidencia', icon: Icons.attach_file),
+              Icon(icon, size: 14, color: AppColors.textMuted),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                ),
+              ),
             ],
           ),
-          if (t.wasRejected && (t.reviewNote ?? '').isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Text('Devuelta: ${t.reviewNote}',
-                style: const TextStyle(color: AppColors.error, fontSize: 12)),
-          ],
+          const SizedBox(height: 4),
+          trailing ??
+              Text(
+                value,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: valueColor ?? (muted ? AppColors.textMuted : AppColors.textPrimary),
+                  fontSize: 14,
+                  fontWeight: muted ? FontWeight.w500 : FontWeight.w700,
+                ),
+              ),
         ],
       ),
     );
   }
+}
 
-  Widget _tag(String text, {IconData? icon}) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-          border: Border.all(color: AppColors.surfaceBorder),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 12, color: AppColors.textMuted),
-              const SizedBox(width: 3),
-            ],
-            Text(text,
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
-          ],
-        ),
-      );
+class _ReturnedNote extends StatelessWidget {
+  const _ReturnedNote({required this.note, this.by});
+  final String note;
+  final String? by;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.undo_rounded, size: 18, color: AppColors.error),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  by == null ? 'Devuelta para corregir' : 'Devuelta por $by',
+                  style: const TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(note, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

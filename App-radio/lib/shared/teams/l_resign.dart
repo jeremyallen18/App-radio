@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:doliv_social/core/Routes.dart';
+import 'package:doliv_social/core/routes.dart';
 import 'package:doliv_social/shared/auth/login.dart';
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/design/design.dart';
 
 class Resign extends StatefulWidget {
-  Resign({super.key, required this.teamId});
-  String? teamId;
+  const Resign({super.key, required this.teamId});
+  final String? teamId;
   @override
   State<Resign> createState() => _ResignState();
 }
@@ -15,8 +15,8 @@ class Resign extends StatefulWidget {
 class _ResignState extends State<Resign> {
   final _removeFormKey = GlobalKey<FormState>();
   final _assignFormKey = GlobalKey<FormState>();
-  TextEditingController MEmailController = TextEditingController();
-  TextEditingController EmailController = TextEditingController();
+  TextEditingController memberEmailController = TextEditingController();
+  TextEditingController newLeaderEmailController = TextEditingController();
   bool _removing = false;
   bool _assigning = false;
 
@@ -39,7 +39,7 @@ class _ResignState extends State<Resign> {
           'Authorization': storedValue,
         },
         body: ({
-          "memberEmail": MEmailController.text,
+          "memberEmail": memberEmailController.text,
         }),
       );
 
@@ -48,7 +48,7 @@ class _ResignState extends State<Resign> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Miembro eliminado")),
         );
-        Navigator.pushReplacementNamed(context, MyRoutes.BottomNavBar);
+        Navigator.pushReplacementNamed(context, MyRoutes.bottomNavBar);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("No se pudo eliminar el miembro (${response.statusCode})")),
@@ -77,7 +77,7 @@ class _ResignState extends State<Resign> {
           'Authorization': storedValue,
         },
         body: ({
-          "Correo": EmailController.text,
+          "Correo": newLeaderEmailController.text,
         }),
       );
 
@@ -86,7 +86,7 @@ class _ResignState extends State<Resign> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Nuevo líder asignado")),
         );
-        Navigator.pushReplacementNamed(context, MyRoutes.BottomNavBar);
+        Navigator.pushReplacementNamed(context, MyRoutes.bottomNavBar);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("No se pudo asignar el nuevo líder (${response.statusCode})")),
@@ -107,7 +107,6 @@ class _ResignState extends State<Resign> {
     return AppScaffold(
       appBar: AppBar(
         title: const Text('Gestionar miembros'),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       scrollable: true,
@@ -123,7 +122,7 @@ class _ResignState extends State<Resign> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   AppTextField(
-                    controller: MEmailController,
+                    controller: memberEmailController,
                     prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textMuted),
                     hintText: "Correo del miembro a eliminar",
                     textInputType: TextInputType.emailAddress,
@@ -153,7 +152,7 @@ class _ResignState extends State<Resign> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppTextField(
-                    controller: EmailController,
+                    controller: newLeaderEmailController,
                     prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textMuted),
                     hintText: "Correo del nuevo líder",
                     textInputType: TextInputType.emailAddress,

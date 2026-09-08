@@ -4,17 +4,17 @@ import "package:flutter/material.dart";
 import 'package:http/http.dart' as http;
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/core/api_config.dart';
-import 'package:doliv_social/core/Routes.dart';
+import 'package:doliv_social/core/routes.dart';
 import 'package:doliv_social/shared/auth/login.dart';
 import 'package:doliv_social/shared/teams/team_detail_widgets.dart';
-class t_detail extends StatefulWidget {
-   t_detail({super.key, required this.team});
-  dynamic team;
+class TeamDetailView extends StatefulWidget {
+   const TeamDetailView({super.key, required this.team});
+  final dynamic team;
   @override
-  State<t_detail> createState() => _t_detailState();
+  State<TeamDetailView> createState() => _TeamDetailViewState();
 }
 
-class _t_detailState extends State<t_detail> {
+class _TeamDetailViewState extends State<TeamDetailView> {
   dynamic teams;
   String? email;
   String? leaderEmail;
@@ -99,7 +99,7 @@ class _t_detailState extends State<t_detail> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Equipo eliminado')),
         );
-        Navigator.pushNamedAndRemoveUntil(context, MyRoutes.BottomNavBar, (route) => false);
+        Navigator.pushNamedAndRemoveUntil(context, MyRoutes.bottomNavBar, (route) => false);
       } else if (response.statusCode == 403) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Solo el líder puede eliminar el equipo')),

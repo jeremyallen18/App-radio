@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:doliv_social/core/Routes.dart';
+import 'package:doliv_social/core/routes.dart';
 import 'package:doliv_social/shared/auth/login.dart';
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/design/design.dart';
 
 class Mresign extends StatefulWidget {
-  Mresign({super.key, required this.teamId, required this.emailId});
-  String? teamId;
-  String? emailId;
+  const Mresign({super.key, required this.teamId, required this.emailId});
+  final String? teamId;
+  final String? emailId;
 
   @override
   State<Mresign> createState() => _MresignState();
@@ -18,7 +18,7 @@ class _MresignState extends State<Mresign> {
   final _formKey = GlobalKey<FormState>();
   bool _submitting = false;
 
-  Future<void> MresignApi(String? teamId, String? email) async {
+  Future<void> resignApi(String? teamId, String? email) async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() => _submitting = true);
@@ -32,7 +32,7 @@ class _MresignState extends State<Mresign> {
         },
         body: ({
           "Correo": email,
-          "message": MessageController.text,
+          "message": messageController.text,
         }),
       );
 
@@ -41,7 +41,7 @@ class _MresignState extends State<Mresign> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Correo enviado")),
         );
-        Navigator.pushReplacementNamed(context, MyRoutes.BottomNavBar);
+        Navigator.pushReplacementNamed(context, MyRoutes.bottomNavBar);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("No se pudo enviar la renuncia (${response.statusCode})")),
@@ -57,14 +57,13 @@ class _MresignState extends State<Mresign> {
     }
   }
 
-  TextEditingController MessageController = TextEditingController();
+  TextEditingController messageController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
         title: const Text('Renunciar al equipo'),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       scrollable: true,
@@ -80,7 +79,7 @@ class _MresignState extends State<Mresign> {
             ),
             const SizedBox(height: AppSpacing.xl),
             AppTextField(
-              controller: MessageController,
+              controller: messageController,
               prefixIcon: const Icon(Icons.edit_note_outlined, color: AppColors.textMuted),
               hintText: "Mensaje para el líder",
               maxLines: 5,
@@ -91,7 +90,7 @@ class _MresignState extends State<Mresign> {
             AppButton(
               label: _submitting ? 'Enviando…' : 'Enviar renuncia',
               loading: _submitting,
-              onPressed: _submitting ? null : () => MresignApi(widget.teamId, widget.emailId),
+              onPressed: _submitting ? null : () => resignApi(widget.teamId, widget.emailId),
             ),
           ],
         ),
