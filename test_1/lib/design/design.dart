@@ -1,0 +1,36 @@
+/// Barrel: importa esto para tener tokens, tema y componentes base de una vez.
+library;
+
+export 'package:doliv_social/design/tokens/breakpoints.dart';
+export 'package:doliv_social/design/tokens/colors.dart';
+export 'package:doliv_social/design/tokens/spacing.dart';
+export 'package:doliv_social/design/tokens/typography.dart';
+export 'package:doliv_social/design/theme/app_theme.dart';
+export 'package:doliv_social/design/components/app_scaffold.dart';
+export 'package:doliv_social/design/components/glass_panel.dart';
+export 'package:doliv_social/design/components/app_back_button.dart';
+export 'package:doliv_social/design/components/desktop_center.dart';
+export 'package:doliv_social/design/components/offline_view.dart';
+export 'package:doliv_social/design/components/responsive_card_grid.dart';
+export 'package:doliv_social/design/components/app_button.dart';
+export 'package:doliv_social/design/components/app_card.dart';
+export 'package:doliv_social/design/components/app_text_field.dart';
+export 'package:doliv_social/design/components/state_views.dart';
+export 'package:doliv_social/design/components/coming_soon_card.dart';
+export 'package:doliv_social/design/components/coming_soon_list.dart';
+export 'package:doliv_social/design/components/section_header.dart';
+export 'package:doliv_social/design/components/stat_tile.dart';
+export 'package:doliv_social/design/components/app_dialog.dart';
+export 'package:doliv_social/design/components/app_badge.dart';
+export 'package:doliv_social/design/components/app_filter_chip.dart';
+export 'package:doliv_social/design/components/quick_action_chip.dart';
+export 'package:doliv_social/design/components/team_card.dart';
+export 'package:doliv_social/design/components/task_card.dart';
+export 'package:doliv_social/design/components/identity_avatar.dart';
+export 'package:doliv_social/design/components/person_card.dart';
+export 'package:doliv_social/design/components/profile_header.dart';
+export 'package:doliv_social/design/components/chat_bubble.dart';
+export 'package:doliv_social/design/components/message_composer.dart';
+export 'package:doliv_social/design/components/day_divider.dart';
+export 'package:doliv_social/design/components/emoji_picker_panel.dart';
+export 'package:doliv_social/design/components/unread_count_badge.dart';
