@@ -75,14 +75,6 @@ dependencies:
   # (app minimizada / pantalla bloqueada) usando un foreground service en
   # Android con controles en la notificación y en la pantalla de bloqueo.
   just_audio_background: ^0.0.1-beta.13
-  # just_audio no trae implementación nativa para Windows/Linux (solo
-  # Android/iOS/macOS/Web). just_audio_media_kit le agrega esas dos
-  # plataformas por debajo usando media_kit (libmpv), sin tocar el código
-  # que ya usa la API de just_audio (radio_player.dart no cambia).
-  just_audio_media_kit: ^2.1.0
-  media_kit_libs_windows_audio: any
-  media_kit_libs_linux: any
-  # webview_flutter_plus: ^0.3.0+2
   image_picker: ^1.2.3
   geolocator: ^14.0.3
   # Elegir cualquier archivo de oficina (PDF, Word, Excel, ...) para el
