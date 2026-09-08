@@ -151,6 +151,19 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Archivo histórico de la sala de chat global anterior (ver migración 016:
+-- `RENAME TABLE chat_messages TO chat_messages_legacy_global`). Ningún código
+-- la lee; se incluye aquí solo para que una base creada desde este archivo
+-- coincida con una actualizada por migraciones. En una instalación nueva
+-- queda vacía.
+CREATE TABLE IF NOT EXISTS chat_messages_legacy_global (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  team_id CHAR(24) NULL,
+  username VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS images (
   id INT AUTO_INCREMENT PRIMARY KEY,
   team_id CHAR(24) NOT NULL,
