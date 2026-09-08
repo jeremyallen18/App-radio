@@ -18,6 +18,26 @@ HTML;
 $programs = get_programs();
 
 // ---------------------------------------------------------------------
+// DIA ACTUAL EN HORA DE CIUDAD DE MEXICO. La parrilla esta definida en
+// la zona de la emisora, no en la del visitante -- al entrar se muestra
+// SOLO lo que suena hoy (antes se listaba la semana entera, lo que
+// confundia sobre que habia realmente al aire cada dia). La barra
+// .rundown-days y pages/programas.js permiten cambiar de dia sin
+// recargar; el JS reaplica el dia real por si la carga cruzo medianoche.
+// ---------------------------------------------------------------------
+$mexicoWeekday = (int) (new DateTime('now', new DateTimeZone('America/Mexico_City')))->format('N'); // 1 (lun) .. 7 (dom)
+$weekdayLabels = [1 => 'Lun', 2 => 'Mar', 3 => 'Mié', 4 => 'Jue', 5 => 'Vie', 6 => 'Sáb', 7 => 'Dom'];
+$weekdayFull   = [1 => 'lunes', 2 => 'martes', 3 => 'miércoles', 4 => 'jueves', 5 => 'viernes', 6 => 'sábado', 7 => 'domingo'];
+
+// Un programa "corre" un dia si su lista weekdays lo incluye; lista
+// vacia/NULL = todos los dias, y los programas sin horario fijo (musica
+// 24/7) suenan siempre.
+function program_runs_on(array $program, int $weekday): bool {
+    $days = array_filter(array_map('trim', explode(',', (string) ($program['weekdays'] ?? ''))));
+    return !$days || in_array((string) $weekday, $days, true);
+}
+
+// ---------------------------------------------------------------------
 // CATALOGO DE GENEROS. En la BD la misma etiqueta viene escrita de varias
 // formas ("Musica", "Música", "música"), asi que agrupar por el texto
 // crudo producia filtros duplicados que ademas no se encontraban entre si
@@ -114,7 +134,8 @@ $dialPrograms = array_values(array_filter(
              parrillas insiste en que una programacion "debe sentirse
              viva" y destacar el programa en curso en vez de mostrar una
              tabla congelada; el bloque completo lo repinta el JS con la
-             hora LOCAL del visitante (ver pages/programas.js).
+             hora de Ciudad de México, la zona de la parrilla, sin importar
+             donde este el visitante (ver pages/programas.js).
              ============================================================ -->
         <section class="booth" id="booth" data-empty-title="Radio Doliv Music" data-empty-host="Selección continua">
             <div class="booth-glow" aria-hidden="true"></div>
@@ -123,7 +144,7 @@ $dialPrograms = array_values(array_filter(
                 <p class="booth-status">
                     <span class="pulse-dot" aria-hidden="true"></span>
                     <span id="booth-status-label">Al aire ahora</span>
-                    <span class="booth-clock" id="booth-clock" aria-label="Hora local">--:--</span>
+                    <span class="booth-clock" id="booth-clock" aria-label="Hora de Ciudad de México">--:--</span>
                 </p>
 
                 <h1 class="booth-title" id="booth-title">Radio Doliv Music</h1>
@@ -165,9 +186,13 @@ $dialPrograms = array_values(array_filter(
                     // final del dia; su tramo despues de las 00 h ya queda
                     // representado por la franja "Madrugada" de mas abajo.
                     $span = $end <= $start ? (24 - $start) : ($end - $start);
+                    // El dial es la foto de HOY: los programas que no van hoy
+                    // no pintan segmento (el JS lo reevalua al cruzar medianoche).
+                    $segHiddenToday = !program_runs_on($program, $mexicoWeekday);
                 ?>
-                <button type="button" class="dial-seg"
+                <button type="button" class="dial-seg<?= $segHiddenToday ? ' is-hidden-day' : '' ?>"
                         data-dial-target="programa-<?= h($program['slug']) ?>"
+                        data-dial-weekdays="<?= h($program['weekdays'] ?? '') ?>"
                         style="--from: <?= $start ?>; --span: <?= $span ?>; --show-accent: <?= h($program['accent']) ?>;"
                         title="<?= h($program['title']) ?> · <?= h($program['badge_time'] ?? '') ?>">
                     <span class="dial-seg-name"><?= h($program['title']) ?></span>
@@ -182,6 +207,25 @@ $dialPrograms = array_values(array_filter(
             </div>
         </div>
         <?php endif; ?>
+
+        <!-- ============================================================
+             SELECTOR DE DIA — al entrar, la parrilla trae SOLO lo que
+             suena hoy (hora de Ciudad de México, la zona de la emisora).
+             Estos botones cambian el dia visible sin recargar la pagina
+             (ver pages/programas.js). Antes se mostraba la semana entera
+             de golpe, lo que confundia sobre la programacion real del dia.
+             ============================================================ -->
+        <div class="rundown-days" role="group" aria-label="Ver la parrilla de otro día" data-today="<?= $mexicoWeekday ?>">
+            <span class="rundown-days-label">Día</span>
+            <?php foreach ($weekdayLabels as $num => $label): ?>
+            <button type="button"
+                    class="rundown-day<?= $num === $mexicoWeekday ? ' is-active' : '' ?>"
+                    data-day="<?= $num ?>"
+                    title="Programación del <?= h($weekdayFull[$num]) ?>"<?= $num === $mexicoWeekday ? ' aria-current="date"' : '' ?>>
+                <?= $num === $mexicoWeekday ? 'Hoy' : h($label) ?>
+            </button>
+            <?php endforeach; ?>
+        </div>
 
         <?php if (count($categoryLabels) > 1): ?>
         <!-- Filtro por genero: texto subrayado, no pastillas -- la
@@ -198,8 +242,15 @@ $dialPrograms = array_values(array_filter(
         <div class="rundown" id="rundown">
             <?php foreach ($daypartOrder as $daypartKey):
                 $meta = $daypartMeta[$daypartKey];
+                // Franja sin ningun programa hoy: se oculta ya en el render
+                // (asi tambien queda bien sin JS); el JS la reevalua al
+                // cambiar de dia o de genero.
+                $blockHiddenToday = true;
+                foreach ($grouped[$daypartKey] as $blockProgram) {
+                    if (program_runs_on($blockProgram, $mexicoWeekday)) { $blockHiddenToday = false; break; }
+                }
             ?>
-            <section class="rundown-block" data-daypart="<?= h($daypartKey) ?>">
+            <section class="rundown-block<?= $blockHiddenToday ? ' is-hidden-day' : '' ?>" data-daypart="<?= h($daypartKey) ?>">
                 <header class="rundown-block-head">
                     <h2><?= h($meta['label']) ?></h2>
                     <span class="rundown-block-range"><?= h($meta['range']) ?></span>
@@ -208,12 +259,13 @@ $dialPrograms = array_values(array_filter(
 
                 <?php foreach ($grouped[$daypartKey] as $program):
                     $programIndex = $program['_index'];
+                    $programHiddenToday = !program_runs_on($program, $mexicoWeekday);
                     include __DIR__ . '/../inc/components/program-entry.php';
                 endforeach; ?>
             </section>
             <?php endforeach; ?>
 
-            <p class="rundown-empty" id="rundown-empty" hidden>Ningún programa coincide con ese género por ahora.</p>
+            <p class="rundown-empty" id="rundown-empty" hidden>Ningún programa coincide con ese día y género por ahora.</p>
         </div>
     </main>
 

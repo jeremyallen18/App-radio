@@ -13,7 +13,8 @@
     gap: clamp(48px, 6vw, 86px);
 }
 
-.rundown-block.is-filtered-out {
+.rundown-block.is-filtered-out,
+.rundown-block.is-hidden-day {
     display: none;
 }
 
@@ -78,7 +79,8 @@
     transform: none;
 }
 
-.rundown-item.is-filtered-out {
+.rundown-item.is-filtered-out,
+.rundown-item.is-hidden-day {
     display: none;
 }
 

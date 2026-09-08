@@ -316,6 +316,52 @@
     font-weight: 600;
 }
 
+/* Redes: pastillas con ícono + nombre, mismo trato que .roster-modal-chips
+   pero interactivas (enlace real) -- el acento del integrante marca el
+   ícono y el borde al pasar el mouse, sin recurrir a los colores propios
+   de cada red social. */
+.roster-modal-socials {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.roster-modal-social {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px 9px 12px;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.84rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: border-color var(--duration-base) var(--ease-out),
+                background var(--duration-base) var(--ease-out),
+                transform var(--duration-base) var(--ease-out);
+}
+
+.roster-modal-social:hover {
+    border-color: var(--member-accent, var(--cyan-glow));
+    background: color-mix(in srgb, var(--member-accent, var(--cyan-glow)) 16%, transparent);
+    transform: translateY(-1px);
+}
+
+.roster-modal-social svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    color: var(--member-accent, var(--cyan-glow));
+}
+
+body.light-theme .roster-modal-social {
+    border-color: rgba(15, 23, 42, 0.16);
+    background: rgba(15, 23, 42, 0.03);
+    color: #1e293b;
+}
+
 @media (max-width: 900px) {
     .roster-modal-card {
         grid-template-columns: 1fr;

@@ -19,7 +19,7 @@ $allTags = array_filter(array_map('trim', explode(',', (string) ($program['categ
 $tagList = array_slice($allTags, 0, 3);
 $tagKeys = program_tag_keys($program['categories'] ?? '');
 ?>
-<article class="rundown-item" id="programa-<?= h($program['slug']) ?>"
+<article class="rundown-item<?= !empty($programHiddenToday) ? ' is-hidden-day' : '' ?>" id="programa-<?= h($program['slug']) ?>"
     data-categories="<?= h(implode(',', $tagKeys)) ?>"
     data-title="<?= h($program['title']) ?>"
     data-host="<?= h($program['host']) ?>"

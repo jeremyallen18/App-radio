@@ -284,6 +284,11 @@
     background: var(--show-accent);
 }
 
+/* Programa que no sale al aire hoy: no ocupa sitio en el dial del dia. */
+.dial-seg.is-hidden-day {
+    display: none;
+}
+
 .dial-seg-name {
     font-size: 0.66rem;
     font-weight: 700;
@@ -410,5 +415,63 @@
 }
 
 .rundown-filter.is-active::after {
+    right: 0;
+}
+
+/* =========================================================
+   SELECTOR DE DIA — misma voz que el filtro de genero (texto
+   subrayado, no pastillas). Al entrar, la parrilla trae solo lo
+   que suena HOY en hora de Ciudad de México; estos botones
+   cambian el dia visible sin recargar.
+   ========================================================= */
+.rundown-days {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-4);
+    padding-bottom: var(--space-4);
+    margin-bottom: var(--space-6);
+}
+
+.rundown-days-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted-text);
+}
+
+.rundown-day {
+    position: relative;
+    padding: 0 0 4px;
+    border: 0;
+    background: transparent;
+    color: var(--muted-text);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    cursor: pointer;
+    transition: color var(--duration-base) var(--ease-out);
+}
+
+.rundown-day::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 100%;
+    bottom: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan-glow), #7c8cff);
+    transition: right var(--duration-base) var(--ease-out);
+}
+
+.rundown-day:hover {
+    color: var(--text-main);
+}
+
+.rundown-day.is-active {
+    color: var(--text-main);
+}
+
+.rundown-day.is-active::after {
     right: 0;
 }

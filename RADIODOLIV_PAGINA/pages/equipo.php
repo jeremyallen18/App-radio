@@ -108,6 +108,14 @@ $initialLocutorSlug = isset($_GET['locutor']) ? preg_replace('/[^a-z0-9\-]/', ''
                         <ul id="roster-modal-interests" class="roster-modal-chips"></ul>
                     </div>
                 </section>
+
+                <section class="roster-modal-section" id="roster-modal-socials-section" hidden>
+                    <p class="roster-modal-section-num" aria-hidden="true">04</p>
+                    <div class="roster-modal-section-body">
+                        <h3>Redes</h3>
+                        <div id="roster-modal-socials" class="roster-modal-socials"></div>
+                    </div>
+                </section>
             </div>
         </article>
     </div>
