@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:doliv_social/shared/teams/create_join_team/Domain-team.dart';
+import 'package:doliv_social/shared/teams/create_join_team/domain_team.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
@@ -18,7 +18,7 @@ class CreateTeamScreen extends StatefulWidget {
   const CreateTeamScreen({super.key});
 
   @override
-  _CreateTeamScreenState createState() => _CreateTeamScreenState();
+  State<CreateTeamScreen> createState() => _CreateTeamScreenState();
 }
 
 class _CreateTeamScreenState extends State<CreateTeamScreen> {
@@ -39,7 +39,6 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
     return AppScaffold(
       appBar: AppBar(
         title: const Text('Crear equipo'),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       scrollable: true,
@@ -145,6 +144,7 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
 
       if (response.statusCode == 200) {
         final String responseBody = await response.stream.bytesToString();
+        if (!mounted) return;
         final Map<String, dynamic> responseData = jsonDecode(responseBody);
         final String teamId = responseData['team']['_id'];
 

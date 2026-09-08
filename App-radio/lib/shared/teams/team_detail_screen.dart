@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/models.dart';
 import 'package:doliv_social/services/team_service.dart';
+import 'package:doliv_social/shared/directory/colleague_profile_screen.dart';
 import 'package:doliv_social/shared/teams/task_board_screen.dart';
 import 'package:doliv_social/shared/teams/user_picker_sheet.dart';
 
@@ -120,12 +121,13 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final employees = _members.where((u) => u.role == AppRole.employee).toList();
 
     return AppScaffold(
-      appBar: AppBar(leading: const AppBackButton(), title: Text(_dept.name)),
+      appBar: AppBar(leading: const BackButton(), title: Text(_dept.name)),
       body: Builder(
         builder: (context) {
           if (_loading) return const LoadingState();
           if (_error != null) return ErrorState(message: _error!, onRetry: _load);
           return RefreshIndicator(
+            color: AppColors.accent,
             onRefresh: _load,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(
@@ -176,6 +178,20 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                   )
                 else
                   ...employees.map((u) => AppCard(
+                        // Abre la ficha del compañero (donde el director edita
+                        // el número de control).
+                        onTap: () async {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ColleagueProfileScreen(
+                                colleagueId: u.id,
+                                preview: u,
+                                viewerIsDirector: true,
+                              ),
+                            ),
+                          );
+                          _load();
+                        },
                         child: Row(
                           children: [
                             IdentityAvatar(id: u.name),
@@ -189,6 +205,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                                           color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
                                   Text(u.headline,
                                       style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                                  Text(u.controlNumberLabel,
+                                      style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
                                 ],
                               ),
                             ),

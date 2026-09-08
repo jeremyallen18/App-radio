@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/shared/chat/chat.dart';
 import 'package:doliv_social/shared/leave/leave.dart';
-import 'package:doliv_social/shared/resources/Resources.dart';
-import 'package:doliv_social/shared/teams/LResign.dart';
-import 'package:doliv_social/shared/teams/MResign.dart';
+import 'package:doliv_social/shared/resources/resources.dart';
+import 'package:doliv_social/shared/teams/l_resign.dart';
+import 'package:doliv_social/shared/teams/m_resign.dart';
 
 String _shortName(String value) =>
     value.contains('@') ? value.substring(0, value.indexOf('@')) : value;

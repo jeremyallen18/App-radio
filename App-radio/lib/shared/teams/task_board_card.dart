@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/dept_task.dart';
+import 'package:doliv_social/shared/teams/widgets/task_visuals.dart';
 
-/// Tarjeta de una tarea (o subtarea, con `dense`) del tablero de equipo.
+/// Tarjeta de una tarea (o subtarea, con `dense`) de la escaleta del equipo.
 ///
+/// Riel de color a la izquierda con el tono de la tarea, casilla de
+/// completada, título, y una línea de meta (responsable · fecha · íconos).
 /// Es puramente de presentación: recibe callbacks para cada acción y no habla
 /// con la API. La lógica de permisos vive en [TaskBoardBody].
 class TaskBoardCard extends StatelessWidget {
@@ -41,198 +44,339 @@ class TaskBoardCard extends StatelessWidget {
   final VoidCallback? onViewEvidence;
   final bool dense;
 
-  Color get _statusColor => switch (task.status) {
-        DeptTaskStatus.pendiente => AppColors.textMuted,
-        DeptTaskStatus.enProgreso => AppColors.warning,
-        DeptTaskStatus.completada => AppColors.success,
-      };
-
-  Widget _chip(String text, Color color, {IconData? icon}) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 12, color: color),
-              const SizedBox(width: 3),
-            ],
-            Text(text,
-                style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700)),
-          ],
-        ),
-      );
-
-  /// Metadato discreto: ícono + texto en gris tenue.
-  Widget _meta(IconData icon, String text) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: AppColors.textMuted),
-          const SizedBox(width: 3),
-          Text(text, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
-        ],
-      );
-
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onOpen,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Casilla de completada: para el empleado es su única acción.
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                onPressed: (busy || !canComplete) ? null : onToggleDone,
-                tooltip: canComplete
-                    ? null
-                    : (task.assignedTo == null
-                        ? 'Sin responsable: solo un manager puede completarla'
-                        : 'Solo puede completarla la persona asignada'),
-                icon: Icon(
-                  task.isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-                  color: task.isDone
-                      ? AppColors.success
-                      : (canComplete ? AppColors.textMuted : AppColors.surfaceBorder),
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      task.title,
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: dense ? 14 : 15,
-                        decoration: task.isDone ? TextDecoration.lineThrough : null,
-                      ),
-                    ),
-                    if ((task.description ?? '').isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(task.description!,
-                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                    ],
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        GestureDetector(
-                          onTap: canManage && !busy ? onCycleStatus : null,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: _statusColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(AppRadius.pill),
-                            ),
-                            child: Text(task.statusLabel,
-                                style: TextStyle(color: _statusColor, fontSize: 11, fontWeight: FontWeight.w700)),
-                          ),
-                        ),
-                        if (task.assignedTo != null)
-                          _meta(Icons.person_outline, task.assignedTo!.name),
-                        if (task.dueLabel != null)
-                          _meta(Icons.event_outlined, task.dueLabel!),
-                        if (!dense && task.subtaskCount > 0)
-                          _meta(Icons.checklist,
-                              '${task.subtaskDoneCount}/${task.subtaskCount} subtareas'),
-                        if (task.awaitingReview)
-                          _chip('Por revisar', AppColors.warning,
-                              icon: Icons.hourglass_empty),
-                        if (task.reviewStatus == DeptTaskReviewStatus.aprobada)
-                          _chip('Aprobada', AppColors.success, icon: Icons.verified_outlined),
-                        if (task.completedLate)
-                          _chip('Retardo', AppColors.error,
-                              icon: Icons.timer_off_outlined),
-                        if (task.isRecurring)
-                          _chip(task.recurrence.label, AppColors.accent, icon: Icons.repeat),
-                        if (task.requiresEvidence && !task.hasEvidence)
-                          _chip('Requiere evidencia', AppColors.textMuted,
-                              icon: Icons.attach_file),
-                        if (task.hasEvidence)
-                          GestureDetector(
-                            onTap: onViewEvidence,
-                            child: _chip('Ver evidencia', AppColors.accent,
-                                icon: Icons.attach_file),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              if (canManage)
-                PopupMenuButton<String>(
-                  enabled: !busy,
-                  onSelected: (v) {
-                    switch (v) {
-                      case 'edit':
-                        onEdit();
-                      case 'sub':
-                        onAddSubtask?.call();
-                      case 'del':
-                        onDelete();
-                    }
-                  },
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Editar')),
-                    if (onAddSubtask != null)
-                      const PopupMenuItem(value: 'sub', child: Text('Agregar subtarea')),
-                    const PopupMenuItem(value: 'del', child: Text('Eliminar')),
-                  ],
-                ),
-            ],
+    final tone = TaskTone.of(task);
+    final showReview = canManage && task.awaitingReview;
+    final rejectNote = task.wasRejected && (task.reviewNote ?? '').isNotEmpty;
+
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: AppColors.surfaceBorder),
           ),
-
-          // Nota de rechazo: la ve sobre todo el empleado asignado.
-          if (task.wasRejected && (task.reviewNote ?? '').isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppRadius.chip),
-              ),
-              child: Text('Devuelta: ${task.reviewNote}',
-                  style: const TextStyle(color: AppColors.error, fontSize: 12)),
-            ),
-          ],
-
-          // Acciones de revisión (solo manager/director, tarea pendiente).
-          if (canManage && task.awaitingReview) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Row(
+          padding: EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              dense ? AppSpacing.sm : AppSpacing.md,
+              AppSpacing.sm,
+              dense ? AppSpacing.sm : AppSpacing.md),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: busy ? null : onReject,
-                    icon: const Icon(Icons.undo, size: 16),
-                    label: const Text('Devolver'),
-                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
-                  ),
+                StatusRail(color: tone.color),
+                const SizedBox(width: AppSpacing.sm),
+                _Checkbox(
+                  done: task.isDone,
+                  enabled: !busy && canComplete,
+                  tooltip: canComplete
+                      ? (task.isDone ? 'Reabrir' : 'Marcar como completada')
+                      : (task.assignedTo == null
+                          ? 'Sin responsable: solo un manager puede completarla'
+                          : 'Solo puede completarla la persona asignada'),
+                  onTap: onToggleDone,
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: FilledButton.icon(
-                    onPressed: busy ? null : onApprove,
-                    icon: const Icon(Icons.check, size: 16),
-                    label: const Text('Aprobar'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AnimatedDefaultTextStyle(
+                        duration: AppDurations.short,
+                        curve: AppCurves.standard,
+                        style: TextStyle(
+                          color: task.isDone
+                              ? AppColors.textMuted
+                              : AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: dense ? 14 : 15,
+                          decoration: task.isDone
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                          decorationColor: AppColors.textMuted,
+                        ),
+                        child: Text(task.title),
+                      ),
+                      if (!dense && (task.description ?? '').isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          task.description!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: AppColors.textMuted, fontSize: 12),
+                        ),
+                      ],
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: AppSpacing.md,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          StatusChip(
+                            tone: tone,
+                            compact: dense,
+                            onTap: canManage && !busy ? onCycleStatus : null,
+                          ),
+                          if (task.assignedTo != null)
+                            AssigneeChip(person: task.assignedTo!),
+                          DueChip(task: task),
+                          TaskFlags(task: task, onViewEvidence: onViewEvidence),
+                        ],
+                      ),
+                      if (!dense && task.subtaskCount > 0) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        SubtaskProgress(
+                            done: task.subtaskDoneCount,
+                            total: task.subtaskCount),
+                      ],
+                      if (rejectNote) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        _RejectNote(note: task.reviewNote!),
+                      ],
+                      if (showReview) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        _ReviewActions(
+                            busy: busy,
+                            onApprove: onApprove,
+                            onReject: onReject),
+                      ],
+                    ],
                   ),
                 ),
+                if (canManage)
+                  PopupMenuButton<String>(
+                    enabled: !busy,
+                    tooltip: 'Más acciones',
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(Icons.more_vert_rounded,
+                        color: AppColors.textMuted, size: 20),
+                    onSelected: (v) {
+                      switch (v) {
+                        case 'edit':
+                          onEdit();
+                        case 'sub':
+                          onAddSubtask?.call();
+                        case 'del':
+                          onDelete();
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(
+                          value: 'edit',
+                          child: ListTile(
+                              dense: true,
+                              leading: Icon(Icons.edit_outlined),
+                              title: Text('Editar'))),
+                      if (onAddSubtask != null)
+                        const PopupMenuItem(
+                            value: 'sub',
+                            child: ListTile(
+                                dense: true,
+                                leading: Icon(
+                                    Icons.subdirectory_arrow_right_rounded),
+                                title: Text('Agregar subtarea'))),
+                      const PopupMenuItem(
+                          value: 'del',
+                          child: ListTile(
+                              dense: true,
+                              leading: Icon(Icons.delete_outline,
+                                  color: AppColors.error),
+                              title: Text('Eliminar',
+                                  style: TextStyle(color: AppColors.error)))),
+                    ],
+                  )
+                else
+                  const SizedBox(width: AppSpacing.sm),
               ],
             ),
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Checkbox extends StatelessWidget {
+  const _Checkbox(
+      {required this.done,
+      required this.enabled,
+      required this.tooltip,
+      required this.onTap});
+
+  final bool done;
+  final bool enabled;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = done
+        ? AppColors.success
+        : enabled
+            ? AppColors.textMuted
+            : AppColors.surfaceBorder;
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 36,
+          child: Center(
+            child: AnimatedContainer(
+              duration: AppDurations.short,
+              curve: AppCurves.standard,
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: done ? AppColors.success : Colors.transparent,
+                border: Border.all(color: color, width: 2),
+              ),
+              child: AnimatedSwitcher(
+                duration: AppDurations.short,
+                switchInCurve: AppCurves.emphasized,
+                transitionBuilder: (child, anim) =>
+                    ScaleTransition(scale: anim, child: child),
+                child: done
+                    ? const Icon(Icons.check_rounded,
+                        size: 16, color: AppColors.bgBase)
+                    : const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RejectNote extends StatelessWidget {
+  const _RejectNote({required this.note});
+  final String note;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.undo_rounded, size: 14, color: AppColors.error),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Devuelta: $note',
+              style: const TextStyle(color: AppColors.error, fontSize: 12),
+            ),
+          ),
         ],
       ),
     );
   }
+}
+
+class _ReviewActions extends StatelessWidget {
+  const _ReviewActions(
+      {required this.busy, required this.onApprove, required this.onReject});
+  final bool busy;
+  final VoidCallback onApprove;
+  final VoidCallback onReject;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: busy ? null : onReject,
+            icon: const Icon(Icons.undo_rounded, size: 16),
+            label: const Text('Devolver'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.error,
+              side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: FilledButton.icon(
+            onPressed: busy ? null : onApprove,
+            icon: const Icon(Icons.check_rounded, size: 16),
+            label: const Text('Aprobar'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: AppColors.bgBase,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Conector "└" que cuelga una subtarea del riel de su tarea principal.
+class SubtaskConnector extends StatelessWidget {
+  const SubtaskConnector(
+      {super.key, required this.child, required this.isLast});
+
+  final Widget child;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 28,
+            child: CustomPaint(painter: _ConnectorPainter(isLast: isLast)),
+          ),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConnectorPainter extends CustomPainter {
+  _ConnectorPainter({required this.isLast});
+  final bool isLast;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.surfaceBorder
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+    const x = 14.0;
+    final midY = size.height / 2;
+    canvas.drawLine(
+        const Offset(x, 0), Offset(x, isLast ? midY : size.height), paint);
+    final path = Path()
+      ..moveTo(x, midY - 6)
+      ..quadraticBezierTo(x, midY, x + 6, midY)
+      ..lineTo(size.width, midY);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_ConnectorPainter old) => old.isLast != isLast;
 }

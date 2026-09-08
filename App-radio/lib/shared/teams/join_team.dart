@@ -1,19 +1,19 @@
 import "package:flutter/material.dart";
 import 'package:http/http.dart' as http;
 import 'package:doliv_social/design/design.dart';
-import 'package:doliv_social/core/Routes.dart';
+import 'package:doliv_social/core/routes.dart';
 import 'package:doliv_social/models/join_model.dart';
 import 'package:doliv_social/shared/auth/login.dart';
 import 'package:doliv_social/core/api_config.dart';
 
-class join_team extends StatefulWidget {
-  const join_team({super.key});
+class JoinTeamScreen extends StatefulWidget {
+  const JoinTeamScreen({super.key});
 
   @override
-  State<join_team> createState() => _join_teamState();
+  State<JoinTeamScreen> createState() => _JoinTeamScreenState();
 }
 
-class _join_teamState extends State<join_team> {
+class _JoinTeamScreenState extends State<JoinTeamScreen> {
   final TextEditingController teamCodeController = TextEditingController();
   bool _joining = false;
 

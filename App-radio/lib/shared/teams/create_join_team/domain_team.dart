@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:doliv_social/shared/teams/create_join_team/create-team.dart';
+import 'package:doliv_social/shared/teams/create_join_team/create_team.dart';
 import 'package:doliv_social/shared/auth/login.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -25,7 +25,6 @@ class TeamDetailsScreen extends StatelessWidget {
     return AppScaffold(
       appBar: AppBar(
         title: Text(teamname),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
@@ -172,7 +171,6 @@ class _InviteMembersScreenState extends State<InviteMembersScreen> {
     return AppScaffold(
       appBar: AppBar(
         title: Text('Invitar a ${widget.domain.name}'),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       scrollable: true,

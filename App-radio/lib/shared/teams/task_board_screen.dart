@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:doliv_social/core/session.dart';
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/dept_task.dart';
 import 'package:doliv_social/models/models.dart';
@@ -11,6 +12,7 @@ import 'package:doliv_social/shared/teams/evidence_confirm_sheet.dart';
 import 'package:doliv_social/shared/teams/task_board_card.dart';
 import 'package:doliv_social/shared/teams/task_detail_sheet.dart';
 import 'package:doliv_social/shared/teams/task_form_screen.dart';
+import 'package:doliv_social/shared/teams/widgets/board_summary.dart';
 import 'package:doliv_social/shared/widgets/app_menu_drawer.dart';
 import 'package:doliv_social/shared/widgets/evidence_viewer.dart';
 
@@ -35,7 +37,7 @@ class TaskBoardScreen extends StatelessWidget {
     return AppScaffold(
       drawer: const AppMenuDrawer(),
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: Text('Tareas · $departmentName'),
         actions: [
           Builder(
@@ -90,7 +92,7 @@ class TaskBoardBody extends StatefulWidget {
 class _TaskBoardBodyState extends State<TaskBoardBody> {
   List<DeptTask> _tasks = const [];
   List<UserProfile> _members = const [];
-  bool _onlyMine = false;
+  BoardFilter _filter = BoardFilter.all;
   bool _loading = true;
   bool _busy = false;
   String? _error;
@@ -107,11 +109,10 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
       _error = null;
     });
     try {
+      // Siempre se pide el listado completo: los filtros ("Mías", "Por
+      // revisar", "Vencidas"...) se aplican en el cliente sin recargar.
       final results = await Future.wait([
-        DeptTaskApi.list(
-          departmentId: widget.departmentId,
-          mine: !widget.canManage && _onlyMine,
-        ),
+        DeptTaskApi.list(departmentId: widget.departmentId),
         if (widget.canManage)
           TeamApi.members(widget.departmentId)
         else
@@ -120,9 +121,13 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
       if (!mounted) return;
       setState(() {
         _tasks = results[0] as List<DeptTask>;
-        _members = (results[1] as List<UserProfile>)
-            .where((u) => u.role == AppRole.employee)
-            .toList();
+        // Asignables al desglosar: los empleados del área y, al final, el
+        // propio manager (por si se queda un tramo).
+        final people = results[1] as List<UserProfile>;
+        _members = [
+          ...people.where((u) => u.role == AppRole.employee),
+          ...people.where((u) => u.role == AppRole.manager),
+        ];
         _loading = false;
       });
     } on TeamException catch (e) {
@@ -134,9 +139,19 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
     }
   }
 
-  List<DeptTask> get _topLevel => _tasks.where((t) => !t.isSubtask).toList();
   List<DeptTask> _subtasksOf(String id) =>
       _tasks.where((t) => t.parentId == id).toList();
+
+  bool _matches(DeptTask t) =>
+      _filter.matches(t, currentUserId: widget.currentUserId);
+
+  /// Tareas principales que pasan el filtro, ya sea por sí mismas o porque
+  /// alguna de sus subtareas lo pasa (así una subtarea "por revisar" no
+  /// queda huérfana). Las subtareas se muestran completas bajo su tarea.
+  List<DeptTask> get _visibleTopLevel => _tasks
+      .where((t) => !t.isSubtask)
+      .where((t) => _matches(t) || _subtasksOf(t.id).any(_matches))
+      .toList();
 
   /// Quién puede marcar una tarea como completada.
   ///
@@ -316,6 +331,19 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
   }
 
   Future<void> _openForm({String? parentId, DeptTask? existing}) async {
+    // El director elige departamento (la tarea le cae al manager); para eso
+    // el formulario necesita la lista de departamentos.
+    final isDirector = await Session.getCachedRole() == AppRole.director;
+    List<DepartmentInfo> departments = const [];
+    if (isDirector && parentId == null) {
+      try {
+        departments = await TeamApi.listDepartments();
+      } on TeamException catch (e) {
+        _snack(e.message);
+        return;
+      }
+    }
+    if (!mounted) return;
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => TaskFormScreen(
@@ -323,6 +351,8 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
           parentId: parentId,
           existing: existing,
           members: _members,
+          asDirector: isDirector,
+          departments: departments,
         ),
       ),
     );
@@ -372,92 +402,109 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
     if (_loading) return const LoadingState();
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
 
+    final visible = _visibleTopLevel;
+    final hasAny = _tasks.isNotEmpty;
+
     return RefreshIndicator(
       onRefresh: _load,
+      color: AppColors.accent,
       child: ListView(
         padding: widget.padding,
         children: [
-          if (widget.canManage) ...[
-            AppButton(
-              label: 'NUEVA TAREA',
-              onPressed: _busy ? null : () => _openForm(),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-          ] else ...[
-            Row(
-              children: [
-                const Text('Mostrar:', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-                const SizedBox(width: AppSpacing.sm),
-                AppFilterChip(
-                  label: 'Todas',
-                  selected: !_onlyMine,
-                  onTap: () {
-                    setState(() => _onlyMine = false);
-                    _load();
-                  },
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                AppFilterChip(
-                  label: 'Solo mías',
-                  selected: _onlyMine,
-                  onTap: () {
-                    setState(() => _onlyMine = true);
-                    _load();
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-          ],
-          if (_topLevel.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: AppSpacing.xxl),
+          BoardSummary(
+            tasks: _tasks,
+            selected: _filter,
+            onSelect: (f) => setState(() => _filter = f),
+            currentUserId: widget.currentUserId,
+            showMine: widget.currentUserId != null,
+            trailing: widget.canManage
+                ? _NewTaskButton(onPressed: _busy ? null : () => _openForm())
+                : null,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          if (!hasAny)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xxl),
               child: EmptyState(
-                icon: Icons.checklist_rtl_outlined,
-                title: 'No hay tareas',
-                message: 'Todavía no se han creado tareas para este equipo.',
+                icon: Icons.playlist_add_check_rounded,
+                title: 'La escaleta está vacía',
+                message: widget.canManage
+                    ? 'Crea la primera tarea del equipo.'
+                    : 'Cuando tu manager cree tareas, aparecerán aquí.',
+                action: widget.canManage
+                    ? OutlinedButton.icon(
+                        onPressed: _busy ? null : () => _openForm(),
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('Nueva tarea'),
+                      )
+                    : null,
+              ),
+            )
+          else if (visible.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xxl),
+              child: EmptyState(
+                icon: Icons.filter_list_off_rounded,
+                title: 'Nada en "${_filter.label}"',
+                message: 'Prueba con otro filtro.',
+                action: OutlinedButton(
+                  onPressed: () => setState(() => _filter = BoardFilter.all),
+                  child: const Text('Ver todas'),
+                ),
               ),
             )
           else
-            for (final t in _topLevel) ...[
-              TaskBoardCard(
-                task: t,
-                canManage: widget.canManage,
-                canComplete: _canComplete(t),
-                busy: _busy,
-                onToggleDone: () => _toggleDone(t),
-                onCycleStatus: () => _cycleStatus(t),
-                onEdit: () => _openForm(existing: t),
-                onAddSubtask: () => _openForm(parentId: t.id),
-                onDelete: () => _delete(t),
-                onOpen: () => _openDetail(t),
-                onViewEvidence: t.hasEvidence ? () => _openEvidence(t) : null,
-                onApprove: () => _review(t, approve: true),
-                onReject: () => _review(t, approve: false),
-              ),
-              for (final s in _subtasksOf(t.id))
+            for (final t in visible) ...[
+              _card(t),
+              for (final (i, s) in _subtasksOf(t.id).indexed)
                 Padding(
-                  padding: const EdgeInsets.only(left: AppSpacing.xl, top: AppSpacing.sm),
-                  child: TaskBoardCard(
-                    task: s,
-                    canManage: widget.canManage,
-                    canComplete: _canComplete(s),
-                    busy: _busy,
-                    dense: true,
-                    onToggleDone: () => _toggleDone(s),
-                    onCycleStatus: () => _cycleStatus(s),
-                    onEdit: () => _openForm(existing: s),
-                    onAddSubtask: null,
-                    onDelete: () => _delete(s),
-                    onOpen: () => _openDetail(s),
-                    onViewEvidence: s.hasEvidence ? () => _openEvidence(s) : null,
-                    onApprove: () => _review(s, approve: true),
-                    onReject: () => _review(s, approve: false),
+                  padding: const EdgeInsets.only(top: AppSpacing.sm),
+                  child: SubtaskConnector(
+                    isLast: i == _subtasksOf(t.id).length - 1,
+                    child: _card(s, dense: true),
                   ),
                 ),
               const SizedBox(height: AppSpacing.md),
             ],
         ],
+      ),
+    );
+  }
+
+  Widget _card(DeptTask t, {bool dense = false}) => TaskBoardCard(
+        task: t,
+        canManage: widget.canManage,
+        canComplete: _canComplete(t),
+        busy: _busy,
+        dense: dense,
+        onToggleDone: () => _toggleDone(t),
+        onCycleStatus: () => _cycleStatus(t),
+        onEdit: () => _openForm(existing: t),
+        onAddSubtask: dense ? null : () => _openForm(parentId: t.id),
+        onDelete: () => _delete(t),
+        onOpen: () => _openDetail(t),
+        onViewEvidence: t.hasEvidence ? () => _openEvidence(t) : null,
+        onApprove: () => _review(t, approve: true),
+        onReject: () => _review(t, approve: false),
+      );
+}
+
+/// Botón compacto "+ Nueva" de la cabecera (manager / director).
+class _NewTaskButton extends StatelessWidget {
+  const _NewTaskButton({required this.onPressed});
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.icon(
+      onPressed: onPressed,
+      icon: const Icon(Icons.add_rounded, size: 18),
+      label: const Text('Nueva'),
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.brandBlue,
+        foregroundColor: AppColors.textPrimary,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
+        textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
       ),
     );
   }
