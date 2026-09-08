@@ -3,7 +3,6 @@ import 'package:doliv_social/shared/auth/login.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:doliv_social/design/design.dart';
-import 'package:doliv_social/services/team_service.dart';
 import 'package:doliv_social/core/api_config.dart';
 
 class TaskContainer extends StatefulWidget {
@@ -11,26 +10,6 @@ class TaskContainer extends StatefulWidget {
 
   @override
   State<TaskContainer> createState() => _TaskContainerState();
-}
-
-// progress.dart lee estos contadores; se inicializan en 0 para que esa pantalla
-// no reviente si se abre antes de que termine la primera carga.
-int? completedTaskNum = 0;
-int? incompleteTaskNum = 0;
-
-/// Pide los conteos de tareas propias al backend y actualiza
-/// [completedTaskNum]/[incompleteTaskNum]. `progress.dart` la llama al
-/// abrirse. Usa el flujo jerárquico por departamento (`/dept-tasks/summary`):
-/// cuenta las tareas y subtareas asignadas al usuario. "Pendientes" incluye
-/// las que están en progreso.
-Future<void> refreshTaskCounts() async {
-  try {
-    final s = await DeptTaskApi.summary();
-    incompleteTaskNum = s.minePending;
-    completedTaskNum = s.mineDone;
-  } catch (_) {
-    // Sin red o error: se dejan los contadores como estaban.
-  }
 }
 
 class _TaskContainerState extends State<TaskContainer> {
@@ -79,7 +58,6 @@ class _TaskContainerState extends State<TaskContainer> {
     if (response.statusCode == 200) {
       setState(() {
         incompTasks = jsonDecode(response.body)['incompleteTasks'] ?? [];
-        incompleteTaskNum = incompTasks.length;
       });
     }
   }
@@ -94,7 +72,6 @@ class _TaskContainerState extends State<TaskContainer> {
     if (response.statusCode == 200) {
       setState(() {
         compTasks = jsonDecode(response.body)['completedTasks'] ?? [];
-        completedTaskNum = compTasks.length;
       });
     }
   }
@@ -134,7 +111,9 @@ class _TaskContainerState extends State<TaskContainer> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo completar la tarea (${response.statusCode})')),
+          SnackBar(
+              content: Text(
+                  'No se pudo completar la tarea (${response.statusCode})')),
         );
       }
     } catch (_) {
@@ -152,68 +131,89 @@ class _TaskContainerState extends State<TaskContainer> {
     return AppScaffold(
       padding: EdgeInsets.zero,
       body: RefreshIndicator(
-          onRefresh: _loadAll,
-          child: _loading
-              ? const LoadingState()
-              : _hasError
-                  ? ErrorState(
-                      message: 'No se pudieron cargar tus tareas.',
-                      onRetry: _loadAll,
-                    )
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                      children: [
-                    const Text(
-                      'Mis tareas',
-                      style: TextStyle(color: AppColors.textPrimary, fontSize: 26, fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        _summaryChip(Icons.pending_actions, '${incompTasks.length} pendientes', AppColors.warning),
-                        const SizedBox(width: 10),
-                        _summaryChip(Icons.check_circle, '${compTasks.length} completadas', AppColors.success),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    _sectionTitle('Pendientes'),
-                    const SizedBox(height: 10),
-                    if (incompTasks.isEmpty)
-                      const EmptyState(
-                        icon: Icons.pending_actions,
-                        title: 'No tienes tareas pendientes',
-                      )
-                    else
-                      ResponsiveCardGrid(
+        color: AppColors.accent,
+        onRefresh: _loadAll,
+        child: _loading
+            ? const LoadingState()
+            : _hasError
+                ? ErrorState(
+                    message: 'No se pudieron cargar tus tareas.',
+                    onRetry: _loadAll,
+                  )
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                    children: [
+                      const Text(
+                        'Mis tareas',
+                        style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
                         children: [
-                          for (final t in incompTasks)
-                            _taskCard(Map<String, dynamic>.from(t), done: false),
+                          _summaryChip(
+                              Icons.pending_actions,
+                              '${incompTasks.length} pendientes',
+                              AppColors.warning),
+                          const SizedBox(width: 10),
+                          _summaryChip(
+                              Icons.check_circle,
+                              '${compTasks.length} completadas',
+                              AppColors.success),
                         ],
                       ),
-                    const SizedBox(height: 24),
-                    _sectionTitle('Completadas'),
-                    const SizedBox(height: 10),
-                    if (compTasks.isEmpty)
-                      const EmptyState(
-                        icon: Icons.check_circle_outline,
-                        title: 'Todavía no has completado ninguna tarea',
-                      )
-                    else
-                      ResponsiveCardGrid(
-                        children: [
-                          for (final t in compTasks)
-                            _taskCard(Map<String, dynamic>.from(t), done: true),
-                        ],
-                      ),
-                  ],
-                ),
+                      const SizedBox(height: 24),
+                      _sectionTitle('Pendientes'),
+                      const SizedBox(height: 10),
+                      if (incompTasks.isEmpty)
+                        const EmptyState(
+                          icon: Icons.pending_actions,
+                          title: 'No tienes tareas pendientes',
+                        )
+                      else
+                        ResponsiveCardGrid(
+                          children: [
+                            for (final (i, t) in incompTasks.indexed)
+                              AppFadeIn.staggered(
+                                index: i,
+                                child: _taskCard(Map<String, dynamic>.from(t),
+                                    done: false),
+                              ),
+                          ],
+                        ),
+                      const SizedBox(height: 24),
+                      _sectionTitle('Completadas'),
+                      const SizedBox(height: 10),
+                      if (compTasks.isEmpty)
+                        const EmptyState(
+                          icon: Icons.check_circle_outline,
+                          title: 'Todavía no has completado ninguna tarea',
+                        )
+                      else
+                        ResponsiveCardGrid(
+                          children: [
+                            for (final (i, t) in compTasks.indexed)
+                              AppFadeIn.staggered(
+                                index: i,
+                                child: _taskCard(Map<String, dynamic>.from(t),
+                                    done: true),
+                              ),
+                          ],
+                        ),
+                    ],
+                  ),
       ),
     );
   }
 
   Widget _sectionTitle(String text) => Text(
         text,
-        style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+        style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w700),
       );
 
   Widget _summaryChip(IconData icon, String label, Color color) {
@@ -232,7 +232,10 @@ class _TaskContainerState extends State<TaskContainer> {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -243,13 +246,15 @@ class _TaskContainerState extends State<TaskContainer> {
   }
 
   Widget _taskCard(Map<String, dynamic> task, {required bool done}) {
-    final String description = task['description']?.toString() ?? 'Sin descripción';
+    final String description =
+        task['description']?.toString() ?? 'Sin descripción';
     final String teamName = task['teamName']?.toString() ?? '';
     final String domainName = task['domainName']?.toString() ?? '';
     final String deadline = task['deadline']?.toString() ?? '';
     final bool busy = _updating.contains(_taskKey(task));
 
-    final String context_ = [teamName, domainName].where((s) => s.isNotEmpty).join(' · ');
+    final String context_ =
+        [teamName, domainName].where((s) => s.isNotEmpty).join(' · ');
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),

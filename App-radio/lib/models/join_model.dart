@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-JoinTeam joinTeamFromJson(String str) => JoinTeam.fromJson(json.decode(str));
-
 String joinTeamToJson(JoinTeam data) => json.encode(data.toJson());
 
 class JoinTeam {
