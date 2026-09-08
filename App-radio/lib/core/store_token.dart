@@ -19,11 +19,3 @@ class SecureStorage {
     return deleteData;
   }
 }
-
-class Token{
- String? access;
-
- Token.fromJson(dynamic json) {
-   access = json;
- }
-}
