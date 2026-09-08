@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/dept_task.dart';
 import 'package:doliv_social/models/models.dart';
+import 'package:doliv_social/models/sub_team.dart';
 import 'package:doliv_social/services/team_service.dart';
 import 'package:doliv_social/shared/teams/user_picker_sheet.dart';
 import 'package:doliv_social/shared/calendar/date_pickers.dart';
@@ -23,6 +24,9 @@ class TaskFormScreen extends StatefulWidget {
     this.members = const [],
     this.asDirector = false,
     this.departments = const [],
+    this.subTeams = const [],
+    this.fixedSubTeamId,
+    this.fixedSubTeamName,
   });
 
   /// Departamento de la tarea. Puede venir vacío solo cuando el director
@@ -42,6 +46,15 @@ class TaskFormScreen extends StatefulWidget {
   /// Departamentos a elegir (solo en modo director).
   final List<DepartmentInfo> departments;
 
+  /// Sub-equipos del área (migración 030), para que quien administra pueda
+  /// archivar la tarea bajo uno al crearla. Vacío = no se ofrece.
+  final List<SubTeam> subTeams;
+
+  /// Sub-equipo fijo: el tablero venía acotado a él (sub-líder o "Tablero del
+  /// sub-equipo"). La tarea nace ahí y el selector no se muestra.
+  final String? fixedSubTeamId;
+  final String? fixedSubTeamName;
+
   bool get isSubtask => parentId != null;
   bool get isEdit => existing != null;
 
@@ -58,6 +71,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   late final TextEditingController _description;
   UserProfile? _assignee;
   String? _departmentId;
+  String? _subTeamId;
   DateTime? _due;
   bool _requiresEvidence = false;
   TaskRecurrence _recurrence = TaskRecurrence.none;
@@ -73,6 +87,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     super.initState();
     final e = widget.existing;
     _departmentId = e?.departmentId ?? widget.departmentId;
+    _subTeamId = widget.fixedSubTeamId ?? e?.subTeam?.id;
     _title = TextEditingController(text: e?.title ?? '');
     _description = TextEditingController(text: e?.description ?? '');
     _due = e?.dueDate;
@@ -177,6 +192,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         await DeptTaskApi.create(
           departmentId: _departmentId,
           parentId: widget.parentId,
+          subTeamId: _subTeamId,
           title: _title.text,
           description: _description.text,
           // En modo director el backend asigna al manager del departamento.
@@ -295,6 +311,46 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                         : 'Solo ${_assignee!.name} podrá marcarla como completada.',
                     style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                   ),
+                ),
+              ],
+              if (!widget.isSubtask && widget.fixedSubTeamName != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                _Label('Sub-equipo'),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.workspaces_outline,
+                          size: 16, color: AppColors.textMuted),
+                      const SizedBox(width: 6),
+                      Text(widget.fixedSubTeamName!,
+                          style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ] else if (!widget.isSubtask &&
+                  !widget.isEdit &&
+                  widget.subTeams.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                _Label('Sub-equipo', hint: 'opcional'),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    AppFilterChip(
+                      label: 'Sin sub-equipo',
+                      selected: _subTeamId == null,
+                      onTap: () => setState(() => _subTeamId = null),
+                    ),
+                    for (final s in widget.subTeams)
+                      AppFilterChip(
+                        label: s.name,
+                        selected: _subTeamId == s.id,
+                        onTap: () => setState(() => _subTeamId = s.id),
+                      ),
+                  ],
                 ),
               ],
               const SizedBox(height: AppSpacing.md),

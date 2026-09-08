@@ -9,6 +9,7 @@ require __DIR__ . '/attendance_reports.php';
 require __DIR__ . '/leave_requests.php';
 require __DIR__ . '/absences.php';
 require __DIR__ . '/dept_tasks.php';
+require __DIR__ . '/sub_teams.php';
 require __DIR__ . '/internal_announcements.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/chat.php';
@@ -101,6 +102,17 @@ $routes = [
     ['POST', '#^/department/assignManager/([^/]+)/?$#',       'assignDepartmentManager'],
     ['POST', '#^/department/assignEmployee/([^/]+)/?$#',      'assignDepartmentEmployee'],
     ['POST', '#^/department/removeEmployee/([^/]+)/?$#',      'removeDepartmentEmployee'],
+
+    // ---- Sub-equipos dentro de un departamento (migración 030) --------
+    // Director / manager del área: crear, editar, borrar, fijar sub-líder.
+    // Sub-líder: agregar/quitar miembros de SU sub-equipo.
+    ['POST', '#^/subteam/create/?$#',                        'subTeamCreate'],
+    ['GET',  '#^/subteam/list/?$#',                          'subTeamList'],
+    ['POST', '#^/subteam/([^/]+)/delete/?$#',                'subTeamDelete'],
+    ['POST', '#^/subteam/([^/]+)/setLead/?$#',               'subTeamSetLead'],
+    ['POST', '#^/subteam/([^/]+)/addMember/?$#',             'subTeamAddMember'],
+    ['POST', '#^/subteam/([^/]+)/removeMember/?$#',          'subTeamRemoveMember'],
+    ['POST', '#^/subteam/([^/]+)/?$#',                       'subTeamUpdate'],
 
     // ---- Flujo jerárquico de tareas por departamento/equipo -----------
     // Director: cualquier departamento. Manager: tareas y subtareas de su

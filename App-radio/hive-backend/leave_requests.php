@@ -274,6 +274,11 @@ function leaveRequestCreate(PDO $pdo) {
     if (!in_array($type, LEAVE_TYPES, true)) {
         leave_fail('Selecciona un tipo de permiso válido.', 400);
     }
+    // Las vacaciones ya no se solicitan por la app (el tipo se conserva solo
+    // para leer/mostrar el historial anterior).
+    if ($type === 'vacaciones') {
+        leave_fail('Las solicitudes de vacaciones no están disponibles.', 400);
+    }
 
     $start = leave_valid_date($_POST['requestedStartDate'] ?? '');
     $end = leave_valid_date($_POST['requestedEndDate'] ?? '');
@@ -290,23 +295,41 @@ function leaveRequestCreate(PDO $pdo) {
         leave_fail('El inicio y el término deben ser un día laboral (lunes a sábado).', 400);
     }
 
-    // No se puede pedir vacaciones ni un permiso para una fecha que ya pasó
-    // (una incapacidad SÍ puede ser retroactiva: la evidencia la respalda).
-    // La justificación de faltas pasadas va por su módulo propio.
-    $today = date('Y-m-d'); // zona horaria del servidor (-06:00, México)
-    if (in_array($type, ['vacaciones', 'permiso'], true) && $start < $today) {
-        leave_fail('No puedes solicitar ' . ($type === 'vacaciones' ? 'vacaciones' : 'un permiso')
-            . ' para una fecha que ya pasó.', 400);
-    }
-
-    // Vacaciones: máximo un mes de calendario (p. ej. 15-ene a 15-feb sí;
-    // 15-ene a 16-feb no). Se ajusta al último día del mes cuando el día de
-    // inicio no existe en el mes siguiente.
+    // Ventanas de fecha por tipo (todo relativo a HOY, zona del servidor
+    // -06:00 México). La justificación de faltas pasadas va por su módulo propio.
+    //   vacaciones : inicio de hoy en adelante; el rango no pasa de un mes de
+    //                calendario desde el inicio (15-ene→15-feb sí, →16-feb no).
+    //   permiso    : TODO el permiso cae en [hoy, hoy + 1 mes de calendario].
+    //   incapacidad: el inicio puede ser hasta 3 días hacia atrás (la evidencia
+    //                médica lo respalda); el término no pasa de un año desde hoy.
+    $today = date('Y-m-d');
     if ($type === 'vacaciones') {
+        if ($start < $today) {
+            leave_fail('No puedes solicitar vacaciones para una fecha que ya pasó.', 400);
+        }
         $maxEnd = one_calendar_month_max_end($start);
         if ($end > $maxEnd) {
             leave_fail('Las vacaciones no pueden abarcar más de un mes. '
                 . 'Con este inicio, la última fecha posible es el ' . $maxEnd . '.', 400);
+        }
+    } elseif ($type === 'permiso') {
+        if ($start < $today) {
+            leave_fail('No puedes solicitar un permiso para una fecha que ya pasó.', 400);
+        }
+        $maxEnd = one_calendar_month_max_end($today);
+        if ($end > $maxEnd) {
+            leave_fail('Un permiso solo puede solicitarse hasta un mes a partir de hoy '
+                . '(última fecha posible: ' . $maxEnd . ').', 400);
+        }
+    } elseif ($type === 'incapacidad') {
+        $minStart = date('Y-m-d', strtotime($today . ' -3 days'));
+        if ($start < $minStart) {
+            leave_fail('La incapacidad puede iniciar como máximo 3 días antes de hoy.', 400);
+        }
+        $maxEnd = date('Y-m-d', strtotime($today . ' +1 year'));
+        if ($end > $maxEnd) {
+            leave_fail('Una incapacidad no puede extenderse más de un año a partir de hoy '
+                . '(última fecha posible: ' . $maxEnd . ').', 400);
         }
     }
 
@@ -562,11 +585,18 @@ function adminLeaveRequestApprove(PDO $pdo, string $id) {
     if (!is_working_day($start) || !is_working_day($end)) {
         leave_fail('El inicio y el término autorizados deben ser un día laboral (lunes a sábado).', 400);
     }
-    // Vacaciones: el periodo autorizado tampoco puede pasar de un mes.
-    if ($row['type'] === 'vacaciones') {
+    // El periodo autorizado respeta el mismo tope que la solicitud:
+    // vacaciones y permiso ≤ un mes de calendario; incapacidad ≤ un año.
+    if ($row['type'] === 'vacaciones' || $row['type'] === 'permiso') {
         $maxEnd = one_calendar_month_max_end($start);
         if ($end > $maxEnd) {
-            leave_fail('Las vacaciones no pueden abarcar más de un mes (última fecha posible: ' . $maxEnd . ').', 400);
+            $etq = $row['type'] === 'vacaciones' ? 'Las vacaciones' : 'El permiso';
+            leave_fail($etq . ' no pueden abarcar más de un mes (última fecha posible: ' . $maxEnd . ').', 400);
+        }
+    } elseif ($row['type'] === 'incapacidad') {
+        $maxEnd = date('Y-m-d', strtotime($start . ' +1 year'));
+        if ($end > $maxEnd) {
+            leave_fail('Una incapacidad no puede abarcar más de un año (última fecha posible: ' . $maxEnd . ').', 400);
         }
     }
     if (leave_has_overlap($pdo, $emp['id'], $start, $end, $id)) {

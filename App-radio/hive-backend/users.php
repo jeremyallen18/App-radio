@@ -44,7 +44,11 @@ function build_user_profile_payload(PDO $pdo, array $user): array {
 // (Director / Manager / Employee) — el token en sí no lleva el rol.
 function getMe(PDO $pdo) {
     $user = require_auth($pdo);
-    json_response(build_user_profile_payload($pdo, $user));
+    $payload = build_user_profile_payload($pdo, $user);
+    // Sub-equipos que lidera (migración 030), para pintar la entrada de menú
+    // del sub-líder sin una llamada extra.
+    $payload['ledSubTeams'] = sub_team_led_summary($pdo, $user['id']);
+    json_response($payload);
 }
 
 // Sube/reemplaza la foto de perfil del usuario autenticado. Misma validación
@@ -130,7 +134,8 @@ function listColleagues(PDO $pdo) {
     $scope = trim($_GET['scope'] ?? 'department');
     $query = trim($_GET['q'] ?? '');
 
-    $where = [];
+    // Las cuentas sin verificar el correo no existen para el directorio.
+    $where = [SQL_USER_VERIFIED];
     $params = [];
 
     if ($scope === 'department') {
@@ -199,7 +204,9 @@ function getColleagueProfile(PDO $pdo, string $userId) {
     $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
     $stmt->execute([$userId]);
     $target = $stmt->fetch();
-    if (!$target) {
+    // Una cuenta sin verificar no aparece en el directorio, así que su ficha
+    // tampoco se abre: se responde igual que si no existiera.
+    if (!$target || !user_email_verified($target)) {
         error_response('No encontramos a esa persona', 404);
     }
 
@@ -237,6 +244,11 @@ function setControlNumber(PDO $pdo, string $userId) {
     $target = $stmt->fetch();
     if (!$target) {
         error_response('No encontramos a esa persona', 404);
+    }
+    // El número de control se asigna al verificar el correo (ver verifyEmail).
+    // A una cuenta sin verificar no se le puede poner ni corregir.
+    if (!user_email_verified($target)) {
+        error_response('Esa cuenta todavía no verifica su correo', 409);
     }
 
     $body = request_body();

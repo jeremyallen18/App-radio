@@ -476,6 +476,33 @@ CREATE TABLE IF NOT EXISTS event_areas (
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
+-- Sub-equipos dentro de un departamento (migración 030). Un solo nivel: el
+-- manager del área los crea (p. ej. Sistemas -> Frontend, Backend). Un
+-- empleado del área puede estar en varios. `lead_user_id` es un sub-líder
+-- opcional (empleado del mismo depto) que administra los miembros y las
+-- tareas de su sub-equipo.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS sub_teams (
+  id CHAR(24) NOT NULL PRIMARY KEY,
+  department_id CHAR(24) NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  description TEXT NULL,
+  lead_user_id CHAR(24) NULL,
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_subteam_dept_name (department_id, name),
+  FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE CASCADE,
+  FOREIGN KEY (lead_user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sub_team_members (
+  sub_team_id CHAR(24) NOT NULL,
+  user_id CHAR(24) NOT NULL,
+  PRIMARY KEY (sub_team_id, user_id),
+  FOREIGN KEY (sub_team_id) REFERENCES sub_teams(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
 -- Flujo jerárquico de tareas por departamento/equipo (ver
 -- migrations/008_dept_tasks.sql y hive-backend/dept_tasks.php). Director:
 -- cualquier departamento. Manager: tareas y subtareas de su departamento.
@@ -491,6 +518,9 @@ CREATE TABLE IF NOT EXISTS dept_tasks (
   id CHAR(24) PRIMARY KEY,
   parent_id CHAR(24) NULL,
   department_id CHAR(24) NOT NULL,
+  -- Sub-equipo opcional dentro del departamento (migración 030). Al borrar el
+  -- sub-equipo la tarea vuelve a ser "de área" (sub_team_id -> NULL).
+  sub_team_id CHAR(24) NULL,
   title VARCHAR(255) NOT NULL,
   description TEXT NULL,
   assigned_to CHAR(24) NULL,
@@ -517,8 +547,10 @@ CREATE TABLE IF NOT EXISTS dept_tasks (
   KEY idx_dt_department (department_id, status),
   KEY idx_dt_parent (parent_id),
   KEY idx_dt_assigned (assigned_to),
+  KEY idx_dt_subteam (sub_team_id),
   FOREIGN KEY (parent_id) REFERENCES dept_tasks(id) ON DELETE CASCADE,
   FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE CASCADE,
+  FOREIGN KEY (sub_team_id) REFERENCES sub_teams(id) ON DELETE SET NULL,
   FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (completed_by) REFERENCES users(id) ON DELETE SET NULL,

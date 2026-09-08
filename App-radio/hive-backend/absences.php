@@ -17,8 +17,9 @@
 //   POST /admin/absences/{id}/approve                  (director)
 //   POST /admin/absences/{id}/reject                   (director; motivo obligatorio)
 
-// Cuántos días hacia atrás se pueden revisar/justificar.
-const ABSENCE_LOOKBACK_DAYS = 90;
+// Cuántos días hacia atrás se pueden revisar/justificar: solo la última
+// semana. Una falta más antigua que esto ya no se puede justificar.
+const ABSENCE_LOOKBACK_DAYS = 7;
 
 // ---- helpers --------------------------------------------------------
 

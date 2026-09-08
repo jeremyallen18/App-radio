@@ -11,6 +11,7 @@ import 'package:doliv_social/shared/home/profile_hero.dart';
 import 'package:doliv_social/shared/home/profile_widgets.dart';
 import 'package:doliv_social/shared/home/progress.dart';
 import 'package:doliv_social/features/dashboard/director/team_admin_screen.dart';
+import 'package:doliv_social/features/dashboard/settings/account_settings_screen.dart';
 import 'package:doliv_social/core/audio/radio_player.dart';
 import 'package:doliv_social/core/notifications_controller.dart';
 import 'package:doliv_social/core/push/push_service.dart';
@@ -126,6 +127,17 @@ class _ProfileState extends State<Profile> {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const ProgressChart()),
     );
+  }
+
+  Future<void> _openAccountSettings() async {
+    final profile = _profile;
+    if (profile == null) return;
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AccountSettingsScreen(profile: profile),
+      ),
+    );
+    if (changed == true) _load();
   }
 
   void _comingSoon(String feature) {
@@ -320,9 +332,9 @@ class _ProfileState extends State<Profile> {
             onOpenAreas: _openAreas,
             onOpenDirectory: _openDirectory,
             onOpenReports: _openReports,
-            // "Configuración" = administración de la organización, que hoy es
-            // la misma pantalla de gestión de áreas.
-            onOpenSettings: _openAreas,
+            // "Configuración" = empresa + datos de la cuenta (nombre, correo,
+            // contraseña). La gestión de áreas está en el card "Áreas".
+            onOpenSettings: _openAccountSettings,
           );
         }
         return ProfileAreaCard(

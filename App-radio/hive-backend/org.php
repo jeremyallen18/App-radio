@@ -149,7 +149,8 @@ function assignDepartmentManager(PDO $pdo, string $departmentId) {
     $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ?');
     $stmt->execute([$email]);
     $target = $stmt->fetch();
-    if (!$target) {
+    // Una cuenta sin verificar el correo no es visible ni asignable.
+    if (!$target || !user_email_verified($target)) {
         error_response('No existe un usuario con ese correo', 404);
     }
     if ($target['role'] === 'director') {
@@ -194,11 +195,17 @@ function assignDepartmentEmployee(PDO $pdo, string $departmentId) {
     $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ?');
     $stmt->execute([$email]);
     $target = $stmt->fetch();
-    if (!$target) {
+    // Una cuenta sin verificar el correo no es visible ni asignable.
+    if (!$target || !user_email_verified($target)) {
         error_response('No existe un usuario con ese correo', 404);
     }
     if (in_array($target['role'], ['director', 'manager'], true)) {
         error_response('No se puede reasignar a un director o manager por esta vía', 400);
+    }
+
+    // Si venía de otra área, sale de los sub-equipos de esa área (migración 030).
+    if (!empty($target['department_id']) && $target['department_id'] !== $departmentId) {
+        sub_team_detach_user_from_department($pdo, $target['id'], $target['department_id']);
     }
 
     $stmt = $pdo->prepare('UPDATE users SET department_id = ?, position = ? WHERE id = ?');

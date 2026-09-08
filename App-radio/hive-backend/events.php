@@ -288,13 +288,14 @@ function event_audience_users(PDO $pdo, string $scope, array $areaIds, ?array $o
         $in = implode(',', array_fill(0, count($areaIds), '?'));
         $stmt = $pdo->prepare(
             "SELECT id, email FROM users
-             WHERE role IN ('manager','employee') AND department_id IN ($in)"
+             WHERE role IN ('manager','employee') AND department_id IN ($in)
+               AND " . SQL_USER_VERIFIED
         );
         $stmt->execute(array_values($areaIds));
         return $stmt->fetchAll();
     }
     return $pdo->query(
-        "SELECT id, email FROM users WHERE role IN ('manager','employee')"
+        "SELECT id, email FROM users WHERE role IN ('manager','employee') AND " . SQL_USER_VERIFIED
     )->fetchAll();
 }
 

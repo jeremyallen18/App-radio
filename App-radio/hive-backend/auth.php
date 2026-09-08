@@ -58,13 +58,9 @@ function signup(PDO $pdo) {
     $stmt = $pdo->prepare('INSERT INTO users (id, name, email, password) VALUES (?, ?, ?, ?)');
     $stmt->execute([$userId, $name, $email, password_hash($password, PASSWORD_BCRYPT)]);
 
-    // Número de control único e intransferible. Un fallo aquí no debe impedir
-    // el alta: el director puede corregirlo luego desde la app.
-    try {
-        assign_next_control_number($pdo, $userId);
-    } catch (Throwable $e) {
-        error_log('[hive-backend] assign_next_control_number failed: ' . $e->getMessage());
-    }
+    // El número de control NO se asigna aquí: una cuenta sin verificar el
+    // correo no debe tener identificador ni ser visible en la empresa. Se
+    // autoasigna al confirmar el correo (ver verifyEmail).
 
     dispatch_verification_email($pdo, ['id' => $userId, 'name' => $name, 'email' => $email]);
 
@@ -139,6 +135,20 @@ function verifyEmail(PDO $pdo) {
         render_verification_page('¡Correo actualizado!',
             'Tu nuevo correo quedó confirmado. Úsalo la próxima vez que inicies sesión.', true);
     }
+
+    // Alta confirmada: recién ahora la cuenta es visible en la empresa, así
+    // que recién ahora recibe su número de control. Best-effort — un fallo no
+    // debe romper la página de verificación; el director puede corregirlo.
+    try {
+        $chk = $pdo->prepare('SELECT control_number FROM users WHERE id = ?');
+        $chk->execute([$row['user_id']]);
+        if (empty($chk->fetchColumn())) {
+            assign_next_control_number($pdo, $row['user_id']);
+        }
+    } catch (Throwable $e) {
+        error_log('[hive-backend] assign_next_control_number (on verify) failed: ' . $e->getMessage());
+    }
+
     render_verification_page('¡Correo verificado!',
         'Listo. Ya puedes volver a la app y usar tu cuenta con normalidad.', true);
 }

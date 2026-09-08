@@ -91,6 +91,16 @@ class UserProfile {
   /// asume `true` para no mostrar un aviso incorrecto.
   final bool emailVerified;
 
+  /// Sub-equipos que esta persona lidera (migración 030). Solo lo trae
+  /// `GET /user/me` (el perfil propio); vacío en el directorio y en fichas
+  /// ajenas. Sirve para mostrarle al sub-líder su entrada de menú.
+  final List<({String id, String name, String departmentId})> ledSubTeams;
+
+  /// Correo nuevo a la espera de confirmarse (migración 029). Solo tiene valor
+  /// en el perfil propio (`GET /user/me`) mientras hay un cambio de correo en
+  /// curso; `null` el resto del tiempo.
+  final String? pendingEmail;
+
   UserProfile({
     required this.id,
     required this.name,
@@ -101,6 +111,8 @@ class UserProfile {
     this.photoUrl,
     this.department,
     this.emailVerified = true,
+    this.ledSubTeams = const [],
+    this.pendingEmail,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -118,6 +130,17 @@ class UserProfile {
           : null,
       emailVerified:
           json.containsKey('emailVerified') ? json['emailVerified'] == true : true,
+      pendingEmail: (json['pendingEmail']?.toString().isNotEmpty ?? false)
+          ? json['pendingEmail'].toString()
+          : null,
+      ledSubTeams: ((json['ledSubTeams'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((e) => (
+                id: e['id']?.toString() ?? '',
+                name: e['name']?.toString() ?? '',
+                departmentId: e['departmentId']?.toString() ?? '',
+              ))
+          .toList(),
     );
   }
 

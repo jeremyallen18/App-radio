@@ -54,6 +54,20 @@ function generate_otp(): string {
     return (string) random_int(100000, 999999);
 }
 
+// ---- visibilidad de cuentas sin verificar ------------------------------
+// Una cuenta cuyo correo no está verificado (email_verified_at IS NULL) no
+// puede iniciar sesión (ver login() en auth.php) y NO debe ser visible ni
+// accionable para el resto de la empresa: no aparece en el directorio ni en
+// los selectores, no se le puede escribir por chat, ni asignarle tareas,
+// departamento, manager o número de control. `SQL_USER_VERIFIED` se concatena
+// a los WHERE de las consultas que listan o resuelven usuarios; para las que
+// ya trajeron la fila, `user_email_verified()` hace la misma comprobación.
+const SQL_USER_VERIFIED = 'email_verified_at IS NOT NULL';
+
+function user_email_verified(?array $user): bool {
+    return $user !== null && !empty($user['email_verified_at']);
+}
+
 // ---- número de control de Radio Doliv (SPPRD-0000001) -------------------
 // Identificador único e intransferible de cada usuario. El alta lo autoasigna
 // (assign_next_control_number, desde signup); solo el director lo edita para

@@ -18,10 +18,12 @@ function chat_resolve_peer(PDO $pdo, string $ref, array $me): array {
     if ($ref === '') {
         error_response('Indica a quién quieres escribir.', 400);
     }
-    $stmt = $pdo->prepare('SELECT id, name, email, photo_path FROM users WHERE email = ? OR id = ? LIMIT 1');
+    $stmt = $pdo->prepare('SELECT id, name, email, photo_path, email_verified_at FROM users WHERE email = ? OR id = ? LIMIT 1');
     $stmt->execute([$ref, $ref]);
     $peer = $stmt->fetch();
-    if (!$peer) {
+    // Una cuenta sin verificar el correo no es visible en la empresa, así que
+    // tampoco se le puede escribir (se responde igual que si no existiera).
+    if (!$peer || !user_email_verified($peer)) {
         error_response('No encontramos a esa persona.', 404);
     }
     if ($peer['id'] === $me['id']) {

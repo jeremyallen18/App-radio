@@ -20,6 +20,7 @@ import 'package:doliv_social/features/dashboard/director/leave_calendar_screen.d
 import 'package:doliv_social/features/dashboard/director/admin_leave_screen.dart';
 import 'package:doliv_social/features/dashboard/director/admin_absence_screen.dart';
 import 'package:doliv_social/features/dashboard/director/team_admin_screen.dart';
+import 'package:doliv_social/features/dashboard/manager/sub_team_admin_screen.dart';
 import 'package:doliv_social/features/dashboard/director/site_content/site_content_auth_gate.dart';
 import 'package:doliv_social/features/dashboard/director/site_content/site_content_hub.dart';
 
@@ -101,7 +102,7 @@ List<AppMenuSection> _employeeSections(
         AppMenuEntry(
           icon: Icons.beach_access_outlined,
           title: 'Mis permisos',
-          subtitle: 'Vacaciones, incapacidades y permisos',
+          subtitle: 'Incapacidades y permisos',
           onTap: () => push(const MyLeaveScreen()),
         ),
         if (department != null)
@@ -115,6 +116,21 @@ List<AppMenuSection> _employeeSections(
                 departmentName: department.name,
                 canManage: false,
                 currentUserId: profile.id,
+              ),
+            ),
+          ),
+        // Sub-líder (migración 030): lidera uno o más sub-equipos de su área.
+        if (department != null && profile.ledSubTeams.isNotEmpty)
+          AppMenuEntry(
+            icon: Icons.workspaces_outline,
+            title: 'Mis sub-equipos',
+            subtitle: 'Administra sus miembros y sus tareas',
+            onTap: () => push(
+              SubTeamAdminScreen(
+                departmentId: department.id,
+                departmentName: department.name,
+                currentUserId: profile.id,
+                leadScope: true,
               ),
             ),
           ),
@@ -159,11 +175,8 @@ List<AppMenuSection> _employeeSections(
           title: 'Mis equipos',
           onTap: () => push(const TeamPage()),
         ),
-        AppMenuEntry(
-          icon: Icons.add_circle_outline,
-          title: 'Crear equipo',
-          onTap: () => pushNamed(MyRoutes.createTeamScreen),
-        ),
+        // Los empleados no crean equipos: solo se unen a uno existente. El alta
+        // de equipos/departamentos es del director (TeamAdminScreen).
         AppMenuEntry(
           icon: Icons.group_add_outlined,
           title: 'Unirse a un equipo',
@@ -199,6 +212,26 @@ List<AppMenuSection> _managerSections(
           title: 'Empleados del departamento',
           onTap: () => push(ColleagueDirectoryScreen(me: profile)),
         ),
+        if (department != null)
+          AppMenuEntry(
+            icon: Icons.workspaces_outline,
+            title: 'Sub-equipos',
+            subtitle: 'Divide tu área (Frontend, Backend…) y ponles responsable',
+            onTap: () => push(
+              SubTeamAdminScreen(
+                departmentId: department.id,
+                departmentName: department.name,
+                currentUserId: profile.id,
+              ),
+            ),
+          )
+        else
+          const AppMenuEntry(
+            icon: Icons.workspaces_outline,
+            title: 'Sub-equipos',
+            subtitle: 'Disponible cuando tengas un departamento asignado',
+            enabled: false,
+          ),
       ],
     ),
     AppMenuSection(
@@ -213,7 +246,7 @@ List<AppMenuSection> _managerSections(
         AppMenuEntry(
           icon: Icons.beach_access_outlined,
           title: 'Mis permisos',
-          subtitle: 'Solicitar vacaciones, incapacidades y permisos',
+          subtitle: 'Solicitar incapacidades y permisos',
           onTap: () => push(const MyLeaveScreen()),
         ),
         AppMenuEntry(
