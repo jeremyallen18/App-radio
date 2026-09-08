@@ -4,6 +4,8 @@ require __DIR__ . '/helpers.php';
 require __DIR__ . '/site_content.php';
 require __DIR__ . '/events.php';
 require __DIR__ . '/attendance.php';
+require __DIR__ . '/attendance_admin.php';
+require __DIR__ . '/attendance_reports.php';
 require __DIR__ . '/leave_requests.php';
 require __DIR__ . '/absences.php';
 require __DIR__ . '/dept_tasks.php';
@@ -83,6 +85,14 @@ $routes = [
     // para no chocar con /user/me ni /user/photo.
     ['GET',  '#^/user/directory/?$#',                          'listColleagues'],
     ['GET',  '#^/user/profile/([^/]+)/?$#',                    'getColleagueProfile'],
+    // Autoservicio de cuenta (pantalla "Editar cuenta"). Rutas específicas,
+    // antes de la comodín /user/{id}/control-number.
+    ['POST', '#^/user/account/name/?$#',                       'updateAccountName'],
+    ['POST', '#^/user/account/password/?$#',                   'changePassword'],
+    ['POST', '#^/user/account/email/?$#',                      'requestEmailChange'],
+    ['POST', '#^/user/account/email/cancel/?$#',               'cancelEmailChange'],
+    // Solo el director: corregir el número de control de una persona.
+    ['POST', '#^/user/([^/]+)/control-number/?$#',             'setControlNumber'],
     ['POST', '#^/company/create/?$#',                         'createCompany'],
     ['GET',  '#^/company/info/?$#',                           'getCompany'],
     ['POST', '#^/company/update/?$#',                         'updateCompany'],

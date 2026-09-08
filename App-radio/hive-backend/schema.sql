@@ -39,11 +39,19 @@ CREATE TABLE IF NOT EXISTS users (
   id CHAR(24) PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL UNIQUE,
+  -- Cambio de correo pendiente de confirmar (migración 029): lo fija
+  -- requestEmailChange(); verifyEmail() lo aplica cuando el usuario abre el
+  -- enlace enviado a esa dirección, y entonces vuelve a NULL.
+  pending_email VARCHAR(255) NULL,
   password VARCHAR(255) NOT NULL,
   -- Estructura organizacional Radio Doliv: role/position/department_id.
   -- role: 'director' | 'manager' | 'employee' (ver ROLES en helpers.php).
   role VARCHAR(20) NOT NULL DEFAULT 'employee',
   position VARCHAR(150) NULL,
+  -- Identificador único e intransferible SPPRD-0000000 (migración 028). El
+  -- alta lo autoasigna; solo el director lo corrige. NULL solo mientras no se
+  -- ha asignado (p. ej. si falló el autoasignado en el alta).
+  control_number VARCHAR(20) NULL UNIQUE,
   photo_path VARCHAR(500) NULL,
   department_id CHAR(24) NULL,
   token VARCHAR(64) NULL,
@@ -69,6 +77,10 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS email_verifications (
   id CHAR(24) PRIMARY KEY,
   user_id CHAR(24) NOT NULL,
+  -- Si no es NULL (migración 029), esta fila confirma un CAMBIO de correo a
+  -- esta dirección, no el alta: al consumirla, verifyEmail() hace
+  -- users.email = new_email.
+  new_email VARCHAR(255) NULL,
   token_hash CHAR(64) NOT NULL,
   expires_at DATETIME NOT NULL,
   consumed_at DATETIME NULL,

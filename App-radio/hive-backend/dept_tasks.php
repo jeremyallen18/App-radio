@@ -71,6 +71,32 @@ function dept_task_fail(string $message, int $status = 409): void {
     json_response(['success' => false, 'message' => $message], $status);
 }
 
+// Corta (400) si $userId no es empleado ni manager de $departmentId. Es la
+// única regla de "a quién se le puede asignar una tarea": la comparten crear
+// y editar.
+function dept_task_require_assignable(PDO $pdo, string $userId, string $departmentId): void {
+    $stmt = $pdo->prepare(
+        "SELECT id FROM users WHERE id = ? AND department_id = ? AND role IN ('employee', 'manager')"
+    );
+    $stmt->execute([$userId, $departmentId]);
+    if (!$stmt->fetch()) {
+        dept_task_fail('La persona asignada no pertenece a este departamento.', 400);
+    }
+}
+
+// Id del manager de un departamento (users.role = 'manager' cuyo correo es
+// departments.manager_email), o null si no tiene.
+function dept_task_manager_id(PDO $pdo, string $departmentId): ?string {
+    $stmt = $pdo->prepare(
+        "SELECT u.id FROM departments d
+           JOIN users u ON u.email = d.manager_email AND u.role = 'manager'
+         WHERE d.id = ? LIMIT 1"
+    );
+    $stmt->execute([$departmentId]);
+    $id = $stmt->fetchColumn();
+    return $id ? (string) $id : null;
+}
+
 // Departamento del usuario, o corta si no tiene uno (managers/empleados).
 function dept_task_user_department(array $user): string {
     $dept = $user['department_id'] ?? null;
@@ -435,13 +461,20 @@ function deptTaskCreate(PDO $pdo) {
         }
     }
 
-    // Empleado asignado (opcional): debe pertenecer a ese departamento.
-    $assignedTo = trim($body['assignedTo'] ?? '') ?: null;
-    if ($assignedTo !== null) {
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE id = ? AND department_id = ? AND role = 'employee'");
-        $stmt->execute([$assignedTo, $departmentId]);
-        if (!$stmt->fetch()) {
-            dept_task_fail('El empleado asignado no pertenece a este departamento.', 400);
+    // Responsable.
+    //  - Director + tarea principal: SIEMPRE el manager del departamento
+    //    (se ignora cualquier assignedTo). Él la desglosa con su equipo.
+    //  - Manager (o director en una subtarea): empleado o manager del área,
+    //    opcional.
+    if ($user['role'] === 'director' && $parentId === null) {
+        $assignedTo = dept_task_manager_id($pdo, $departmentId);
+        if ($assignedTo === null) {
+            dept_task_fail('Este departamento aún no tiene manager. Asigna uno antes de crear tareas.', 409);
+        }
+    } else {
+        $assignedTo = trim($body['assignedTo'] ?? '') ?: null;
+        if ($assignedTo !== null) {
+            dept_task_require_assignable($pdo, $assignedTo, $departmentId);
         }
     }
 
@@ -514,11 +547,7 @@ function deptTaskUpdate(PDO $pdo, string $id) {
     if (array_key_exists('assignedTo', $body)) {
         $assignedTo = trim($body['assignedTo']) ?: null;
         if ($assignedTo !== null) {
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE id = ? AND department_id = ? AND role = 'employee'");
-            $stmt->execute([$assignedTo, $row['department_id']]);
-            if (!$stmt->fetch()) {
-                dept_task_fail('El empleado asignado no pertenece a este departamento.', 400);
-            }
+            dept_task_require_assignable($pdo, $assignedTo, $row['department_id']);
         }
     }
 
