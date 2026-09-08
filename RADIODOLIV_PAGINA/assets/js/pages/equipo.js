@@ -35,6 +35,8 @@ const modalRole = document.getElementById("roster-modal-role");
 const modalBio = document.getElementById("roster-modal-bio");
 const modalPath = document.getElementById("roster-modal-path");
 const modalInterests = document.getElementById("roster-modal-interests");
+const modalSocialsSection = document.getElementById("roster-modal-socials-section");
+const modalSocials = document.getElementById("roster-modal-socials");
 const zoomOutBtn = document.getElementById("roster-zoom-out");
 const zoomResetBtn = document.getElementById("roster-zoom-reset");
 const zoomInBtn = document.getElementById("roster-zoom-in");
@@ -124,6 +126,15 @@ function showMember(member) {
     modalBio.innerHTML = member.bio.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("");
     modalPath.innerHTML = member.path.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
     modalInterests.innerHTML = member.interests.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+
+    const socials = member.socials || [];
+    modalSocialsSection.hidden = socials.length === 0;
+    modalSocials.innerHTML = socials.map((social) => `
+        <a class="roster-modal-social" href="${social.url}" target="_blank" rel="noopener noreferrer">
+            <i data-lucide="${escapeHtml(social.icon)}"></i>
+            <span>${escapeHtml(social.label)}</span>
+        </a>`).join("");
+
     rosterModal.classList.add("is-open");
     rosterModal.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
