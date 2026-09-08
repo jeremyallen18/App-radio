@@ -137,7 +137,6 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
 
     return AppScaffold(
       scrollable: true,
-      showBackButton: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

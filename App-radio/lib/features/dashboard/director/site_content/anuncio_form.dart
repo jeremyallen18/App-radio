@@ -117,7 +117,6 @@ class _AnuncioFormScreenState extends State<AnuncioFormScreen> {
 
     return AppScaffold(
       scrollable: true,
-      showBackButton: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

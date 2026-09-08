@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:doliv_social/design/components/app_badge.dart';
 import 'package:doliv_social/design/components/app_card.dart';
+import 'package:doliv_social/design/motion/app_motion.dart';
 import 'package:doliv_social/design/tokens/colors.dart';
 import 'package:doliv_social/design/tokens/spacing.dart';
 
@@ -51,10 +52,45 @@ class TaskCard extends StatelessWidget {
     final daysLeft = DateTime(deadline.year, deadline.month, deadline.day)
         .difference(DateTime(today.year, today.month, today.day))
         .inDays;
-    if (daysLeft < 0) return (label: 'Vencida', variant: AppBadgeVariant.error);
-    if (daysLeft == 0) return (label: 'Vence hoy', variant: AppBadgeVariant.warning);
-    if (daysLeft <= 2) return (label: 'Vence pronto', variant: AppBadgeVariant.warning);
+    if (daysLeft < 0) {
+      return (label: 'Vencida', variant: AppBadgeVariant.error);
+    }
+    if (daysLeft == 0) {
+      return (label: 'Vence hoy', variant: AppBadgeVariant.warning);
+    }
+    if (daysLeft <= 2) {
+      return (label: 'Vence pronto', variant: AppBadgeVariant.warning);
+    }
     return null;
+  }
+
+  Widget _buildTrailing() {
+    if (done) {
+      return const Padding(
+        key: ValueKey('done'),
+        padding: EdgeInsets.only(top: 2),
+        child: Icon(Icons.check_circle, color: AppColors.success, size: 26),
+      );
+    }
+    if (busy) {
+      return const SizedBox(
+        key: ValueKey('busy'),
+        width: 26,
+        height: 26,
+        child:
+            CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
+      );
+    }
+    if (onComplete != null) {
+      return IconButton(
+        key: const ValueKey('todo'),
+        tooltip: 'Completar tarea',
+        onPressed: onComplete,
+        icon: const Icon(Icons.radio_button_unchecked,
+            color: AppColors.accent, size: 26),
+      );
+    }
+    return const SizedBox(key: ValueKey('none'), width: 0, height: 26);
   }
 
   @override
@@ -74,26 +110,37 @@ class TaskCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: Text(
-                        description,
+                      child: AnimatedDefaultTextStyle(
+                        duration: AppDurations.short,
+                        curve: AppCurves.standard,
                         style: TextStyle(
-                          color: done ? AppColors.textMuted : AppColors.textPrimary,
+                          color: done
+                              ? AppColors.textMuted
+                              : AppColors.textPrimary,
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          decoration: done ? TextDecoration.lineThrough : TextDecoration.none,
+                          decoration: done
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                          decorationColor: AppColors.textMuted,
                         ),
+                        child: Text(description),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     AppBadge(
                       label: done ? 'Completada' : 'Pendiente',
-                      variant: done ? AppBadgeVariant.success : AppBadgeVariant.neutral,
+                      variant: done
+                          ? AppBadgeVariant.success
+                          : AppBadgeVariant.neutral,
                     ),
                   ],
                 ),
                 if (context_.isNotEmpty) ...[
                   const SizedBox(height: 6),
-                  Text(context_, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  Text(context_,
+                      style: const TextStyle(
+                          color: AppColors.textMuted, fontSize: 12)),
                 ],
                 if (deadlineText.isNotEmpty || urgency != null) ...[
                   const SizedBox(height: 8),
@@ -106,12 +153,17 @@ class TaskCard extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.event, size: 14, color: AppColors.textMuted),
+                            const Icon(Icons.event,
+                                size: 14, color: AppColors.textMuted),
                             const SizedBox(width: 4),
-                            Text(deadlineText, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                            Text(deadlineText,
+                                style: const TextStyle(
+                                    color: AppColors.textMuted, fontSize: 12)),
                           ],
                         ),
-                      if (urgency != null) AppBadge(label: urgency.label, variant: urgency.variant),
+                      if (urgency != null)
+                        AppBadge(
+                            label: urgency.label, variant: urgency.variant),
                     ],
                   ),
                 ],
@@ -119,23 +171,13 @@ class TaskCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          if (done)
-            const Padding(
-              padding: EdgeInsets.only(top: 2),
-              child: Icon(Icons.check_circle, color: AppColors.success, size: 26),
-            )
-          else if (busy)
-            const SizedBox(
-              width: 26,
-              height: 26,
-              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
-            )
-          else if (onComplete != null)
-            IconButton(
-              tooltip: 'Completar tarea',
-              onPressed: onComplete,
-              icon: const Icon(Icons.radio_button_unchecked, color: AppColors.accent, size: 26),
-            ),
+          AnimatedSwitcher(
+            duration: AppDurations.short,
+            switchInCurve: AppCurves.emphasized,
+            transitionBuilder: (child, anim) =>
+                ScaleTransition(scale: anim, child: child),
+            child: _buildTrailing(),
+          ),
         ],
       ),
     );

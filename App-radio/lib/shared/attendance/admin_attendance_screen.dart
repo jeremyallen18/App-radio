@@ -71,7 +71,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: const Text('Asistencia de empleados'),
         actions: [
           IconButton(
@@ -88,6 +88,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
             return ErrorState(message: _error!, onRetry: _load);
           }
           return RefreshIndicator(
+            color: AppColors.accent,
             onRefresh: _load,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(

@@ -138,6 +138,7 @@ class _SiteContentListScreenState extends State<SiteContentListScreen> {
         child: const Icon(Icons.add, color: AppColors.textPrimary),
       ),
       body: RefreshIndicator(
+        color: AppColors.accent,
         onRefresh: _load,
         child: Builder(
           builder: (context) {

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:doliv_social/features/dashboard/director/admin_absence_screen.dart';
 import 'package:doliv_social/shared/calendar/calendar_screen.dart';
 import 'package:doliv_social/shared/chat/chat.dart';
-import 'package:doliv_social/shared/chat/chatHistory.dart';
+import 'package:doliv_social/shared/chat/chat_history.dart';
 import 'package:doliv_social/shared/attendance/attendance_history_screen.dart';
 import 'package:doliv_social/shared/home/teams.dart';
 import 'package:doliv_social/shared/leave/absence_justification_screen.dart';

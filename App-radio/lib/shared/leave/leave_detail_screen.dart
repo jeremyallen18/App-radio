@@ -80,7 +80,7 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: const Text('Detalle de la solicitud'),
       ),
       body: Builder(

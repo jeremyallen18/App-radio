@@ -1,4 +1,4 @@
-import 'package:doliv_social/core/Routes.dart';
+import 'package:doliv_social/core/routes.dart';
 import 'package:doliv_social/shared/auth/login.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +9,8 @@ import 'package:doliv_social/services/profile_service.dart';
 import 'package:doliv_social/shared/directory/colleague_directory_screen.dart';
 import 'package:doliv_social/shared/home/profile_hero.dart';
 import 'package:doliv_social/shared/home/profile_widgets.dart';
+import 'package:doliv_social/shared/home/progress.dart';
+import 'package:doliv_social/features/dashboard/director/team_admin_screen.dart';
 import 'package:doliv_social/core/audio/radio_player.dart';
 import 'package:doliv_social/core/notifications_controller.dart';
 import 'package:doliv_social/core/push/push_service.dart';
@@ -26,6 +28,9 @@ class _ProfileState extends State<Profile> {
   UserProfile? _profile;
   int? _pendingCount;
   int? _completedCount;
+  // Solo director: nº de áreas y de colaboradores de toda la organización.
+  int? _areasCount;
+  int? _collabCount;
   List<dynamic> _teams = [];
   bool _loading = true;
   bool _uploadingPhoto = false;
@@ -45,14 +50,25 @@ class _ProfileState extends State<Profile> {
     setState(() => _loading = true);
     final overview = await ProfileApi.fetchOverview();
     if (!mounted) return;
+
+    // El director ve contadores de toda la organización (áreas, colaboradores
+    // y totales de tareas de la empresa) en lugar de los suyos de equipo.
+    DirectorOrgStats? org;
+    if (overview.profile?.role == AppRole.director) {
+      org = await ProfileApi.fetchDirectorOrg();
+      if (!mounted) return;
+    }
+
     setState(() {
       _profile = overview.profile;
-      _pendingCount = overview.pendingCount;
-      _completedCount = overview.completedCount;
+      _pendingCount = org?.pendingCount ?? overview.pendingCount;
+      _completedCount = org?.completedCount ?? overview.completedCount;
+      _areasCount = org?.areasCount;
+      _collabCount = org?.collaboratorsCount;
       _teams = overview.teams;
       _loading = false;
       // El director no tiene pestaña "Equipos": si era la seleccionada por
-      // defecto, se mueve a "Mi área".
+      // defecto, se mueve a "Vista general".
       if (_isDirector && _tab == _ProfileTab.equipos) _tab = _ProfileTab.area;
     });
   }
@@ -100,6 +116,18 @@ class _ProfileState extends State<Profile> {
     );
   }
 
+  void _openAreas() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const TeamAdminScreen()),
+    );
+  }
+
+  void _openReports() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ProgressChart()),
+    );
+  }
+
   void _comingSoon(String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$feature: próximamente')),
@@ -122,22 +150,20 @@ class _ProfileState extends State<Profile> {
     await secureStorage.deleteSecureData(key);
     await secureStorage.deleteSecureData(rememberMeKey);
     if (!mounted) return;
-    Navigator.pushReplacementNamed(context, MyRoutes.LoginRoutes);
+    Navigator.pushReplacementNamed(context, MyRoutes.loginRoutes);
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const SafeArea(child: DesktopCenter(child: _ProfileSkeleton()));
+      return const SafeArea(child: _ProfileSkeleton());
     }
 
     // Esta pantalla es una pestaña de `BottomNavBar`, no un `AppScaffold`:
-    // el área segura y el centrado en escritorio los tiene que poner ella.
+    // el área segura la tiene que poner ella.
     return SafeArea(
-      child: DesktopCenter(
-        child: RefreshIndicator(
-            onRefresh: _load, color: AppColors.accent, child: _buildContent()),
-      ),
+      child: RefreshIndicator(
+          onRefresh: _load, color: AppColors.accent, child: _buildContent()),
     );
   }
 
@@ -184,23 +210,43 @@ class _ProfileState extends State<Profile> {
                   ),
                 ),
               if (profile != null) ...[
-                const SizedBox(height: AppSpacing.md),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: [
-                    AppBadge(
-                        label: profile.role.label,
-                        variant: AppBadgeVariant.info),
-                    if (profile.department != null)
-                      AppBadge(label: profile.department!.name),
-                    if (profile.leadsOwnDepartment)
-                      const AppBadge(
-                        label: 'Responsable del área',
-                        variant: AppBadgeVariant.success,
-                      ),
-                  ],
+                const SizedBox(height: AppSpacing.sm),
+                // Número de control: solo lectura (nadie edita el suyo; el
+                // director lo corrige desde la ficha del compañero).
+                ProfileMetaRow(
+                  icon: Icons.badge_outlined,
+                  text: profile.controlNumberLabel,
                 ),
+              ],
+              if (profile != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                if (_isDirector)
+                  // El rol y la empresa ya salen en el titular y la meta-fila;
+                  // aquí basta el estado de alcance.
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: AppBadge(
+                      label: '● Acceso global',
+                      variant: AppBadgeVariant.success,
+                    ),
+                  )
+                else
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      AppBadge(
+                          label: profile.role.label,
+                          variant: AppBadgeVariant.info),
+                      if (profile.department != null)
+                        AppBadge(label: profile.department!.name),
+                      if (profile.leadsOwnDepartment)
+                        const AppBadge(
+                          label: 'Responsable del área',
+                          variant: AppBadgeVariant.success,
+                        ),
+                    ],
+                  ),
               ],
               const SizedBox(height: AppSpacing.lg),
               // Tres columnas de igual ancho: así no se desbordan en pantallas
@@ -242,7 +288,7 @@ class _ProfileState extends State<Profile> {
                 onTap: () => setState(() => _tab = _ProfileTab.equipos),
               ),
             ProfileTabButton(
-              label: 'Mi área',
+              label: _isDirector ? 'Vista general' : 'Mi área',
               selected: _tab == _ProfileTab.area,
               onTap: () => setState(() => _tab = _ProfileTab.area),
             ),
@@ -267,6 +313,18 @@ class _ProfileState extends State<Profile> {
       case _ProfileTab.equipos:
         return ProfileTeamsList(teams: _teams);
       case _ProfileTab.area:
+        if (_isDirector) {
+          return DirectorOverviewTab(
+            areasCount: _areasCount,
+            collaboratorsCount: _collabCount,
+            onOpenAreas: _openAreas,
+            onOpenDirectory: _openDirectory,
+            onOpenReports: _openReports,
+            // "Configuración" = administración de la organización, que hoy es
+            // la misma pantalla de gestión de áreas.
+            onOpenSettings: _openAreas,
+          );
+        }
         return ProfileAreaCard(
           department: _profile?.department,
           onOpenDirectory: _openDirectory,

@@ -127,7 +127,6 @@ class _EventoFormScreenState extends State<EventoFormScreen> {
 
     return AppScaffold(
       scrollable: true,
-      showBackButton: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

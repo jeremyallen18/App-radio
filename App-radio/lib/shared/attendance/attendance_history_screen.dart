@@ -84,7 +84,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: Text(widget.title ?? 'Historial de asistencia'),
         actions: [
           IconButton(
@@ -121,6 +121,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
             );
           }
           return RefreshIndicator(
+            color: AppColors.accent,
             onRefresh: _load,
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(

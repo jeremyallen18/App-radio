@@ -55,7 +55,7 @@ class _LocationPickerMapState extends State<LocationPickerMap> {
     return AppScaffold(
       padding: EdgeInsets.zero,
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: const Text('Ubicación del evento'),
         actions: [
           TextButton(

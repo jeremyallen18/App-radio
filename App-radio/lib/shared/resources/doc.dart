@@ -4,8 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:doliv_social/design/design.dart';
 
 class DocumentationPage extends StatefulWidget {
+  const DocumentationPage({super.key});
+
   @override
-  _DocumentationPageState createState() => _DocumentationPageState();
+  State<DocumentationPage> createState() => _DocumentationPageState();
 }
 
 class _DocumentationPageState extends State<DocumentationPage> {
@@ -31,7 +33,6 @@ class _DocumentationPageState extends State<DocumentationPage> {
     return AppScaffold(
       appBar: AppBar(
         title: const Text('Documentación'),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       padding: EdgeInsets.zero,

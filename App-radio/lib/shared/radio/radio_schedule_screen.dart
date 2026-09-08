@@ -63,7 +63,7 @@ class _RadioScheduleScreenState extends State<RadioScheduleScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: const Text('Programación'),
       ),
       body: Column(
@@ -91,6 +91,7 @@ class _RadioScheduleScreenState extends State<RadioScheduleScreen> {
                 : _error != null
                     ? ErrorState(message: _error!, onRetry: _load)
                     : RefreshIndicator(
+                        color: AppColors.accent,
                         onRefresh: _load,
                         child: _forDay.isEmpty
                             ? ListView(

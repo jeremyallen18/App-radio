@@ -10,7 +10,7 @@ class ShowTextScreen extends StatefulWidget {
   const ShowTextScreen(this.teamId, {super.key});
 
   @override
-  _ShowTextScreenState createState() => _ShowTextScreenState();
+  State<ShowTextScreen> createState() => _ShowTextScreenState();
 }
 
 class _ShowTextScreenState extends State<ShowTextScreen> {
@@ -45,11 +45,11 @@ class _ShowTextScreenState extends State<ShowTextScreen> {
       });
     } else {
       
-      print('Failed to retrieve the image. Status code: ${response.statusCode}');
+      debugPrint('Failed to retrieve the image. Status code: ${response.statusCode}');
     }
   } catch (error) {
   
-    print('Error: $error');
+    debugPrint('Error: $error');
   }
 }
  
@@ -73,14 +73,14 @@ class _ShowTextScreenState extends State<ShowTextScreen> {
           if (responseData['data'] is List) {
             messages = responseData['data'];
           } else {
-            print('Invalid data structure');
+            debugPrint('Invalid data structure');
           }
         });
       } else {
-        print('Failed to fetch messages. Status code: ${response.statusCode}');
+        debugPrint('Failed to fetch messages. Status code: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching messages: $e');
+      debugPrint('Error fetching messages: $e');
     }
   }
 
@@ -95,7 +95,6 @@ class _ShowTextScreenState extends State<ShowTextScreen> {
     return AppScaffold(
       appBar: AppBar(
         title: const Text('Recursos publicados'),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       padding: EdgeInsets.zero,
@@ -108,6 +107,7 @@ class _ShowTextScreenState extends State<ShowTextScreen> {
                   message: 'Los textos que publique el equipo aparecerán aquí.',
                 )
               : RefreshIndicator(
+                  color: AppColors.accent,
                   onRefresh: fetchMessages,
                   child: ListView.builder(
                     padding: const EdgeInsets.all(AppSpacing.lg),

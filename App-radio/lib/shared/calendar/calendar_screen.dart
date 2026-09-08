@@ -149,7 +149,7 @@ class _CalendarScreenState extends State<CalendarScreen>
     return AppScaffold(
       padding: EdgeInsets.zero,
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: const Text('Calendario'),
       ),
       floatingActionButton: _canManage
@@ -160,6 +160,7 @@ class _CalendarScreenState extends State<CalendarScreen>
             )
           : null,
       body: RefreshIndicator(
+        color: AppColors.accent,
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(

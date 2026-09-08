@@ -109,7 +109,6 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
 
     return AppScaffold(
       scrollable: true,
-      showBackButton: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

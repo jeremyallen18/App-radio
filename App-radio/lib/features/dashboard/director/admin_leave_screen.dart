@@ -74,7 +74,7 @@ class _AdminLeaveScreenState extends State<AdminLeaveScreen>
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: const Text('Gestión de permisos'),
         bottom: TabBar(
           controller: _tab,
@@ -126,6 +126,7 @@ class _AdminLeaveScreenState extends State<AdminLeaveScreen>
                   );
                 }
                 return RefreshIndicator(
+                  color: AppColors.accent,
                   onRefresh: _load,
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(

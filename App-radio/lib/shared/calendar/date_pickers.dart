@@ -55,25 +55,45 @@ Future<DateTime?> pickWorkingDate(
   String? helpText,
   bool Function(DateTime day)? extraSelectable,
 }) {
-  DateTime seed = initialDate ?? DateTime.now();
-  // `initialDate` no puede caer en un día deshabilitado ni fuera de rango.
+  // `initialDate` no puede caer en un día deshabilitado ni fuera de rango, o
+  // `showDatePicker` lanza una aserción (debug) / abre en un día tachado.
   DateTime clamp(DateTime d) {
     if (d.isBefore(firstDate)) return firstDate;
     if (d.isAfter(lastDate)) return lastDate;
     return d;
   }
 
-  seed = clamp(seed);
-  int guard = 0;
-  while ((!isWorkingDay(seed) ||
-          (extraSelectable != null && !extraSelectable(seed))) &&
-      guard < 14) {
-    seed = seed.add(const Duration(days: 1));
-    if (seed.isAfter(lastDate)) {
-      seed = clamp(initialDate ?? firstDate);
-      break;
+  bool selectable(DateTime d) =>
+      isWorkingDay(d) && (extraSelectable == null || extraSelectable(d));
+
+  final DateTime start = clamp(dateOnly(initialDate ?? DateTime.now()));
+  DateTime seed = start;
+  if (!selectable(seed)) {
+    // Día elegible más cercano dentro del rango: primero hacia adelante (p. ej.
+    // domingo -> lunes), y si no queda hueco por delante —lastDate es hoy y hoy
+    // es domingo— hacia atrás (domingo -> sábado).
+    DateTime? found;
+    for (var d = start;
+        !d.isAfter(lastDate);
+        d = d.add(const Duration(days: 1))) {
+      if (selectable(d)) {
+        found = d;
+        break;
+      }
     }
-    guard++;
+    if (found == null) {
+      for (var d = start;
+          !d.isBefore(firstDate);
+          d = d.subtract(const Duration(days: 1))) {
+        if (selectable(d)) {
+          found = d;
+          break;
+        }
+      }
+    }
+    // Si no hay NINGÚN día elegible en el rango (rango degenerado del caller),
+    // deja el seed dentro de rango; showDatePicker lo rechazará igualmente.
+    seed = found ?? start;
   }
 
   return showDatePicker(
@@ -82,9 +102,7 @@ Future<DateTime?> pickWorkingDate(
     firstDate: firstDate,
     lastDate: lastDate,
     helpText: helpText,
-    selectableDayPredicate: (day) =>
-        isWorkingDay(day) &&
-        (extraSelectable == null || extraSelectable(day)),
+    selectableDayPredicate: selectable,
   );
 }
 

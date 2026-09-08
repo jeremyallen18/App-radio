@@ -142,7 +142,6 @@ class _TeamDocumentsScreenState extends State<TeamDocumentsScreen> {
       padding: EdgeInsets.zero,
       appBar: AppBar(
         title: const Text('Documentos'),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -171,6 +170,7 @@ class _TeamDocumentsScreenState extends State<TeamDocumentsScreen> {
       );
     }
     return RefreshIndicator(
+      color: AppColors.accent,
       onRefresh: _load,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(

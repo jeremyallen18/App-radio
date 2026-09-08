@@ -102,7 +102,6 @@ class _ServicioFormScreenState extends State<ServicioFormScreen> {
 
     return AppScaffold(
       scrollable: true,
-      showBackButton: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

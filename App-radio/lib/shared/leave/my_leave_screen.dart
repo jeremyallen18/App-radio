@@ -64,7 +64,7 @@ class _MyLeaveScreenState extends State<MyLeaveScreen>
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: const Text('Mis permisos'),
         actions: [
           IconButton(
@@ -95,6 +95,7 @@ class _MyLeaveScreenState extends State<MyLeaveScreen>
             );
           }
           return RefreshIndicator(
+            color: AppColors.accent,
             onRefresh: _load,
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(

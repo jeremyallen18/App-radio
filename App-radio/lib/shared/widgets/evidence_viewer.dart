@@ -33,7 +33,7 @@ class _EvidenceViewerState extends State<EvidenceViewer> {
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: Text(widget.title),
       ),
       body: Center(

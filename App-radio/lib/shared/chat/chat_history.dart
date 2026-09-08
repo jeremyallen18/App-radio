@@ -93,7 +93,6 @@ class _ChatScreenfetchState extends State<ChatScreenfetch> {
       padding: EdgeInsets.zero,
       appBar: AppBar(
         title: const Text('Mensajes'),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       body: _buildBody(),
@@ -111,6 +110,7 @@ class _ChatScreenfetchState extends State<ChatScreenfetch> {
       );
     }
     return RefreshIndicator(
+      color: AppColors.accent,
       onRefresh: _fetch,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),

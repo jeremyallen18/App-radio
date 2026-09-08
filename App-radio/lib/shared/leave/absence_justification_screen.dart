@@ -67,7 +67,7 @@ class _AbsenceJustificationScreenState
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: const Text('Justificar faltas'),
       ),
       body: Builder(
@@ -84,6 +84,7 @@ class _AbsenceJustificationScreenState
             );
           }
           return RefreshIndicator(
+            color: AppColors.accent,
             onRefresh: _load,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(
