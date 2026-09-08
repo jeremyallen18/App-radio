@@ -92,19 +92,22 @@ function event_payload(PDO $pdo, array $e): array {
 const EVENT_REMINDER_OFFSETS_ALLOWED = [7, 5, 3, 2];
 
 // Normaliza el CSV/lista de antelaciones: solo valores permitidos, ordenados
-// de mayor a menor y sin repetir. Si queda vacío, usa el conjunto completo.
+// de mayor a menor y sin repetir. Una lista vacía significa "sin recordatorios"
+// y se conserva como tal (no se rellena con el conjunto completo). El valor por
+// defecto solo se aplica al crear/editar cuando el cliente no manda el campo
+// (ver event_body_or_fail()).
 function event_parse_offsets($raw): array {
     if (is_string($raw)) {
         $raw = array_map('trim', explode(',', $raw));
     }
     $out = [];
     foreach ((array) $raw as $v) {
+        if ($v === '' || $v === null) continue;
         $n = (int) $v;
         if (in_array($n, EVENT_REMINDER_OFFSETS_ALLOWED, true) && !in_array($n, $out, true)) {
             $out[] = $n;
         }
     }
-    if (!$out) $out = EVENT_REMINDER_OFFSETS_ALLOWED;
     rsort($out);
     return $out;
 }
@@ -217,7 +220,12 @@ function event_body_or_fail(PDO $pdo): array {
     if (mb_strlen($locationText) > 255) $locationText = mb_substr($locationText, 0, 255);
     $locationText = $locationText !== '' ? $locationText : null;
 
-    $reminderOffsets = implode(',', event_parse_offsets($body['reminderOffsets'] ?? ''));
+    // Antelaciones de los recordatorios. Si el cliente no manda el campo (builds
+    // anteriores a la migración 024) se usa el conjunto completo; si lo manda
+    // vacío, el director quiere "sin recordatorios" y se respeta tal cual.
+    $reminderOffsets = array_key_exists('reminderOffsets', $body)
+        ? implode(',', event_parse_offsets($body['reminderOffsets']))
+        : implode(',', EVENT_REMINDER_OFFSETS_ALLOWED);
 
     if ($hasLocation) {
         if ($scope !== 'areas' || !$areaIds) {
@@ -260,7 +268,21 @@ function event_body_or_fail(PDO $pdo): array {
 // Usuarios (id,email) a los que va dirigido un evento: 'general' => toda la
 // plantilla (manager/employee); 'areas' => miembros de esos departamentos
 // (los managers también, por su department_id).
-function event_audience_users(PDO $pdo, string $scope, array $areaIds): array {
+//
+// $onlyUser (fila con id,email,role,department_id): camino perezoso de
+// listNotifications, donde la audiencia se reduce de antemano a UN usuario. Se
+// evalúa en PHP y devuelve [] o [ese usuario], sin escanear la tabla users por
+// cada evento próximo en cada refresco de la campana.
+function event_audience_users(PDO $pdo, string $scope, array $areaIds, ?array $onlyUser = null): array {
+    if ($onlyUser !== null) {
+        if (!in_array($onlyUser['role'], ['manager', 'employee'], true)) return [];
+        if ($scope === 'areas'
+            && (empty($onlyUser['department_id'])
+                || !in_array($onlyUser['department_id'], $areaIds, true))) {
+            return [];
+        }
+        return [['id' => $onlyUser['id'], 'email' => $onlyUser['email']]];
+    }
     if ($scope === 'areas') {
         if (!$areaIds) return [];
         $in = implode(',', array_fill(0, count($areaIds), '?'));
@@ -350,11 +372,30 @@ function event_sync_announcement(PDO $pdo, string $eventId): void {
 // disparan las antelaciones cuyo día objetivo no es anterior a su creación.
 function event_dispatch_due_reminders(PDO $pdo, ?string $onlyUserId = null): int {
     $today = date('Y-m-d');
-    $events = $pdo->query(
+
+    // Camino perezoso (listNotifications): se resuelve el usuario UNA vez y la
+    // audiencia de cada evento se evalúa en PHP, en vez de escanear la tabla
+    // users por cada evento próximo en cada refresco de la campana.
+    $onlyUser = null;
+    if ($onlyUserId !== null) {
+        $stmt = $pdo->prepare('SELECT id, email, role, department_id FROM users WHERE id = ?');
+        $stmt->execute([$onlyUserId]);
+        $onlyUser = $stmt->fetch() ?: null;
+        if (!$onlyUser) return 0;
+    }
+
+    // Solo los eventos que YA pueden tener un recordatorio pendiente: la
+    // antelación máxima posible es max(EVENT_REMINDER_OFFSETS_ALLOWED) días, así
+    // que nada más allá de esa ventana entra en juego.
+    $maxOffset = max(EVENT_REMINDER_OFFSETS_ALLOWED);
+    $horizon = date('Y-m-d', strtotime($today . " +$maxOffset days"));
+    $stmt = $pdo->prepare(
         "SELECT id, title, event_date, start_time, scope, reminder_offsets,
                 location_text, DATE(created_at) AS created_date
-           FROM events WHERE event_date >= '" . $today . "'"
-    )->fetchAll();
+           FROM events WHERE event_date >= ? AND event_date <= ?"
+    );
+    $stmt->execute([$today, $horizon]);
+    $events = $stmt->fetchAll();
     if (!$events) return 0;
 
     $ins = $pdo->prepare(
@@ -364,10 +405,7 @@ function event_dispatch_due_reminders(PDO $pdo, ?string $onlyUserId = null): int
 
     foreach ($events as $e) {
         $areaIds = $e['scope'] === 'areas' ? event_area_ids($pdo, $e['id']) : [];
-        $audience = event_audience_users($pdo, $e['scope'], $areaIds);
-        if ($onlyUserId !== null) {
-            $audience = array_values(array_filter($audience, fn($u) => $u['id'] === $onlyUserId));
-        }
+        $audience = event_audience_users($pdo, $e['scope'], $areaIds, $onlyUser);
         if (!$audience) continue;
 
         $daysLeft = (int) floor((strtotime($e['event_date']) - strtotime($today)) / 86400);

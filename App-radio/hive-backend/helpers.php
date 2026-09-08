@@ -54,6 +54,59 @@ function generate_otp(): string {
     return (string) random_int(100000, 999999);
 }
 
+// ---- número de control de Radio Doliv (SPPRD-0000001) -------------------
+// Identificador único e intransferible de cada usuario. El alta lo autoasigna
+// (assign_next_control_number, desde signup); solo el director lo edita para
+// corregir inconsistencias (setControlNumber en users.php). Ancho base de 7
+// dígitos, crece si la empresa supera 9 999 999 personas.
+const CONTROL_NUMBER_PREFIX = 'SPPRD-';
+const CONTROL_NUMBER_RE = '/^SPPRD-\d{7,}$/';
+
+function format_control_number(int $n): string {
+    return CONTROL_NUMBER_PREFIX . str_pad((string) $n, 7, '0', STR_PAD_LEFT);
+}
+
+// Entero de un número de control con formato válido, o null si no lo tiene.
+function parse_control_number(?string $value): ?int {
+    $value = trim((string) $value);
+    if (!preg_match(CONTROL_NUMBER_RE, $value)) {
+        return null;
+    }
+    $n = (int) substr($value, strlen(CONTROL_NUMBER_PREFIX));
+    return $n >= 1 ? $n : null;
+}
+
+// Mayor número de control en uso (0 si todavía no hay ninguno).
+function max_control_number(PDO $pdo): int {
+    $offset = strlen(CONTROL_NUMBER_PREFIX) + 1;
+    $stmt = $pdo->query(
+        "SELECT MAX(CAST(SUBSTRING(control_number, $offset) AS UNSIGNED))
+           FROM users WHERE control_number LIKE 'SPPRD-%'"
+    );
+    return (int) $stmt->fetchColumn();
+}
+
+// Autoasigna el siguiente número de control libre al usuario dado y lo
+// devuelve. Reintenta si otra alta simultánea tomó el mismo (colisión del
+// índice UNIQUE); los registros son de baja frecuencia, así que bastan unos
+// pocos intentos. Devuelve null si no lo consiguió.
+function assign_next_control_number(PDO $pdo, string $userId): ?string {
+    for ($attempt = 0; $attempt < 5; $attempt++) {
+        $next = format_control_number(max_control_number($pdo) + 1);
+        try {
+            $stmt = $pdo->prepare('UPDATE users SET control_number = ? WHERE id = ?');
+            $stmt->execute([$next, $userId]);
+            return $next;
+        } catch (PDOException $e) {
+            if ($e->getCode() !== '23000') {
+                throw $e;
+            }
+            // colisión del UNIQUE: recalcular el máximo y reintentar.
+        }
+    }
+    return null;
+}
+
 // ---- calendario laboral de Radio Doliv --------------------------------
 // La semana laboral es de LUNES A SÁBADO. El domingo es el único día no
 // laboral. Cualquier cálculo de días hábiles (permisos/vacaciones,
@@ -182,7 +235,10 @@ function hash_verification_token(string $token): string {
 // token es de un solo uso y caduca a las 24 h); así el límite de reenvíos
 // puede contarlas. Un enlace anterior no consumido sigue sirviendo hasta que
 // caduque, lo cual es aceptable (aleatorio de 256 bits, de un solo uso).
-function issue_email_verification(PDO $pdo, string $userId, ?string $ip): string {
+// $newEmail !== null marca la fila como confirmación de un CAMBIO de correo
+// (migración 029): al consumirla, verifyEmail() aplica users.email = new_email
+// en vez de solo marcar la cuenta como verificada.
+function issue_email_verification(PDO $pdo, string $userId, ?string $ip, ?string $newEmail = null): string {
     // Higiene: quita filas caducadas y ya consumidas de hace más de un día.
     $pdo->prepare(
         'DELETE FROM email_verifications
@@ -191,9 +247,9 @@ function issue_email_verification(PDO $pdo, string $userId, ?string $ip): string
 
     $token = generate_token(); // 64 hex, criptográficamente seguro
     $pdo->prepare(
-        'INSERT INTO email_verifications (id, user_id, token_hash, expires_at, requested_ip)
-         VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ' . EMAIL_VERIFICATION_TTL_HOURS . ' HOUR), ?)'
-    )->execute([generate_id(), $userId, hash_verification_token($token), $ip]);
+        'INSERT INTO email_verifications (id, user_id, new_email, token_hash, expires_at, requested_ip)
+         VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ' . EMAIL_VERIFICATION_TTL_HOURS . ' HOUR), ?)'
+    )->execute([generate_id(), $userId, $newEmail, hash_verification_token($token), $ip]);
 
     return $token;
 }

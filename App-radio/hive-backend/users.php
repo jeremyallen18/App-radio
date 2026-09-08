@@ -14,6 +14,11 @@ function build_public_user_payload(array $user, ?array $department): array {
         'email'         => $user['email'],
         'role'          => $user['role'],
         'position'      => $user['position'],
+        'controlNumber' => $user['control_number'] ?? null,
+        // Cambio de correo pendiente de confirmar (migración 029). Solo tiene
+        // sentido en el perfil propio; en el directorio siempre será null a
+        // menos que esa persona tenga un cambio en curso.
+        'pendingEmail'  => $user['pending_email'] ?? null,
         'photoUrl'      => $user['photo_path'] ? UPLOAD_URL_BASE . $user['photo_path'] : null,
         'department'    => $department,
         // Verificación de correo (023): la app la usa para el aviso.
@@ -117,7 +122,8 @@ function departments_by_id(PDO $pdo): array {
 // "mi área" que filtrar, así que en ese caso el default cae a toda la
 // empresa en vez de devolver una lista vacía.
 //
-// `q`: texto libre; busca en nombre, correo y puesto.
+// `q`: texto libre; busca en nombre, correo, puesto y número de control
+// (`SPPRD-0000000`; se puede teclear con o sin el prefijo/los ceros).
 function listColleagues(PDO $pdo) {
     $user = require_auth($pdo);
 
@@ -141,8 +147,19 @@ function listColleagues(PDO $pdo) {
         // Los comodines van escapados para que un "%" tecleado por el usuario
         // se busque literalmente en vez de traer a toda la empresa.
         $like = '%' . addcslashes($query, '%_\\') . '%';
-        $where[] = '(name LIKE ? OR email LIKE ? OR position LIKE ?)';
-        array_push($params, $like, $like, $like);
+        $conds = ['name LIKE ?', 'email LIKE ?', 'position LIKE ?', 'control_number LIKE ?'];
+        array_push($params, $like, $like, $like, $like);
+
+        // Además, si lo tecleado tiene dígitos, se acepta el número de control
+        // sin el prefijo ni los ceros a la izquierda ("2", "0000002" y
+        // "SPPRD-0000002" llegan todos a la misma persona).
+        $digits = preg_replace('/\D/', '', $query);
+        if ($digits !== '' && strlen($digits) <= 15) {
+            $conds[] = 'control_number LIKE ?';
+            $params[] = '%' . format_control_number((int) $digits);
+        }
+
+        $where[] = '(' . implode(' OR ', $conds) . ')';
     }
 
     $sql = 'SELECT * FROM users';
@@ -205,4 +222,45 @@ function getColleagueProfile(PDO $pdo, string $userId) {
     $payload['joinedAt'] = $target['created_at'];
 
     json_response($payload);
+}
+
+// POST /user/{id}/control-number — el director corrige el número de control
+// de una persona (es único e intransferible; el alta lo autoasigna). Acepta
+// body { "number": 42 } o { "controlNumber": "SPPRD-0000042" }; ambos se
+// normalizan a la forma canónica SPPRD-0000000.
+function setControlNumber(PDO $pdo, string $userId) {
+    $user = require_auth($pdo);
+    require_role($user, ['director']);
+
+    $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
+    $stmt->execute([$userId]);
+    $target = $stmt->fetch();
+    if (!$target) {
+        error_response('No encontramos a esa persona', 404);
+    }
+
+    $body = request_body();
+    $n = null;
+    if (isset($body['number']) && is_numeric($body['number'])) {
+        $n = (int) $body['number'];
+    } elseif (isset($body['controlNumber'])) {
+        $n = parse_control_number($body['controlNumber']);
+    }
+    if ($n === null || $n < 1) {
+        error_response('Número de control inválido. Formato: SPPRD-0000000', 400);
+    }
+    $canonical = format_control_number($n);
+
+    $stmt = $pdo->prepare('SELECT id FROM users WHERE control_number = ? AND id <> ?');
+    $stmt->execute([$canonical, $userId]);
+    if ($stmt->fetch()) {
+        error_response('Ese número de control ya está en uso', 409);
+    }
+
+    $stmt = $pdo->prepare('UPDATE users SET control_number = ? WHERE id = ?');
+    $stmt->execute([$canonical, $userId]);
+
+    $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
+    $stmt->execute([$userId]);
+    json_response(build_user_profile_payload($pdo, $stmt->fetch()));
 }

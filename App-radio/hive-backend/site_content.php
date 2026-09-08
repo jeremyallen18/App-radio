@@ -350,9 +350,47 @@ function siteServicioDelete(PDO $pdo, string $id) {
 // al leerlas — el cliente Flutter manda un textarea por línea, igual que
 // hacía el panel web descartado.
 
+function site_team_with_socials(PDO $pdo, int $id): array {
+    $stmt = $pdo->prepare('SELECT * FROM radio_team WHERE id = ?');
+    $stmt->execute([$id]);
+    $member = $stmt->fetch();
+    $socialsStmt = $pdo->prepare('SELECT label, icon, url FROM team_socials WHERE team_id = ? ORDER BY sort_order ASC, id ASC');
+    $socialsStmt->execute([$id]);
+    $member['socials'] = $socialsStmt->fetchAll();
+    return $member;
+}
+
+// Reemplaza por completo las redes sociales de un integrante con las que
+// llegaron en $_POST['socials_json'] (array JSON de {label,icon,url}) --
+// mismo enfoque que site_save_sponsor_socials().
+function site_save_team_socials(PDO $pdo, int $teamId): void {
+    $pdo->prepare('DELETE FROM team_socials WHERE team_id = ?')->execute([$teamId]);
+
+    $raw = $_POST['socials_json'] ?? '[]';
+    $rows = json_decode($raw, true);
+    if (!is_array($rows)) return;
+
+    $insert = $pdo->prepare('INSERT INTO team_socials (team_id, label, icon, url, sort_order) VALUES (?, ?, ?, ?, ?)');
+    $order = 0;
+    foreach ($rows as $row) {
+        $label = trim((string) ($row['label'] ?? ''));
+        $url = safe_external_url($row['url'] ?? '');
+        if ($label === '' && $url === '') continue;
+        $insert->execute([$teamId, $label, trim((string) ($row['icon'] ?? '')), $url, $order++]);
+    }
+}
+
 function siteEquipoList(PDO $pdo) {
     site_require_director($pdo);
     $rows = $pdo->query('SELECT * FROM radio_team ORDER BY sort_order ASC, id ASC')->fetchAll();
+    $socialsStmt = $pdo->query('SELECT team_id, label, icon, url FROM team_socials ORDER BY team_id ASC, sort_order ASC');
+    $byMember = [];
+    foreach ($socialsStmt->fetchAll() as $s) {
+        $byMember[$s['team_id']][] = ['label' => $s['label'], 'icon' => $s['icon'], 'url' => $s['url']];
+    }
+    foreach ($rows as &$row) {
+        $row['socials'] = $byMember[$row['id']] ?? [];
+    }
     json_response(['items' => $rows]);
 }
 
@@ -368,6 +406,7 @@ function siteEquipoCreate(PDO $pdo) {
     $image = site_handle_image('image', 'locutores', $name, '');
     $slug = site_unique_slug($pdo, 'radio_team', $name);
 
+    $pdo->beginTransaction();
     $stmt = $pdo->prepare('INSERT INTO radio_team (slug, name, role, category, accent, image, short_desc, bio, path, interests, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     $stmt->execute([
         $slug,
@@ -384,9 +423,10 @@ function siteEquipoCreate(PDO $pdo) {
     ]);
 
     $id = (int) $pdo->lastInsertId();
-    $stmt = $pdo->prepare('SELECT * FROM radio_team WHERE id = ?');
-    $stmt->execute([$id]);
-    json_response(['item' => $stmt->fetch()], 201);
+    site_save_team_socials($pdo, $id);
+    $pdo->commit();
+
+    json_response(['item' => site_team_with_socials($pdo, $id)], 201);
 }
 
 function siteEquipoUpdate(PDO $pdo, string $id) {
@@ -400,6 +440,7 @@ function siteEquipoUpdate(PDO $pdo, string $id) {
     if ($name === '') error_response('name es requerido', 400);
 
     $image = site_handle_image('image', 'locutores', $name, $existing['image'] ?? '');
+    $pdo->beginTransaction();
     $stmt = $pdo->prepare('UPDATE radio_team SET name=?, role=?, category=?, accent=?, image=?, short_desc=?, bio=?, path=?, interests=?, sort_order=? WHERE id=?');
     $stmt->execute([
         $name,
@@ -414,14 +455,15 @@ function siteEquipoUpdate(PDO $pdo, string $id) {
         (int) ($_POST['sort_order'] ?? 0),
         $id,
     ]);
+    site_save_team_socials($pdo, (int) $id);
+    $pdo->commit();
 
-    $stmt = $pdo->prepare('SELECT * FROM radio_team WHERE id = ?');
-    $stmt->execute([$id]);
-    json_response(['item' => $stmt->fetch()]);
+    json_response(['item' => site_team_with_socials($pdo, (int) $id)]);
 }
 
 function siteEquipoDelete(PDO $pdo, string $id) {
     site_require_director($pdo);
+    // team_socials tiene ON DELETE CASCADE hacia radio_team.
     $pdo->prepare('DELETE FROM radio_team WHERE id = ?')->execute([$id]);
     json_response(['ok' => true]);
 }

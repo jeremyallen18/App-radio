@@ -58,6 +58,14 @@ function signup(PDO $pdo) {
     $stmt = $pdo->prepare('INSERT INTO users (id, name, email, password) VALUES (?, ?, ?, ?)');
     $stmt->execute([$userId, $name, $email, password_hash($password, PASSWORD_BCRYPT)]);
 
+    // Número de control único e intransferible. Un fallo aquí no debe impedir
+    // el alta: el director puede corregirlo luego desde la app.
+    try {
+        assign_next_control_number($pdo, $userId);
+    } catch (Throwable $e) {
+        error_log('[hive-backend] assign_next_control_number failed: ' . $e->getMessage());
+    }
+
     dispatch_verification_email($pdo, ['id' => $userId, 'name' => $name, 'email' => $email]);
 
     text_response('Cuenta creada. Te enviamos un correo para verificar tu dirección: ábrela para poder iniciar sesión.', 200);
@@ -90,12 +98,34 @@ function verifyEmail(PDO $pdo) {
             'Este enlace de verificación caducó. Pide uno nuevo desde el aviso de la app.', false);
     }
 
+    // new_email != NULL (migración 029): esta fila confirma un CAMBIO de correo,
+    // no el alta. Se revisa la unicidad justo aquí (otra cuenta pudo tomar esa
+    // dirección entre la solicitud y ahora).
+    $newEmail = $row['new_email'] ?? null;
+    if ($newEmail !== null && $newEmail !== '') {
+        $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ? AND id <> ?');
+        $stmt->execute([$newEmail, $row['user_id']]);
+        if ($stmt->fetch()) {
+            render_verification_page('No se pudo cambiar el correo',
+                'Ese correo ya está en uso por otra cuenta. Pide el cambio de nuevo con otra dirección.', false);
+        }
+    }
+
     $pdo->beginTransaction();
     try {
         $pdo->prepare('UPDATE email_verifications SET consumed_at = NOW() WHERE id = ? AND consumed_at IS NULL')
             ->execute([$row['id']]);
-        $pdo->prepare('UPDATE users SET email_verified_at = COALESCE(email_verified_at, NOW()) WHERE id = ?')
-            ->execute([$row['user_id']]);
+        if ($newEmail !== null && $newEmail !== '') {
+            $pdo->prepare('UPDATE users SET email = ?, pending_email = NULL, email_verified_at = NOW() WHERE id = ?')
+                ->execute([$newEmail, $row['user_id']]);
+            // Invalida cualquier otro enlace pendiente del mismo usuario para
+            // que un cambio anterior sin confirmar deje de poder aplicarse.
+            $pdo->prepare('DELETE FROM email_verifications WHERE user_id = ? AND consumed_at IS NULL AND id <> ?')
+                ->execute([$row['user_id'], $row['id']]);
+        } else {
+            $pdo->prepare('UPDATE users SET email_verified_at = COALESCE(email_verified_at, NOW()) WHERE id = ?')
+                ->execute([$row['user_id']]);
+        }
         $pdo->commit();
     } catch (Throwable $e) {
         // Si el fallo fue el propio commit() ya no hay transacción activa;
@@ -105,6 +135,10 @@ function verifyEmail(PDO $pdo) {
         throw $e;
     }
 
+    if ($newEmail !== null && $newEmail !== '') {
+        render_verification_page('¡Correo actualizado!',
+            'Tu nuevo correo quedó confirmado. Úsalo la próxima vez que inicies sesión.', true);
+    }
     render_verification_page('¡Correo verificado!',
         'Listo. Ya puedes volver a la app y usar tu cuenta con normalidad.', true);
 }
@@ -262,4 +296,111 @@ function newPassword(PDO $pdo, string $email) {
     $stmt->execute([password_hash($newPassword, PASSWORD_BCRYPT), $user['id']]);
 
     json_response(['message' => 'Password updated successfully']);
+}
+
+// ---- autoservicio de cuenta (pantalla "Editar cuenta", migración 029) ----
+// Todo autenticado. El cambio de correo NO es inmediato: se guarda como
+// pendiente y lo aplica verifyEmail() cuando el usuario abre el enlace que se
+// envía a la dirección nueva.
+
+// POST /user/account/name  — body { name }.
+function updateAccountName(PDO $pdo) {
+    $user = require_auth($pdo);
+    $body = request_body();
+    $name = trim($body['name'] ?? '');
+    if ($name === '') {
+        error_response('El nombre no puede estar vacío', 400);
+    }
+    if (mb_strlen($name) > 255) {
+        error_response('El nombre es demasiado largo', 400);
+    }
+    $pdo->prepare('UPDATE users SET name = ? WHERE id = ?')->execute([$name, $user['id']]);
+
+    $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
+    $stmt->execute([$user['id']]);
+    json_response(build_user_profile_payload($pdo, $stmt->fetch()));
+}
+
+// POST /user/account/password  — body { currentPassword, newPassword,
+// confirmPassword }. Emite un token NUEVO (se mantiene la sesión en este
+// dispositivo; cualquier otra queda invalidada) y lo devuelve.
+function changePassword(PDO $pdo) {
+    $user = require_auth($pdo);
+    $body = request_body();
+    $current = $body['currentPassword'] ?? '';
+    $new = $body['newPassword'] ?? '';
+    $confirm = $body['confirmPassword'] ?? '';
+
+    if (!password_verify($current, $user['password'])) {
+        error_response('La contraseña actual no es correcta', 400);
+    }
+    if (mb_strlen($new) < 6) {
+        error_response('La nueva contraseña debe tener al menos 6 caracteres', 400);
+    }
+    if ($new !== $confirm) {
+        error_response('La confirmación no coincide con la nueva contraseña', 400);
+    }
+    if (password_verify($new, $user['password'])) {
+        error_response('La nueva contraseña debe ser distinta de la actual', 400);
+    }
+
+    $token = generate_token();
+    $pdo->prepare('UPDATE users SET password = ?, token = ? WHERE id = ?')
+        ->execute([password_hash($new, PASSWORD_BCRYPT), $token, $user['id']]);
+
+    json_response(['token' => $token]);
+}
+
+// POST /user/account/email  — body { currentPassword, newEmail }. Guarda el
+// correo nuevo como pendiente y envía el enlace de confirmación a ESA
+// dirección. El correo actual y la sesión siguen válidos entretanto.
+function requestEmailChange(PDO $pdo) {
+    $user = require_auth($pdo);
+    $body = request_body();
+    $current = $body['currentPassword'] ?? '';
+    $newEmail = strtolower(trim($body['newEmail'] ?? ''));
+
+    if (!password_verify($current, $user['password'])) {
+        error_response('La contraseña actual no es correcta', 400);
+    }
+    if ($newEmail === '' || !filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
+        error_response('Correo inválido', 400);
+    }
+    if ($newEmail === strtolower(trim($user['email']))) {
+        error_response('Ese ya es tu correo actual', 400);
+    }
+
+    $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ? AND id <> ?');
+    $stmt->execute([$newEmail, $user['id']]);
+    if ($stmt->fetch()) {
+        error_response('Ese correo ya está en uso por otra cuenta', 409);
+    }
+
+    if (!email_verification_send_allowed($pdo, $user['id'])) {
+        error_response('Has pedido demasiados correos de verificación. Espera unos minutos e inténtalo de nuevo.', 429);
+    }
+
+    $pdo->prepare('UPDATE users SET pending_email = ? WHERE id = ?')->execute([$newEmail, $user['id']]);
+
+    $token = issue_email_verification($pdo, $user['id'], $_SERVER['REMOTE_ADDR'] ?? null, $newEmail);
+    $link = backend_public_base_url() . '/verify-email?token=' . $token;
+    $sent = send_verification_email($newEmail, $user['name'] ?? '', $link);
+    error_log('[hive-backend] Email change link for ' . $user['email'] . ' -> ' . $newEmail . ': ' . $link
+        . ($sent ? ' (emailed)' : ' (NOT emailed)'));
+
+    json_response(['message' => $sent
+        ? 'Te enviamos un enlace a ' . $newEmail . '. Ábrelo para confirmar el cambio.'
+        : 'No se pudo enviar el correo de confirmación. Revisa la configuración SMTP o el log del backend.']);
+}
+
+// POST /user/account/email/cancel  — descarta el cambio de correo pendiente.
+function cancelEmailChange(PDO $pdo) {
+    $user = require_auth($pdo);
+    $pdo->prepare('UPDATE users SET pending_email = NULL WHERE id = ?')->execute([$user['id']]);
+    $pdo->prepare('DELETE FROM email_verifications WHERE user_id = ? AND new_email IS NOT NULL AND consumed_at IS NULL')
+        ->execute([$user['id']]);
+
+    $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
+    $stmt->execute([$user['id']]);
+    json_response(build_user_profile_payload($pdo, $stmt->fetch()));
 }
