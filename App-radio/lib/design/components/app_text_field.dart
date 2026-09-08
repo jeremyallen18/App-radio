@@ -9,6 +9,7 @@ class AppTextField extends StatelessWidget {
     this.controller,
     this.prefixIcon,
     this.suffixIcon,
+    this.suffixText,
     this.hintText,
     this.obscured = false,
     this.textInputType,
@@ -23,6 +24,9 @@ class AppTextField extends StatelessWidget {
   final TextEditingController? controller;
   final Widget? prefixIcon;
   final Widget? suffixIcon;
+
+  /// Sufijo de solo lectura dentro del campo (p. ej. la unidad "m").
+  final String? suffixText;
   final String? hintText;
   final bool obscured;
   final TextInputType? textInputType;
@@ -50,6 +54,11 @@ class AppTextField extends StatelessWidget {
         hintText: hintText,
         prefixIcon: prefixIcon,
         suffixIcon: suffixIcon,
+        suffixText: suffixText,
+        suffixStyle: const TextStyle(
+          color: AppColors.textMuted,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

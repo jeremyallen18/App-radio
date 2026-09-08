@@ -111,7 +111,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                 tooltip: 'Salir de selección',
                 onPressed: _toggleSelectMode,
               )
-            : const AppBackButton(),
+            : const BackButton(),
         title: Text(_selectMode
             ? '${_selected.length} seleccionados'
             : 'Horarios de empleados'),
@@ -145,6 +145,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
             );
           }
           return RefreshIndicator(
+            color: AppColors.accent,
             onRefresh: _load,
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(
@@ -167,15 +168,18 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                   );
                 }
                 final row = _rows[i - 1];
-                return _ScheduleRowCard(
-                  row: row,
-                  selectMode: _selectMode,
-                  selected: _selected.contains(row.employeeId),
-                  onTap: !_canEdit
-                      ? null
-                      : _selectMode
-                          ? () => _toggleOne(row.employeeId)
-                          : () => _edit(row),
+                return AppFadeIn.staggered(
+                  index: i - 1,
+                  child: _ScheduleRowCard(
+                    row: row,
+                    selectMode: _selectMode,
+                    selected: _selected.contains(row.employeeId),
+                    onTap: !_canEdit
+                        ? null
+                        : _selectMode
+                            ? () => _toggleOne(row.employeeId)
+                            : () => _edit(row),
+                  ),
                 );
               },
             ),
@@ -233,23 +237,69 @@ class _ScheduleRowCard extends StatelessWidget {
                     fontSize: 15,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 if (s == null)
-                  const Text(
-                    'Sin horario asignado',
-                    style: TextStyle(color: AppColors.warning, fontSize: 12, fontWeight: FontWeight.w600),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: AppBadge(
+                      label: 'Sin horario asignado',
+                      variant: AppBadgeVariant.warning,
+                    ),
                   )
                 else
-                  Text(
-                    'Entrada ${s.entryTime}  ·  Salida ${s.exitTime}\n'
-                    'Comida ${s.mealTime}  ·  Límite ${s.mealMaxMinutes} min',
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      _MetaChip(icon: Icons.login, label: s.entryTime),
+                      _MetaChip(icon: Icons.logout, label: s.exitTime),
+                      _MetaChip(icon: Icons.restaurant_outlined, label: s.mealTime),
+                      _MetaChip(
+                        icon: Icons.timer_outlined,
+                        label: '${s.mealMaxMinutes} min',
+                      ),
+                    ],
                   ),
               ],
             ),
           ),
           if (onTap != null && !selectMode)
             const Icon(Icons.edit_outlined, color: AppColors.accent, size: 18),
+        ],
+      ),
+    );
+  }
+}
+
+/// Chip compacto de solo lectura para un dato del horario (hora o límite).
+class _MetaChip extends StatelessWidget {
+  const _MetaChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.bgBase,
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: AppColors.textMuted),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

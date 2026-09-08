@@ -165,10 +165,14 @@ class _SiteContentHubScreenState extends State<SiteContentHubScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Índice corrido para escalonar la entrada de todas las tarjetas, sin
+    // reiniciar en cada categoría.
+    var cardIndex = 0;
     return AppScaffold(
       padding: EdgeInsets.zero,
       appBar: AppBar(title: const Text('Contenido del sitio web')),
       body: RefreshIndicator(
+        color: AppColors.accent,
         onRefresh: _loadCounts,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(
@@ -178,9 +182,11 @@ class _SiteContentHubScreenState extends State<SiteContentHubScreen> {
             AppSpacing.xxxl,
           ),
           children: [
-            const Text(
-              'Estos cambios se publican de inmediato en radiodoliv.com.',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            const InfoBanner(
+              icon: Icons.public,
+              color: AppColors.warning,
+              message:
+                  'Estos cambios se publican de inmediato en radiodoliv.com.',
             ),
             const SizedBox(height: AppSpacing.xl),
             for (final category in _categories) ...[
@@ -188,11 +194,14 @@ class _SiteContentHubScreenState extends State<SiteContentHubScreen> {
               ResponsiveCardGrid(
                 children: [
                   for (final section in category.sections)
-                    _SectionCard(
-                      section: section,
-                      count: _counts[section.resource],
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: section.builder),
+                    AppFadeIn.staggered(
+                      index: cardIndex++,
+                      child: _SectionCard(
+                        section: section,
+                        count: _counts[section.resource],
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: section.builder),
+                        ),
                       ),
                     ),
                 ],
@@ -218,7 +227,6 @@ class _SectionCard extends StatelessWidget {
     return AppCard(
       onTap: onTap,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 40,
@@ -247,17 +255,24 @@ class _SectionCard extends StatelessWidget {
                   section.description,
                   style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.xs),
                 count == null
                     ? const SizedBox(
-                        width: 14,
-                        height: 14,
+                        width: 12,
+                        height: 12,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: AppColors.textMuted,
                         ),
                       )
-                    : AppBadge(label: count == 1 ? '1 elemento' : '$count elementos'),
+                    : Text(
+                        count == 1 ? '1 elemento' : '$count elementos',
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
               ],
             ),
           ),

@@ -137,7 +137,7 @@ class _AdminLocationScreenState extends State<AdminLocationScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: const Text('Lugar de asistencia'),
       ),
       body: Builder(
@@ -151,31 +151,19 @@ class _AdminLocationScreenState extends State<AdminLocationScreen> {
               AppSpacing.xxl,
             ),
             children: [
-              const Text(
-                'Los empleados y managers solo podrán registrar su entrada y '
-                'terminar su hora de comida si su teléfono está dentro de este '
-                'radio. Párate en el lugar y toca "Usar mi ubicación actual".',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+              const InfoBanner(
+                icon: Icons.location_on_outlined,
+                message:
+                    'Los empleados y managers solo podrán registrar su entrada '
+                    'y terminar su hora de comida si su teléfono está dentro de '
+                    'este radio. Párate en el lugar y toca "Usar mi ubicación '
+                    'actual".',
               ),
               const SizedBox(height: AppSpacing.lg),
-              if (_current != null)
-                AppCard(
-                  child: Row(
-                    children: [
-                      const Icon(Icons.check_circle_outline, color: AppColors.success),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Text(
-                          'Configurado: ${_current!.latitude.toStringAsFixed(5)}, '
-                          '${_current!.longitude.toStringAsFixed(5)} · radio '
-                          '${_current!.radiusM} m',
-                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: AppSpacing.lg),
+              if (_current != null) ...[
+                _CurrentLocationCard(config: _current!),
+                const SizedBox(height: AppSpacing.lg),
+              ],
               OutlinedButton.icon(
                 onPressed: _locating ? null : _useCurrentLocation,
                 icon: _locating
@@ -187,44 +175,59 @@ class _AdminLocationScreenState extends State<AdminLocationScreen> {
                     : const Icon(Icons.my_location),
                 label: const Text('Usar mi ubicación actual'),
               ),
-              const SizedBox(height: AppSpacing.lg),
-              AppTextField(
-                controller: _label,
-                hintText: 'Nombre del lugar (ej. Cabina Radio Doliv)',
-                prefixIcon: const Icon(Icons.badge_outlined),
+              const SizedBox(height: AppSpacing.xl),
+              _captioned(
+                'Nombre del lugar',
+                AppTextField(
+                  controller: _label,
+                  hintText: 'ej. Cabina Radio Doliv',
+                  prefixIcon: const Icon(Icons.badge_outlined),
+                ),
               ),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.lg),
+              const SectionHeader(title: 'Coordenadas'),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: AppTextField(
-                      controller: _lat,
-                      hintText: 'Latitud',
-                      textInputType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                        signed: true,
+                    child: _captioned(
+                      'Latitud',
+                      AppTextField(
+                        controller: _lat,
+                        hintText: '19.1847179',
+                        textInputType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                          signed: true,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
-                    child: AppTextField(
-                      controller: _lng,
-                      hintText: 'Longitud',
-                      textInputType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                        signed: true,
+                    child: _captioned(
+                      'Longitud',
+                      AppTextField(
+                        controller: _lng,
+                        hintText: '-99.4322725',
+                        textInputType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                          signed: true,
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
-              AppTextField(
-                controller: _radius,
-                hintText: 'Radio permitido (metros)',
-                textInputType: TextInputType.number,
-                prefixIcon: const Icon(Icons.social_distance_outlined),
+              _captioned(
+                'Radio permitido',
+                AppTextField(
+                  controller: _radius,
+                  hintText: 'metros',
+                  textInputType: TextInputType.number,
+                  prefixIcon: const Icon(Icons.social_distance_outlined),
+                  suffixText: 'm',
+                ),
               ),
               if (_error != null) ...[
                 const SizedBox(height: AppSpacing.md),
@@ -239,6 +242,79 @@ class _AdminLocationScreenState extends State<AdminLocationScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  /// Campo con una etiqueta corta encima, para que siga identificable una vez
+  /// lleno (el hint desaparece al escribir).
+  Widget _captioned(String label, Widget field) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 2, bottom: AppSpacing.xs),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        field,
+      ],
+    );
+  }
+}
+
+/// Resumen del lugar ya configurado: check en tinte `success`, nombre del
+/// lugar y, debajo, coordenadas y radio.
+class _CurrentLocationCard extends StatelessWidget {
+  const _CurrentLocationCard({required this.config});
+
+  final AttendanceLocationConfig config;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = (config.label ?? '').trim();
+    return AppCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.16),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.check_rounded, color: AppColors.success, size: 20),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label.isEmpty ? 'Lugar configurado' : label,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${config.latitude.toStringAsFixed(5)}, '
+                  '${config.longitude.toStringAsFixed(5)}  ·  radio ${config.radiusM} m',
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
