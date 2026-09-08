@@ -1,17 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/services/team_service.dart';
-import 'package:doliv_social/shared/home/progress_widgets.dart';
+import 'package:doliv_social/shared/home/progress/completion_gauge.dart';
+import 'package:doliv_social/shared/home/progress/department_stack_bars.dart';
+import 'package:doliv_social/shared/home/progress/progress_sections.dart';
+import 'package:doliv_social/shared/home/progress/progress_stats.dart';
+import 'package:doliv_social/shared/home/progress/weekly_rhythm_chart.dart';
+import 'package:doliv_social/shared/teams/task_board_screen.dart';
 
-/// Vista de "Mi progreso" para el director: el desempeño de tareas de TODOS los
-/// departamentos (dona empresa + desglose por área), en vez de su progreso
-/// personal, que para él casi siempre está vacío.
+/// "Desempeño por departamento" para el director: medidor de la empresa,
+/// barras apiladas por área (tocar abre su tablero) y ritmo semanal de toda
+/// la empresa cuando el listado completo está disponible.
 class DirectorPerformanceView extends StatelessWidget {
-  const DirectorPerformanceView({super.key, required this.data});
+  const DirectorPerformanceView({
+    super.key,
+    required this.data,
+    this.companyStats,
+  });
 
   final DeptTasksByDepartment? data;
+
+  /// Calculado con `GET /dept-tasks` sin filtro (todas las áreas). `null`
+  /// si esa llamada falló: se omite la tarjeta de ritmo, no la pantalla.
+  final ProgressStats? companyStats;
 
   @override
   Widget build(BuildContext context) {
@@ -32,195 +44,93 @@ class DirectorPerformanceView extends StatelessWidget {
         child: EmptyState(
           icon: Icons.query_stats_rounded,
           title: 'Aún no hay tareas registradas',
-          message:
-              'Cuando los departamentos creen y completen tareas, aquí verás '
-              'sus gráficas de avance.',
+          message: 'Cuando los departamentos creen y completen tareas, aquí verás sus gráficas de avance.',
         ),
       );
     }
 
-    // Departamentos con tareas primero; entre ellos, los que tienen más
-    // pendientes arriba (los que necesitan seguimiento).
+    // Con tareas primero; entre ellos, mayor avance arriba y, a igual
+    // avance, más pendientes arriba (los que necesitan seguimiento).
     final rows = [...data.departments]..sort((a, b) {
         final aHas = a.total > 0 ? 0 : 1;
         final bHas = b.total > 0 ? 0 : 1;
         if (aHas != bHas) return aHas - bHas;
+        final byRatio = b.completionRatio.compareTo(a.completionRatio);
+        if (byRatio != 0) return byRatio;
         if (b.pending != a.pending) return b.pending - a.pending;
-        return a.departmentName
-            .toLowerCase()
-            .compareTo(b.departmentName.toLowerCase());
+        return a.departmentName.toLowerCase().compareTo(b.departmentName.toLowerCase());
       });
 
-    final overallPct = (data.completionRatio * 100).round();
+    final company = companyStats;
+    final active = data.departments.where((d) => d.total > 0).length;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SectionHeader(title: 'Desempeño por departamento'),
+          const SectionHeader(title: 'Desempeño de la empresa'),
           AppCard(
             child: Column(
               children: [
-                AspectRatio(
-                  aspectRatio: 1.6,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      PieChart(
-                        PieChartData(
-                          sectionsSpace: 3,
-                          centerSpaceRadius: 58,
-                          startDegreeOffset: -90,
-                          borderData: FlBorderData(show: false),
-                          sections: [
-                            PieChartSectionData(
-                              color: AppColors.success,
-                              value: data.totalDone.toDouble(),
-                              title: '',
-                              radius: 42,
-                            ),
-                            PieChartSectionData(
-                              color: AppColors.warning,
-                              value: data.totalPending.toDouble(),
-                              title: '',
-                              radius: 42,
-                            ),
-                          ],
-                        ),
-                        duration: const Duration(milliseconds: 400),
-                        curve: Curves.easeOutCubic,
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '$overallPct%',
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 28,
-                            ),
-                          ),
-                          const Text(
-                            'completado',
-                            style: TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                CompletionGauge(
+                  done: data.totalDone,
+                  inProgress: data.totalInProgress,
+                  pending: data.totalNotStarted,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ProgressLegendDot(color: AppColors.success, label: 'Completadas'),
-                    const SizedBox(width: AppSpacing.xl),
-                    ProgressLegendDot(color: AppColors.warning, label: 'Pendientes'),
-                  ],
+                StatusLegend(
+                  done: data.totalDone,
+                  inProgress: data.totalInProgress,
+                  pending: data.totalNotStarted,
                 ),
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              Expanded(
-                child: StatTile(
-                  icon: Icons.check_circle_outline,
-                  value: '${data.totalDone}',
-                  label: 'Completadas (empresa)',
-                  accentColor: AppColors.success,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: StatTile(
-                  icon: Icons.pending_outlined,
-                  value: '${data.totalPending}',
-                  label: 'Pendientes (empresa)',
-                  accentColor: AppColors.warning,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          const SectionHeader(title: 'Tareas completadas por departamento'),
+          const SizedBox(height: AppSpacing.md),
           AppCard(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (var i = 0; i < rows.length; i++) ...[
-                  if (i > 0) const SizedBox(height: AppSpacing.md),
-                  _DeptPerformanceRow(counts: rows[i]),
-                ],
+                CardTitle(
+                  title: 'Por departamento',
+                  trailing: '$active de ${data.departments.length} con tareas',
+                ),
+                DepartmentStackBars(
+                  rows: rows,
+                  onOpen: (d) => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TaskBoardScreen(
+                        departmentId: d.departmentId,
+                        departmentName: d.departmentName,
+                        canManage: true,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Una fila del desglose por departamento en la vista del director: nombre,
-/// "hechas/total · %" y una barra de progreso de las tareas completadas.
-class _DeptPerformanceRow extends StatelessWidget {
-  const _DeptPerformanceRow({required this.counts});
-
-  final DepartmentTaskCounts counts;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool hasTasks = counts.total > 0;
-    final int pct = (counts.completionRatio * 100).round();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                counts.departmentName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
+          if (company != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  CardTitle(
+                    title: 'Ritmo de la empresa',
+                    trailing: '${company.weekTotal} ${company.weekTotal == 1 ? 'hecha' : 'hechas'} en 7 días',
+                  ),
+                  WeeklyRhythmChart(week: company.week),
+                ],
               ),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Text(
-              hasTasks ? '${counts.done}/${counts.total} · $pct%' : 'Sin tareas',
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-            ),
+            const SizedBox(height: AppSpacing.md),
+            PunctualityRow(stats: company),
           ],
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: hasTasks ? counts.completionRatio : 0,
-            minHeight: 8,
-            backgroundColor: AppColors.surfaceBorder,
-            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.success),
-          ),
-        ),
-        if (hasTasks && counts.pending > 0) ...[
-          const SizedBox(height: 4),
-          Text(
-            '${counts.pending} pendientes',
-            style: const TextStyle(color: AppColors.warning, fontSize: 11),
-          ),
         ],
-      ],
+      ),
     );
   }
 }
