@@ -97,6 +97,11 @@ class DeptTask {
   final String id;
   final String? parentId;
   final String departmentId;
+
+  /// Sub-equipo al que pertenece la tarea (migración 030), o `null` si es una
+  /// tarea "de área". El backend lo manda como `{id, name}`.
+  final ({String id, String name})? subTeam;
+
   final String title;
   final String? description;
   final DeptTaskStatus status;
@@ -139,6 +144,7 @@ class DeptTask {
     required this.id,
     required this.parentId,
     required this.departmentId,
+    required this.subTeam,
     required this.title,
     required this.description,
     required this.status,
@@ -166,10 +172,14 @@ class DeptTask {
 
   factory DeptTask.fromJson(Map<String, dynamic> json) {
     DateTime? d(String k) => DateTime.tryParse(json[k]?.toString() ?? '');
+    final st = json['subTeam'];
     return DeptTask(
       id: json['id']?.toString() ?? '',
       parentId: json['parentId']?.toString(),
       departmentId: json['departmentId']?.toString() ?? '',
+      subTeam: st is Map
+          ? (id: st['id']?.toString() ?? '', name: st['name']?.toString() ?? '')
+          : null,
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString(),
       status: deptTaskStatusFromString(json['status']?.toString()),

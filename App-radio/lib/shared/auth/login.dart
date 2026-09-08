@@ -200,10 +200,19 @@ class _LoginState extends State<Login> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
+                // `Wrap` (no `Row`): con fuente del sistema grande o "zoom de
+                // pantalla" (Honor/EMUI, accesibilidad) el enlace no cabe junto
+                // al checkbox y antes se pintaba encima. Ahora baja a su propia
+                // línea; y si aun así no cabe, su texto se parte en dos renglones
+                // en vez de desbordarse.
+                LayoutBuilder(
+                  builder: (context, constraints) => Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      InkWell(
                         borderRadius: BorderRadius.circular(AppRadius.chip),
                         onTap: () => setState(() => _rememberMe = !_rememberMe),
                         child: Row(
@@ -222,15 +231,20 @@ class _LoginState extends State<Login> {
                           ],
                         ),
                       ),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pushNamed(context, MyRoutes.reset),
-                      child: const Text(
-                        '¿Olvidaste tu contraseña?',
-                        style: TextStyle(color: AppColors.accentStrong, fontSize: 13),
+                      TextButton(
+                        onPressed: () => Navigator.pushNamed(context, MyRoutes.reset),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                          child: const Text(
+                            '¿Olvidaste tu contraseña?',
+                            textAlign: TextAlign.end,
+                            style: TextStyle(
+                                color: AppColors.accentStrong, fontSize: 13),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 AppButton(

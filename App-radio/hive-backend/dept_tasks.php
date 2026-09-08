@@ -73,15 +73,38 @@ function dept_task_fail(string $message, int $status = 409): void {
 
 // Corta (400) si $userId no es empleado ni manager de $departmentId. Es la
 // única regla de "a quién se le puede asignar una tarea": la comparten crear
-// y editar.
-function dept_task_require_assignable(PDO $pdo, string $userId, string $departmentId): void {
+// y editar. Si $subTeamId no es null, además debe ser miembro de ese
+// sub-equipo (migración 030).
+function dept_task_require_assignable(PDO $pdo, string $userId, string $departmentId, ?string $subTeamId = null): void {
     $stmt = $pdo->prepare(
-        "SELECT id FROM users WHERE id = ? AND department_id = ? AND role IN ('employee', 'manager')"
+        "SELECT id FROM users
+          WHERE id = ? AND department_id = ? AND role IN ('employee', 'manager')
+            AND " . SQL_USER_VERIFIED
     );
     $stmt->execute([$userId, $departmentId]);
     if (!$stmt->fetch()) {
         dept_task_fail('La persona asignada no pertenece a este departamento.', 400);
     }
+    if ($subTeamId !== null) {
+        $stmt = $pdo->prepare('SELECT 1 FROM sub_team_members WHERE sub_team_id = ? AND user_id = ?');
+        $stmt->execute([$subTeamId, $userId]);
+        if (!$stmt->fetch()) {
+            dept_task_fail('La persona asignada no pertenece a este sub-equipo.', 400);
+        }
+    }
+}
+
+// ¿Puede este usuario ADMINISTRAR (crear/editar/borrar/revisar) una tarea de
+// este departamento y, si aplica, de este sub-equipo?
+//   - director: siempre.
+//   - manager: solo su propio departamento.
+//   - empleado sub-líder: solo tareas cuyo sub_team_id es uno que lidera.
+// Único sitio donde vive la regla; lo consultan create/update/delete/review.
+function dept_task_can_admin(PDO $pdo, array $user, string $departmentId, ?string $subTeamId): bool {
+    if ($user['role'] === 'director') return true;
+    if ($user['role'] === 'manager' && ($user['department_id'] ?? null) === $departmentId) return true;
+    if ($subTeamId !== null && in_array($subTeamId, sub_team_lead_ids($pdo, $user['id']), true)) return true;
+    return false;
 }
 
 // Id del manager de un departamento (users.role = 'manager' cuyo correo es
@@ -142,10 +165,19 @@ function dept_task_payload(PDO $pdo, array $row): array {
     $stmt->execute([$row['id']]);
     $sub = $stmt->fetch();
 
+    $subTeam = null;
+    if (!empty($row['sub_team_id'])) {
+        $s = $pdo->prepare('SELECT id, name FROM sub_teams WHERE id = ?');
+        $s->execute([$row['sub_team_id']]);
+        $st = $s->fetch();
+        if ($st) $subTeam = ['id' => $st['id'], 'name' => $st['name']];
+    }
+
     return [
         'id'              => $row['id'],
         'parentId'        => $row['parent_id'],
         'departmentId'    => $row['department_id'],
+        'subTeam'         => $subTeam,
         'title'           => $row['title'],
         'description'     => $row['description'],
         'status'          => $row['status'],
@@ -415,6 +447,15 @@ function deptTasksList(PDO $pdo) {
         $where[] = 'assigned_to = ?';
         $params[] = $user['id'];
     }
+    // ?subTeamId=X -> solo las de ese sub-equipo. ?subTeamId=none -> las de
+    // área (sin sub-equipo). (migración 030)
+    $subTeamId = trim($_GET['subTeamId'] ?? '');
+    if ($subTeamId === 'none') {
+        $where[] = 'sub_team_id IS NULL';
+    } elseif ($subTeamId !== '') {
+        $where[] = 'sub_team_id = ?';
+        $params[] = $subTeamId;
+    }
 
     $sql = 'SELECT * FROM dept_tasks';
     if ($where) $sql .= ' WHERE ' . implode(' AND ', $where);
@@ -432,25 +473,17 @@ function deptTasksList(PDO $pdo) {
 
 function deptTaskCreate(PDO $pdo) {
     $user = require_auth($pdo);
-    require_role($user, ['director', 'manager']);
 
     $body = request_body();
     $departmentId = dept_task_scope_department($user, $body['departmentId'] ?? null);
     if ($departmentId === null) {
         dept_task_fail('Indica el departamento de la tarea.', 400);
     }
-    dept_task_require_admin($pdo, $user, $departmentId);
 
-    $title = trim($body['title'] ?? '');
-    if ($title === '') {
-        dept_task_fail('El título de la tarea es obligatorio.', 400);
-    }
-    $description = trim($body['description'] ?? '');
-    $dueDate = trim($body['dueDate'] ?? '');
-    $dueDate = $dueDate !== '' && strtotime($dueDate) ? date('Y-m-d', strtotime($dueDate)) : null;
-
-    // Subtarea: el padre debe existir y ser del mismo departamento.
+    // Subtarea: el padre debe existir y ser del mismo departamento. Una
+    // subtarea hereda el sub-equipo de su padre (árbol consistente).
     $parentId = trim($body['parentId'] ?? '') ?: null;
+    $parent = null;
     if ($parentId !== null) {
         $parent = dept_task_row($pdo, $parentId);
         if (!$parent || $parent['department_id'] !== $departmentId) {
@@ -461,12 +494,40 @@ function deptTaskCreate(PDO $pdo) {
         }
     }
 
+    // Sub-equipo (migración 030). En una subtarea se hereda del padre.
+    if ($parent !== null) {
+        $subTeamId = $parent['sub_team_id'] ?: null;
+    } else {
+        $subTeamId = trim($body['subTeamId'] ?? '') ?: null;
+        if ($subTeamId !== null) {
+            $st = sub_team_row($pdo, $subTeamId);
+            if (!$st || $st['department_id'] !== $departmentId) {
+                dept_task_fail('El sub-equipo indicado no es válido.', 400);
+            }
+        }
+    }
+
+    // Permiso: director, manager del área, o el sub-líder del sub-equipo
+    // indicado. Un empleado sin sub-equipo que lidere no llega aquí.
+    if (!dept_task_can_admin($pdo, $user, $departmentId, $subTeamId)) {
+        error_response('No tienes permiso para crear tareas aquí', 403);
+    }
+
+    $title = trim($body['title'] ?? '');
+    if ($title === '') {
+        dept_task_fail('El título de la tarea es obligatorio.', 400);
+    }
+    $description = trim($body['description'] ?? '');
+    $dueDate = trim($body['dueDate'] ?? '');
+    $dueDate = $dueDate !== '' && strtotime($dueDate) ? date('Y-m-d', strtotime($dueDate)) : null;
+
     // Responsable.
-    //  - Director + tarea principal: SIEMPRE el manager del departamento
-    //    (se ignora cualquier assignedTo). Él la desglosa con su equipo.
-    //  - Manager (o director en una subtarea): empleado o manager del área,
-    //    opcional.
-    if ($user['role'] === 'director' && $parentId === null) {
+    //  - Director + tarea principal SIN sub-equipo: SIEMPRE el manager del
+    //    departamento (se ignora cualquier assignedTo). Él la desglosa.
+    //  - Resto (manager, director en subtarea o con sub-equipo, sub-líder):
+    //    empleado/manager del área, opcional; si hay sub-equipo, además debe
+    //    ser miembro de él.
+    if ($user['role'] === 'director' && $parentId === null && $subTeamId === null) {
         $assignedTo = dept_task_manager_id($pdo, $departmentId);
         if ($assignedTo === null) {
             dept_task_fail('Este departamento aún no tiene manager. Asigna uno antes de crear tareas.', 409);
@@ -474,7 +535,7 @@ function deptTaskCreate(PDO $pdo) {
     } else {
         $assignedTo = trim($body['assignedTo'] ?? '') ?: null;
         if ($assignedTo !== null) {
-            dept_task_require_assignable($pdo, $assignedTo, $departmentId);
+            dept_task_require_assignable($pdo, $assignedTo, $departmentId, $subTeamId);
         }
     }
 
@@ -491,12 +552,12 @@ function deptTaskCreate(PDO $pdo) {
     $id = generate_id();
     $stmt = $pdo->prepare(
         'INSERT INTO dept_tasks
-           (id, parent_id, department_id, title, description, assigned_to, created_by,
+           (id, parent_id, department_id, sub_team_id, title, description, assigned_to, created_by,
             created_by_role, due_date, requires_evidence, recurrence, recurrence_until)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
-        $id, $parentId, $departmentId, $title,
+        $id, $parentId, $departmentId, $subTeamId, $title,
         $description !== '' ? $description : null,
         $assignedTo, $user['id'], $user['role'], $dueDate,
         $requiresEvidence, $recurrence, $recurrenceUntil,
@@ -523,11 +584,12 @@ function deptTaskCreate(PDO $pdo) {
 
 function deptTaskUpdate(PDO $pdo, string $id) {
     $user = require_auth($pdo);
-    require_role($user, ['director', 'manager']);
 
     $row = dept_task_row($pdo, $id);
     if (!$row) error_response('Tarea no encontrada', 404);
-    dept_task_require_admin($pdo, $user, $row['department_id']);
+    if (!dept_task_can_admin($pdo, $user, $row['department_id'], $row['sub_team_id'])) {
+        error_response('No tienes permiso para editar esta tarea', 403);
+    }
 
     $body = request_body();
     $title = array_key_exists('title', $body) ? trim($body['title']) : $row['title'];
@@ -543,11 +605,33 @@ function deptTaskUpdate(PDO $pdo, string $id) {
         $dueDate = $d !== '' && strtotime($d) ? date('Y-m-d', strtotime($d)) : null;
     }
 
+    // Mover la tarea de/hacia un sub-equipo: solo director o manager del área
+    // (el sub-líder no puede sacarla de su sub-equipo). Solo en tareas de
+    // nivel superior; las subtareas heredan del padre.
+    $subTeamId = $row['sub_team_id'];
+    $isDeptAdmin = $user['role'] === 'director'
+        || ($user['role'] === 'manager' && ($user['department_id'] ?? null) === $row['department_id']);
+    if ($isDeptAdmin && $row['parent_id'] === null && array_key_exists('subTeamId', $body)) {
+        $raw = trim($body['subTeamId']);
+        if ($raw === '' || $raw === 'none') {
+            $subTeamId = null;
+        } else {
+            $st = sub_team_row($pdo, $raw);
+            if (!$st || $st['department_id'] !== $row['department_id']) {
+                dept_task_fail('El sub-equipo indicado no es válido.', 400);
+            }
+            $subTeamId = $raw;
+        }
+        // Reencuadra las subtareas al mismo sub-equipo.
+        $s = $pdo->prepare('UPDATE dept_tasks SET sub_team_id = ? WHERE parent_id = ?');
+        $s->execute([$subTeamId, $id]);
+    }
+
     $assignedTo = $row['assigned_to'];
     if (array_key_exists('assignedTo', $body)) {
         $assignedTo = trim($body['assignedTo']) ?: null;
         if ($assignedTo !== null) {
-            dept_task_require_assignable($pdo, $assignedTo, $row['department_id']);
+            dept_task_require_assignable($pdo, $assignedTo, $row['department_id'], $subTeamId);
         }
     }
 
@@ -566,10 +650,10 @@ function deptTaskUpdate(PDO $pdo, string $id) {
     }
 
     $stmt = $pdo->prepare(
-        'UPDATE dept_tasks SET title = ?, description = ?, assigned_to = ?, due_date = ?,
-           requires_evidence = ?, recurrence = ?, recurrence_until = ? WHERE id = ?'
+        'UPDATE dept_tasks SET title = ?, description = ?, sub_team_id = ?, assigned_to = ?,
+           due_date = ?, requires_evidence = ?, recurrence = ?, recurrence_until = ? WHERE id = ?'
     );
-    $stmt->execute([$title, $description, $assignedTo, $dueDate,
+    $stmt->execute([$title, $description, $subTeamId, $assignedTo, $dueDate,
         $requiresEvidence, $recurrence, $recurrenceUntil, $id]);
 
     json_response([
@@ -590,9 +674,12 @@ function deptTaskSetStatus(PDO $pdo, string $id) {
     // Ver la tarea: director; o manager/empleado del mismo departamento.
     dept_task_require_view($user, $row['department_id']);
 
-    // El empleado SOLO puede tocar el estado de una tarea asignada a él.
-    // (una tarea sin responsable, o de otra persona, no la puede completar).
-    if ($user['role'] === 'employee' && $row['assigned_to'] !== $user['id']) {
+    // El empleado SOLO puede tocar el estado de una tarea asignada a él
+    // (una tarea sin responsable, o de otra persona, no la puede completar)
+    // — salvo que sea el sub-líder del sub-equipo de esa tarea, en cuyo caso
+    // la gestiona como un manager.
+    $isTaskAdmin = dept_task_can_admin($pdo, $user, $row['department_id'], $row['sub_team_id']);
+    if ($user['role'] === 'employee' && $row['assigned_to'] !== $user['id'] && !$isTaskAdmin) {
         dept_task_fail('Solo puedes completar tareas asignadas a ti.', 403);
     }
 
@@ -642,7 +729,9 @@ function deptTaskSetStatus(PDO $pdo, string $id) {
     }
 
     // Un empleado NO cierra la tarea: queda pendiente de revisión del manager.
-    $reviewStatus = $user['role'] === 'employee' ? 'pendiente_revision' : 'sin_revision';
+    // El sub-líder del sub-equipo de la tarea sí la cierra directamente.
+    $reviewStatus = ($user['role'] === 'employee' && !$isTaskAdmin)
+        ? 'pendiente_revision' : 'sin_revision';
 
     // Transición atómica: solo la aplica quien encuentra la tarea aún sin
     // completar. Con dos peticiones simultáneas (o un doble toque que esquiva
@@ -696,11 +785,12 @@ function deptTaskSetStatus(PDO $pdo, string $id) {
 
 function deptTaskReview(PDO $pdo, string $id) {
     $user = require_auth($pdo);
-    require_role($user, ['director', 'manager']);
 
     $row = dept_task_row($pdo, $id);
     if (!$row) error_response('Tarea no encontrada', 404);
-    dept_task_require_admin($pdo, $user, $row['department_id']);
+    if (!dept_task_can_admin($pdo, $user, $row['department_id'], $row['sub_team_id'])) {
+        error_response('No tienes permiso para revisar esta tarea', 403);
+    }
 
     if (($row['review_status'] ?? 'sin_revision') !== 'pendiente_revision') {
         dept_task_fail('Esta tarea no está pendiente de revisión.', 409);
@@ -824,8 +914,7 @@ function deptTaskCommentCreate(PDO $pdo, string $id) {
     if (!$row) error_response('Tarea no encontrada', 404);
     dept_task_require_view($user, $row['department_id']);
 
-    $canManage = $user['role'] === 'director'
-        || ($user['role'] === 'manager' && ($user['department_id'] ?? null) === $row['department_id']);
+    $canManage = dept_task_can_admin($pdo, $user, $row['department_id'], $row['sub_team_id']);
     if (!$canManage && $row['assigned_to'] !== $user['id']) {
         dept_task_fail('Solo el manager o el empleado asignado pueden comentar esta tarea.', 403);
     }
@@ -870,11 +959,12 @@ function deptTaskCommentCreate(PDO $pdo, string $id) {
 
 function deptTaskDelete(PDO $pdo, string $id) {
     $user = require_auth($pdo);
-    require_role($user, ['director', 'manager']);
 
     $row = dept_task_row($pdo, $id);
     if (!$row) error_response('Tarea no encontrada', 404);
-    dept_task_require_admin($pdo, $user, $row['department_id']);
+    if (!dept_task_can_admin($pdo, $user, $row['department_id'], $row['sub_team_id'])) {
+        error_response('No tienes permiso para eliminar esta tarea', 403);
+    }
 
     // La FK ON DELETE CASCADE se lleva las subtareas.
     $stmt = $pdo->prepare('DELETE FROM dept_tasks WHERE id = ?');
@@ -919,6 +1009,9 @@ function removeDepartmentEmployee(PDO $pdo, string $departmentId) {
     // Las tareas que tenía asignadas quedan sin responsable (FK SET NULL).
     $stmt = $pdo->prepare('UPDATE dept_tasks SET assigned_to = NULL WHERE assigned_to = ? AND department_id = ?');
     $stmt->execute([$target['id'], $departmentId]);
+    // Y sale de los sub-equipos del área (migración 030): miembro y, si lo era,
+    // sub-líder.
+    sub_team_detach_user_from_department($pdo, $target['id'], $departmentId);
 
     notify_user($pdo, $email, null, 'department_removed',
         'Fuiste removido del departamento "' . $dept['name'] . '"');

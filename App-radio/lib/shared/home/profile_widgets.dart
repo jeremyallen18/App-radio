@@ -287,7 +287,7 @@ class DirectorOverviewTab extends StatelessWidget {
                 child: _DirectorActionCard(
                   icon: Icons.settings_outlined,
                   title: 'Configuración',
-                  subtitle: 'Administración de la organización.',
+                  subtitle: 'Empresa, tu nombre, correo y contraseña.',
                   onTap: onOpenSettings,
                 ),
               ),

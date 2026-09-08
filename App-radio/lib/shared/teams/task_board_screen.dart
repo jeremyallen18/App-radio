@@ -7,6 +7,8 @@ import 'package:doliv_social/core/session.dart';
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/dept_task.dart';
 import 'package:doliv_social/models/models.dart';
+import 'package:doliv_social/models/sub_team.dart';
+import 'package:doliv_social/services/sub_team_service.dart';
 import 'package:doliv_social/services/team_service.dart';
 import 'package:doliv_social/shared/teams/evidence_confirm_sheet.dart';
 import 'package:doliv_social/shared/teams/task_board_card.dart';
@@ -25,12 +27,20 @@ class TaskBoardScreen extends StatelessWidget {
     required this.departmentName,
     required this.canManage,
     this.currentUserId,
+    this.subTeamId,
+    this.subTeamName,
   });
 
   final String departmentId;
   final String departmentName;
   final bool canManage;
   final String? currentUserId;
+
+  /// Si no es null, el tablero queda fijo a ese sub-equipo (migración 030):
+  /// no muestra el filtro de sub-equipos y toda tarea nueva nace en él. Lo
+  /// usa la entrada "Tablero del sub-equipo" del sub-líder.
+  final String? subTeamId;
+  final String? subTeamName;
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +63,8 @@ class TaskBoardScreen extends StatelessWidget {
         departmentId: departmentId,
         canManage: canManage,
         currentUserId: currentUserId,
+        fixedSubTeamId: subTeamId,
+        fixedSubTeamName: subTeamName,
       ),
     );
   }
@@ -71,6 +83,8 @@ class TaskBoardBody extends StatefulWidget {
     required this.departmentId,
     required this.canManage,
     this.currentUserId,
+    this.fixedSubTeamId,
+    this.fixedSubTeamName,
     this.padding = const EdgeInsets.fromLTRB(
       AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxl,
     ),
@@ -83,6 +97,12 @@ class TaskBoardBody extends StatefulWidget {
   /// tareas puede marcar: las suyas o las que no tienen responsable.
   final String? currentUserId;
 
+  /// Sub-equipo fijo (migración 030): el tablero solo muestra/crea tareas de
+  /// ese sub-equipo y oculta el filtro. Si es null, el tablero es del área y
+  /// (para quien administra) aparece un filtro por sub-equipo.
+  final String? fixedSubTeamId;
+  final String? fixedSubTeamName;
+
   final EdgeInsets padding;
 
   @override
@@ -92,14 +112,23 @@ class TaskBoardBody extends StatefulWidget {
 class _TaskBoardBodyState extends State<TaskBoardBody> {
   List<DeptTask> _tasks = const [];
   List<UserProfile> _members = const [];
+  List<SubTeam> _subTeams = const [];
+
+  /// Filtro de sub-equipo activo: null = todas, 'none' = solo de área, o el
+  /// id de un sub-equipo. Con [TaskBoardBody.fixedSubTeamId] queda fijo.
+  String? _subTeamFilter;
+
   BoardFilter _filter = BoardFilter.all;
   bool _loading = true;
   bool _busy = false;
   String? _error;
 
+  String? get _effectiveSubTeamId => widget.fixedSubTeamId ?? _subTeamFilter;
+
   @override
   void initState() {
     super.initState();
+    _subTeamFilter = widget.fixedSubTeamId;
     _load();
   }
 
@@ -109,14 +138,22 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
       _error = null;
     });
     try {
-      // Siempre se pide el listado completo: los filtros ("Mías", "Por
-      // revisar", "Vencidas"...) se aplican en el cliente sin recargar.
+      // Las tareas se piden ya filtradas por sub-equipo (el sub-líder no debe
+      // recibir las de otros sub-equipos). El resto de filtros ("Mías", "Por
+      // revisar"...) se aplican en el cliente.
       final results = await Future.wait([
-        DeptTaskApi.list(departmentId: widget.departmentId),
+        DeptTaskApi.list(
+          departmentId: widget.departmentId,
+          subTeamId: _effectiveSubTeamId,
+        ),
         if (widget.canManage)
           TeamApi.members(widget.departmentId)
         else
           Future.value(<UserProfile>[]),
+        if (widget.canManage && widget.fixedSubTeamId == null)
+          SubTeamApi.list(widget.departmentId)
+        else
+          Future.value(<SubTeam>[]),
       ]);
       if (!mounted) return;
       setState(() {
@@ -128,6 +165,7 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
           ...people.where((u) => u.role == AppRole.employee),
           ...people.where((u) => u.role == AppRole.manager),
         ];
+        _subTeams = results[2] as List<SubTeam>;
         _loading = false;
       });
     } on TeamException catch (e) {
@@ -137,6 +175,12 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
         _loading = false;
       });
     }
+  }
+
+  void _setSubTeamFilter(String? value) {
+    if (_subTeamFilter == value) return;
+    setState(() => _subTeamFilter = value);
+    _load();
   }
 
   List<DeptTask> _subtasksOf(String id) =>
@@ -344,6 +388,19 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
       }
     }
     if (!mounted) return;
+    // Sub-equipo fijo si el tablero venía acotado a uno (sub-líder) o si el
+    // filtro está puesto en un sub-equipo concreto.
+    final String? fixedId = widget.fixedSubTeamId ??
+        (_subTeamFilter != null && _subTeamFilter != 'none'
+            ? _subTeamFilter
+            : null);
+    final String? fixedName = fixedId == null
+        ? null
+        : (widget.fixedSubTeamName ??
+            _subTeams
+                .cast<SubTeam?>()
+                .firstWhere((s) => s?.id == fixedId, orElse: () => null)
+                ?.name);
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => TaskFormScreen(
@@ -353,6 +410,9 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
           members: _members,
           asDirector: isDirector,
           departments: departments,
+          subTeams: parentId == null ? _subTeams : const [],
+          fixedSubTeamId: fixedId,
+          fixedSubTeamName: fixedName,
         ),
       ),
     );
@@ -421,6 +481,21 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
                 ? _NewTaskButton(onPressed: _busy ? null : () => _openForm())
                 : null,
           ),
+          if (widget.fixedSubTeamId == null && _subTeams.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              height: 34,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _stChip('Todos', _subTeamFilter == null, () => _setSubTeamFilter(null)),
+                  _stChip('De área', _subTeamFilter == 'none', () => _setSubTeamFilter('none')),
+                  for (final s in _subTeams)
+                    _stChip(s.name, _subTeamFilter == s.id, () => _setSubTeamFilter(s.id)),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.lg),
           if (!hasAny)
             Padding(
@@ -470,6 +545,11 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
       ),
     );
   }
+
+  Widget _stChip(String label, bool selected, VoidCallback onTap) => Padding(
+        padding: const EdgeInsets.only(right: AppSpacing.sm),
+        child: AppFilterChip(label: label, selected: selected, onTap: onTap),
+      );
 
   Widget _card(DeptTask t, {bool dense = false}) => TaskBoardCard(
         task: t,

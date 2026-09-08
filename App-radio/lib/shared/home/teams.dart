@@ -64,21 +64,14 @@ class _TeamPageState extends State<TeamPage> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
-          child: Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              QuickActionChip(
-                icon: Icons.add_circle_outline,
-                label: 'Crear equipo',
-                onTap: () => Navigator.pushNamed(context, MyRoutes.createTeamScreen),
-              ),
-              QuickActionChip(
-                icon: Icons.group_add_outlined,
-                label: 'Unirse a un equipo',
-                onTap: () => Navigator.pushNamed(context, MyRoutes.jointeamRoutes),
-              ),
-            ],
+          child: Align(
+            alignment: Alignment.centerLeft,
+            // Los empleados no crean equipos, solo se unen a uno existente.
+            child: QuickActionChip(
+              icon: Icons.group_add_outlined,
+              label: 'Unirse a un equipo',
+              onTap: () => Navigator.pushNamed(context, MyRoutes.jointeamRoutes),
+            ),
           ),
         ),
         Expanded(child: _buildBody()),

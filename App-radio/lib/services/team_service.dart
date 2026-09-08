@@ -142,11 +142,14 @@ class DeptTaskApi {
     String? departmentId,
     DeptTaskStatus? status,
     bool mine = false,
+    String? subTeamId,
   }) async {
     final uri = Uri.parse('$kBaseUrl/dept-tasks').replace(queryParameters: <String, String>{
       if (departmentId != null && departmentId.isNotEmpty) 'departmentId': departmentId,
       if (status != null) 'status': status.apiValue,
       if (mine) 'mine': '1',
+      // 'none' = tareas de área (sin sub-equipo); un id = las de ese sub-equipo.
+      if (subTeamId != null && subTeamId.isNotEmpty) 'subTeamId': subTeamId,
     });
     final res = await _get(uri);
     return ((_body(res)['tasks'] as List?) ?? const [])
@@ -162,6 +165,7 @@ class DeptTaskApi {
     String? assignedTo,
     DateTime? dueDate,
     String? parentId,
+    String? subTeamId,
     bool requiresEvidence = false,
     TaskRecurrence recurrence = TaskRecurrence.none,
     DateTime? recurrenceUntil,
@@ -173,6 +177,7 @@ class DeptTaskApi {
       if (assignedTo != null && assignedTo.isNotEmpty) 'assignedTo': assignedTo,
       if (dueDate != null) 'dueDate': _ymd(dueDate),
       if (parentId != null && parentId.isNotEmpty) 'parentId': parentId,
+      if (subTeamId != null && subTeamId.isNotEmpty) 'subTeamId': subTeamId,
       'requiresEvidence': requiresEvidence ? '1' : '0',
       'recurrence': recurrence.apiValue,
       if (recurrence != TaskRecurrence.none && recurrenceUntil != null)
@@ -192,10 +197,13 @@ class DeptTaskApi {
     bool? requiresEvidence,
     TaskRecurrence? recurrence,
     DateTime? recurrenceUntil,
+    String? subTeamId,
+    bool clearSubTeam = false,
   }) async {
     final res = await _post(Uri.parse('$kBaseUrl/dept-tasks/$id'), {
       if (title != null) 'title': title.trim(),
       if (description != null) 'description': description.trim(),
+      if (clearSubTeam) 'subTeamId': 'none' else if (subTeamId != null) 'subTeamId': subTeamId,
       if (clearAssignee) 'assignedTo': '' else if (assignedTo != null) 'assignedTo': assignedTo,
       if (clearDueDate) 'dueDate': '' else if (dueDate != null) 'dueDate': _ymd(dueDate),
       if (requiresEvidence != null) 'requiresEvidence': requiresEvidence ? '1' : '0',

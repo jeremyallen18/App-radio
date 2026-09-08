@@ -62,14 +62,15 @@ function ia_is_finished(array $a): bool {
 function ia_audience_count(PDO $pdo, array $a, array $areaIds): int {
     if ($a['scope'] === 'general') {
         return (int) $pdo->query(
-            "SELECT COUNT(*) c FROM users WHERE role IN ('manager','employee')"
+            "SELECT COUNT(*) c FROM users WHERE role IN ('manager','employee') AND " . SQL_USER_VERIFIED
         )->fetch()['c'];
     }
     if (!$areaIds) return 0;
     $in = implode(',', array_fill(0, count($areaIds), '?'));
     $stmt = $pdo->prepare(
         "SELECT COUNT(*) c FROM users
-         WHERE role IN ('manager','employee') AND department_id IN ($in)"
+         WHERE role IN ('manager','employee') AND department_id IN ($in)
+           AND " . SQL_USER_VERIFIED
     );
     $stmt->execute(array_values($areaIds));
     return (int) $stmt->fetch()['c'];
@@ -202,11 +203,14 @@ function ia_notify_audience(PDO $pdo, string $scope, array $areaIds, string $tit
         if (!$areaIds) return;
         $in = implode(',', array_fill(0, count($areaIds), '?'));
         $stmt = $pdo->prepare(
-            "SELECT email FROM users WHERE role IN ('manager','employee') AND department_id IN ($in)"
+            "SELECT email FROM users WHERE role IN ('manager','employee') AND department_id IN ($in)
+               AND " . SQL_USER_VERIFIED
         );
         $stmt->execute(array_values($areaIds));
     } else {
-        $stmt = $pdo->query("SELECT email FROM users WHERE role IN ('manager','employee')");
+        $stmt = $pdo->query(
+            "SELECT email FROM users WHERE role IN ('manager','employee') AND " . SQL_USER_VERIFIED
+        );
     }
     foreach ($stmt->fetchAll() as $r) {
         notify_user($pdo, $r['email'], null, 'internal_announcement',

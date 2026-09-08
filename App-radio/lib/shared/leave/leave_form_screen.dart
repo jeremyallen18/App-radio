@@ -8,8 +8,8 @@ import 'package:doliv_social/models/leave_request.dart';
 import 'package:doliv_social/services/leave_service.dart';
 import 'package:doliv_social/shared/calendar/date_pickers.dart';
 
-/// Formulario para solicitar un permiso (vacaciones / incapacidad / permiso).
-/// La incapacidad EXIGE evidencia antes de poder enviar.
+/// Formulario para solicitar un permiso o una incapacidad. Las vacaciones ya
+/// no se solicitan desde aquí. La incapacidad EXIGE evidencia antes de enviar.
 class LeaveFormScreen extends StatefulWidget {
   const LeaveFormScreen({super.key});
 
@@ -18,7 +18,13 @@ class LeaveFormScreen extends StatefulWidget {
 }
 
 class _LeaveFormScreenState extends State<LeaveFormScreen> {
-  LeaveType _type = LeaveType.vacaciones;
+  /// Tipos que el trabajador puede solicitar (vacaciones excluida).
+  static const List<LeaveType> _selectableTypes = [
+    LeaveType.permiso,
+    LeaveType.incapacidad,
+  ];
+
+  LeaveType _type = LeaveType.permiso;
   DateTime? _start;
   DateTime? _end;
   final _reason = TextEditingController();
@@ -33,9 +39,26 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
     super.dispose();
   }
 
-  /// Vacaciones y permiso no pueden empezar en el pasado. La incapacidad sí
-  /// (es retroactiva por naturaleza y la evidencia la respalda).
-  bool get _allowsPast => _type == LeaveType.incapacidad;
+  DateTime get _today => dateOnly(DateTime.now());
+
+  /// Fecha de INICIO más antigua permitida:
+  ///  - incapacidad: hasta 3 días hacia atrás (la evidencia médica lo respalda).
+  ///  - vacaciones / permiso: nunca en el pasado.
+  DateTime get _minStart => _type == LeaveType.incapacidad
+      ? _today.subtract(const Duration(days: 3))
+      : _today;
+
+  /// Fecha de TÉRMINO más lejana permitida, independiente del inicio elegido:
+  ///  - permiso: un mes de calendario desde HOY (todo el permiso entra ahí).
+  ///  - incapacidad: un año desde hoy.
+  ///  - vacaciones: dos años (el tope real —un mes desde el inicio— se aplica
+  ///    aparte en cuanto hay fecha de inicio).
+  DateTime get _maxEnd => switch (_type) {
+        LeaveType.permiso => oneCalendarMonthMaxEnd(_today),
+        LeaveType.incapacidad =>
+          DateTime(_today.year + 1, _today.month, _today.day),
+        LeaveType.vacaciones => DateTime(_today.year + 2),
+      };
 
   int get _businessDays {
     final s = _start, e = _end;
@@ -50,14 +73,14 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
 
   Future<void> _pickDate({required bool isStart}) async {
     final now = DateTime.now();
-    final today = dateOnly(now);
-    final DateTime first = _allowsPast ? DateTime(now.year - 1) : today;
-    // Para vacaciones, el término no puede pasar de un mes desde el inicio.
+    final DateTime first = _minStart;
+    // Para vacaciones el término no puede pasar de un mes desde el inicio ya
+    // elegido; el resto de tipos usan la ventana fija del tipo.
     final DateTime last = (!isStart &&
             _type == LeaveType.vacaciones &&
             _start != null)
         ? oneCalendarMonthMaxEnd(_start!)
-        : DateTime(now.year + 2);
+        : _maxEnd;
     var initial = isStart ? (_start ?? now) : (_end ?? _start ?? now);
     if (initial.isBefore(first)) initial = first;
     if (initial.isAfter(last)) initial = last;
@@ -121,14 +144,33 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
     if (_start!.weekday == DateTime.sunday || _end!.weekday == DateTime.sunday) {
       return 'El inicio y el término deben ser un día laboral (lunes a sábado).';
     }
-    if (!_allowsPast && _start!.isBefore(dateOnly(DateTime.now()))) {
-      return _type == LeaveType.vacaciones
-          ? 'No puedes solicitar vacaciones para una fecha que ya pasó.'
-          : 'No puedes solicitar un permiso para una fecha que ya pasó.';
-    }
-    if (_type == LeaveType.vacaciones &&
-        _end!.isAfter(oneCalendarMonthMaxEnd(_start!))) {
-      return 'Las vacaciones no pueden abarcar más de un mes.';
+    // Ventana de fechas por tipo (debe coincidir con leave_requests.php):
+    //  vacaciones : inicio ≥ hoy, término ≤ un mes de calendario desde el inicio.
+    //  permiso    : inicio ≥ hoy, término ≤ un mes de calendario desde HOY.
+    //  incapacidad: inicio ≥ hoy − 3 días, término ≤ un año desde hoy.
+    final today = _today;
+    switch (_type) {
+      case LeaveType.vacaciones:
+        if (_start!.isBefore(today)) {
+          return 'No puedes solicitar vacaciones para una fecha que ya pasó.';
+        }
+        if (_end!.isAfter(oneCalendarMonthMaxEnd(_start!))) {
+          return 'Las vacaciones no pueden abarcar más de un mes.';
+        }
+      case LeaveType.permiso:
+        if (_start!.isBefore(today)) {
+          return 'No puedes solicitar un permiso para una fecha que ya pasó.';
+        }
+        if (_end!.isAfter(oneCalendarMonthMaxEnd(today))) {
+          return 'Un permiso solo puede solicitarse hasta un mes a partir de hoy.';
+        }
+      case LeaveType.incapacidad:
+        if (_start!.isBefore(today.subtract(const Duration(days: 3)))) {
+          return 'La incapacidad puede iniciar como máximo 3 días antes de hoy.';
+        }
+        if (_end!.isAfter(DateTime(today.year + 1, today.month, today.day))) {
+          return 'Una incapacidad no puede extenderse más de un año a partir de hoy.';
+        }
     }
     if (_type.requiresEvidence && _evidence == null) {
       return 'Debes adjuntar evidencia para solicitar una incapacidad.';
@@ -199,7 +241,7 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
           DropdownButtonFormField<LeaveType>(
             initialValue: _type,
             items: [
-              for (final t in LeaveType.values)
+              for (final t in _selectableTypes)
                 DropdownMenuItem(
                   value: t,
                   child: Row(
@@ -213,13 +255,13 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
             ],
             onChanged: (v) => setState(() {
               _type = v ?? _type;
-              final today = dateOnly(DateTime.now());
-              // Al cambiar a un tipo que no admite pasado, descarta fechas ya
-              // pasadas; y recorta el término si excede el mes de vacaciones.
-              if (!_allowsPast) {
-                if (_start != null && _start!.isBefore(today)) _start = null;
-                if (_end != null && _end!.isBefore(today)) _end = null;
-              }
+              // Al cambiar de tipo, descarta las fechas que queden fuera de la
+              // ventana permitida del nuevo tipo y recorta el término si excede
+              // el mes de vacaciones.
+              bool inWindow(DateTime d) =>
+                  !d.isBefore(_minStart) && !d.isAfter(_maxEnd);
+              if (_start != null && !inWindow(_start!)) _start = null;
+              if (_end != null && !inWindow(_end!)) _end = null;
               if (_type == LeaveType.vacaciones && _start != null && _end != null) {
                 final max = oneCalendarMonthMaxEnd(_start!);
                 if (_end!.isAfter(max)) _end = max;

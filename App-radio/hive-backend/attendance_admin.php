@@ -23,13 +23,16 @@ function attendance_admin_guard(PDO $pdo): array {
 // registran asistencia (empleados y managers); el manager, solo a los
 // empleados de su departamento. El director NUNCA aparece en la lista.
 function attendance_admin_employees(PDO $pdo, array $admin): array {
+    // Las cuentas sin verificar el correo no fichan ni aparecen en la empresa.
     if ($admin['role'] === 'director') {
         return $pdo->query(
-            "SELECT * FROM users WHERE role IN ('employee','manager') ORDER BY FIELD(role,'manager','employee'), name ASC"
+            "SELECT * FROM users WHERE role IN ('employee','manager') AND " . SQL_USER_VERIFIED
+            . " ORDER BY FIELD(role,'manager','employee'), name ASC"
         )->fetchAll();
     }
     $stmt = $pdo->prepare(
-        "SELECT * FROM users WHERE role = 'employee' AND department_id = ? ORDER BY name ASC"
+        "SELECT * FROM users WHERE role = 'employee' AND department_id = ? AND " . SQL_USER_VERIFIED
+        . " ORDER BY name ASC"
     );
     $stmt->execute([$admin['department_id']]);
     return $stmt->fetchAll();
@@ -40,7 +43,8 @@ function attendance_admin_target(PDO $pdo, array $admin, string $employeeId): ar
     $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
     $stmt->execute([$employeeId]);
     $emp = $stmt->fetch();
-    if (!$emp || !in_array($emp['role'], ['employee', 'manager'], true)) {
+    if (!$emp || !in_array($emp['role'], ['employee', 'manager'], true)
+        || !user_email_verified($emp)) {
         error_response('Trabajador no encontrado', 404);
     }
     if ($admin['role'] === 'manager'
@@ -300,7 +304,7 @@ function adminScheduleBulkSave(PDO $pdo) {
     $failed = [];
     $pdo->beginTransaction();
     try {
-        $chk = $pdo->prepare("SELECT id, role FROM users WHERE id = ?");
+        $chk = $pdo->prepare("SELECT id, role, email_verified_at FROM users WHERE id = ?");
         $up = $pdo->prepare(
             'INSERT INTO employee_schedules
                (employee_id, entry_time, exit_time, meal_time, meal_max_minutes, updated_by)
@@ -313,7 +317,8 @@ function adminScheduleBulkSave(PDO $pdo) {
         foreach ($ids as $eid) {
             $chk->execute([$eid]);
             $u = $chk->fetch();
-            if (!$u || !in_array($u['role'], ['employee', 'manager'], true)) {
+            if (!$u || !in_array($u['role'], ['employee', 'manager'], true)
+                || !user_email_verified($u)) {
                 $failed[] = $eid;
                 continue;
             }

@@ -1,9 +1,76 @@
 import 'package:flutter/material.dart';
 
 import 'package:doliv_social/design/design.dart';
+import 'package:doliv_social/features/dashboard/director/create_company_card.dart';
 import 'package:doliv_social/models/models.dart';
+import 'package:doliv_social/services/company_service.dart';
 import 'package:doliv_social/services/team_service.dart';
 import 'package:doliv_social/shared/teams/team_detail_screen.dart';
+
+/// Diálogo de alta de equipo. Es un `StatefulWidget` propio para que sus
+/// `TextEditingController` los libere `dispose()` — que el framework solo
+/// invoca cuando la ruta del diálogo ya salió del árbol. Liberarlos justo
+/// después de `await showDialog(...)`, con la animación de cierre todavía en
+/// curso, dejaba a los `TextField` usando un controller ya destruido y
+/// reventaba con `'_dependents.isEmpty': is not true`.
+///
+/// Devuelve `({String name, String description})` al confirmar, o `null` al
+/// cancelar / descartar.
+@visibleForTesting
+class CreateTeamDialog extends StatefulWidget {
+  const CreateTeamDialog({super.key});
+
+  @override
+  State<CreateTeamDialog> createState() => _CreateTeamDialogState();
+}
+
+class _CreateTeamDialogState extends State<CreateTeamDialog> {
+  final _nameCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    Navigator.pop(
+      context,
+      (name: _nameCtrl.text.trim(), description: _descCtrl.text.trim()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Crear equipo'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppTextField(controller: _nameCtrl, hintText: 'Nombre del equipo'),
+          const SizedBox(height: AppSpacing.md),
+          AppTextField(
+            controller: _descCtrl,
+            hintText: 'Descripción (opcional)',
+            maxLines: 2,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
+        ),
+        TextButton(
+          onPressed: _submit,
+          child: const Text('Crear'),
+        ),
+      ],
+    );
+  }
+}
 
 /// "Equipos" (director): lista de departamentos, crear equipo nuevo y entrar
 /// a cada uno para asignar manager, miembros y tareas.
@@ -19,6 +86,11 @@ class _TeamAdminScreenState extends State<TeamAdminScreen> {
   bool _loading = true;
   String? _error;
 
+  /// No se puede crear un área sin empresa. Si todavía no existe, esta
+  /// pantalla ofrece crearla en vez de dejar que "Crear equipo" falle con un
+  /// error sin salida ("Crea la empresa antes de agregar departamentos").
+  bool _companyMissing = false;
+
   @override
   void initState() {
     super.initState();
@@ -31,10 +103,26 @@ class _TeamAdminScreenState extends State<TeamAdminScreen> {
       _error = null;
     });
     try {
+      final company = await CompanyApi.fetch();
+      if (!mounted) return;
+      if (company == null) {
+        setState(() {
+          _companyMissing = true;
+          _loading = false;
+        });
+        return;
+      }
       final d = await TeamApi.listDepartments();
       if (!mounted) return;
       setState(() {
+        _companyMissing = false;
         _departments = d;
+        _loading = false;
+      });
+    } on CompanyException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
         _loading = false;
       });
     } on TeamException catch (e) {
@@ -47,37 +135,14 @@ class _TeamAdminScreenState extends State<TeamAdminScreen> {
   }
 
   Future<void> _createTeam() async {
-    final nameCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-    final created = await showDialog<bool>(
+    final result = await showDialog<({String name, String description})>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Crear equipo'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppTextField(controller: nameCtrl, hintText: 'Nombre del equipo'),
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(controller: descCtrl, hintText: 'Descripción (opcional)', maxLines: 2),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Crear'),
-          ),
-        ],
-      ),
+      builder: (dialogContext) => const CreateTeamDialog(),
     );
-    final name = nameCtrl.text.trim();
-    final desc = descCtrl.text.trim();
-    nameCtrl.dispose();
-    descCtrl.dispose();
-    if (created != true || name.isEmpty) return;
+    if (result == null) return;
+    final name = result.name;
+    final desc = result.description;
+    if (name.isEmpty) return;
     try {
       await TeamApi.createDepartment(name: name, description: desc);
       _load();
@@ -92,15 +157,21 @@ class _TeamAdminScreenState extends State<TeamAdminScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(leading: const BackButton(), title: const Text('Equipos')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _createTeam,
-        icon: const Icon(Icons.add),
-        label: const Text('Crear equipo'),
-      ),
+      // Sin empresa no hay "Crear equipo": la pantalla ofrece crear la empresa.
+      floatingActionButton: (_loading || _error != null || _companyMissing)
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _createTeam,
+              icon: const Icon(Icons.add),
+              label: const Text('Crear equipo'),
+            ),
       body: Builder(
         builder: (context) {
           if (_loading) return const LoadingState();
           if (_error != null) return ErrorState(message: _error!, onRetry: _load);
+          if (_companyMissing) {
+            return CreateCompanyCard(onCreated: (_) => _load());
+          }
           if (_departments.isEmpty) {
             return const EmptyState(
               icon: Icons.groups_2_outlined,

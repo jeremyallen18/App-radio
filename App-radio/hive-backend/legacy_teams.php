@@ -68,6 +68,9 @@ function build_team_payload(PDO $pdo, array $team): array {
 
 function createTeam(PDO $pdo) {
     $user = require_auth($pdo);
+    // Los empleados no crean equipos, solo se unen a uno existente (la app ya
+    // no les ofrece la opción; esto lo bloquea también a nivel de API).
+    require_role($user, ['director', 'manager']);
     $body = request_body();
     $teamName = trim($body['teamName'] ?? '');
     $domains = $body['domains'] ?? [];
