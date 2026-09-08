@@ -323,6 +323,7 @@ class DeptTaskApi {
               departmentId: (e['departmentId'] ?? '').toString(),
               departmentName: (e['departmentName'] ?? '').toString(),
               pending: n(e, 'pendientes'),
+              inProgress: n(e, 'enProgreso'),
               done: n(e, 'completada'),
               total: n(e, 'total'),
             ))
@@ -331,6 +332,7 @@ class DeptTaskApi {
     return DeptTasksByDepartment(
       departments: rows,
       totalPending: n(t, 'pendientes'),
+      totalInProgress: n(t, 'enProgreso'),
       totalDone: n(t, 'completada'),
       total: n(t, 'total'),
     );
@@ -349,13 +351,22 @@ class DepartmentTaskCounts {
     required this.pending,
     required this.done,
     required this.total,
+    this.inProgress = 0,
   });
 
   final String departmentId;
   final String departmentName;
+
+  /// pendiente + en_progreso (igual que el resto de la app).
   final int pending;
+
+  /// Solo las que ya empezaron (subconjunto de [pending]).
+  final int inProgress;
   final int done;
   final int total;
+
+  /// Las que aún no empiezan.
+  int get notStarted => pending - inProgress;
 
   /// Fracción completada 0..1 (0 cuando el departamento no tiene tareas).
   double get completionRatio => total == 0 ? 0 : done / total;
@@ -369,12 +380,16 @@ class DeptTasksByDepartment {
     required this.totalPending,
     required this.totalDone,
     required this.total,
+    this.totalInProgress = 0,
   });
 
   final List<DepartmentTaskCounts> departments;
   final int totalPending;
+  final int totalInProgress;
   final int totalDone;
   final int total;
+
+  int get totalNotStarted => totalPending - totalInProgress;
 
   double get completionRatio => total == 0 ? 0 : totalDone / total;
 }

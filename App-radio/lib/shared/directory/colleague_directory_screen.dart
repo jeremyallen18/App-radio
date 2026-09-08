@@ -9,8 +9,8 @@ import 'package:doliv_social/shared/auth/login.dart';
 import 'package:doliv_social/shared/directory/colleague_profile_screen.dart';
 import 'package:doliv_social/shared/directory/directory_api.dart';
 
-/// Directorio interno: busca compañeros por nombre, correo o puesto y abre
-/// la ficha de cualquiera de ellos.
+/// Directorio interno: busca compañeros por nombre, correo, puesto o número
+/// de control y abre la ficha de cualquiera de ellos.
 ///
 /// Arranca acotado al área del propio usuario — que es a quien más se busca —
 /// y desde ahí se puede abrir a otra área o a toda la empresa con los chips
@@ -29,7 +29,8 @@ class ColleagueDirectoryScreen extends StatefulWidget {
   final DirectoryScope? initialScope;
 
   @override
-  State<ColleagueDirectoryScreen> createState() => _ColleagueDirectoryScreenState();
+  State<ColleagueDirectoryScreen> createState() =>
+      _ColleagueDirectoryScreenState();
 }
 
 class _ColleagueDirectoryScreenState extends State<ColleagueDirectoryScreen> {
@@ -127,6 +128,7 @@ class _ColleagueDirectoryScreenState extends State<ColleagueDirectoryScreen> {
             builder: (_) => ColleagueProfileScreen(
               colleagueId: colleague.id,
               preview: colleague,
+              viewerIsDirector: _me?.role == AppRole.director,
             ),
           ),
         )
@@ -137,7 +139,8 @@ class _ColleagueDirectoryScreenState extends State<ColleagueDirectoryScreen> {
   String get _scopeLabel {
     final scope = _scope;
     if (scope is CompanyScope) return 'toda la empresa';
-    final String? id = scope is DepartmentScope ? scope.departmentId : _myDepartmentId;
+    final String? id =
+        scope is DepartmentScope ? scope.departmentId : _myDepartmentId;
     if (id == null) return 'toda la empresa';
     for (final d in _departments) {
       if (d.id == id) return d.name;
@@ -161,7 +164,7 @@ class _ColleagueDirectoryScreenState extends State<ColleagueDirectoryScreen> {
             ),
             child: AppTextField(
               controller: _searchController,
-              hintText: 'Buscar por nombre, puesto o correo',
+              hintText: 'Buscar por nombre, puesto, correo o n.º de control',
               onChanged: _onQueryChanged,
               prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
               suffixIcon: _searchController.text.isEmpty
@@ -196,7 +199,9 @@ class _ColleagueDirectoryScreenState extends State<ColleagueDirectoryScreen> {
       final String typed = _searchController.text.trim();
       final bool canWiden = _scope is! CompanyScope;
       return EmptyState(
-        icon: typed.isEmpty ? Icons.groups_outlined : Icons.person_search_outlined,
+        icon: typed.isEmpty
+            ? Icons.groups_outlined
+            : Icons.person_search_outlined,
         title: typed.isEmpty ? 'Todavía no hay nadie aquí' : 'Sin resultados',
         message: typed.isEmpty
             ? 'Cuando se asignen personas a esta área aparecerán en el directorio.'
@@ -215,6 +220,7 @@ class _ColleagueDirectoryScreenState extends State<ColleagueDirectoryScreen> {
         : '${_colleagues.length} personas en $_scopeLabel';
 
     return RefreshIndicator(
+      color: AppColors.accent,
       onRefresh: _load,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(
@@ -230,18 +236,21 @@ class _ColleagueDirectoryScreenState extends State<ColleagueDirectoryScreen> {
 
           final colleague = _colleagues[index - 1];
           final bool isMe = colleague.id == _me?.id;
-          return PersonCard(
-            name: colleague.name,
-            headline: colleague.headline,
-            subtitle: colleague.department?.name,
-            photoUrl: colleague.photoUrl,
-            avatarSeed: colleague.email,
-            badge: isMe
-                ? const AppBadge(label: 'Tú', variant: AppBadgeVariant.info)
-                : colleague.leadsOwnDepartment
-                    ? const AppBadge(label: 'Responsable')
-                    : null,
-            onTap: () => _openProfile(colleague),
+          return AppFadeIn.staggered(
+            index: index - 1,
+            child: PersonCard(
+              name: colleague.name,
+              headline: colleague.headline,
+              subtitle: colleague.department?.name,
+              photoUrl: colleague.photoUrl,
+              avatarSeed: colleague.email,
+              badge: isMe
+                  ? const AppBadge(label: 'Tú', variant: AppBadgeVariant.info)
+                  : colleague.leadsOwnDepartment
+                      ? const AppBadge(label: 'Responsable')
+                      : null,
+              onTap: () => _openProfile(colleague),
+            ),
           );
         },
       ),
@@ -307,7 +316,8 @@ class _ScopeChips extends StatelessWidget {
         AppFilterChip(
           label: mine != null ? 'Mi área: ${mine.name}' : 'Mi área',
           count: mine?.employeeCount,
-          selected: scope is MyAreaScope || _isSelectedDepartment(myDepartmentId!),
+          selected:
+              scope is MyAreaScope || _isSelectedDepartment(myDepartmentId!),
           onTap: () => onSelect(const MyAreaScope()),
         ),
       AppFilterChip(
