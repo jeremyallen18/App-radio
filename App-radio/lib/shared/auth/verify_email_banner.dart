@@ -109,8 +109,19 @@ class _VerifyEmailBannerState extends State<VerifyEmailBanner>
 
   @override
   Widget build(BuildContext context) {
-    if (_verified != false) return const SizedBox.shrink();
+    // El aviso entra/sale con un despliegue vertical suave en vez de aparecer
+    // de golpe y empujar el contenido.
+    return AnimatedSize(
+      duration: context.reduceMotion ? Duration.zero : AppDurations.medium,
+      curve: AppCurves.standard,
+      alignment: Alignment.topCenter,
+      child: _verified != false
+          ? const SizedBox(width: double.infinity)
+          : AppFadeIn(offset: const Offset(0, -8), child: _buildBanner(context)),
+    );
+  }
 
+  Widget _buildBanner(BuildContext context) {
     return Material(
       color: AppColors.warning.withValues(alpha: 0.14),
       child: SafeArea(

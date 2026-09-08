@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:doliv_social/core/Routes.dart';
+import 'package:doliv_social/core/routes.dart';
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/design/design.dart';
+import 'package:doliv_social/shared/auth/widgets/auth_form_panel.dart';
+import 'package:doliv_social/shared/auth/widgets/auth_header.dart';
+import 'package:doliv_social/shared/auth/widgets/password_strength_meter.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -12,212 +15,160 @@ class SignUp extends StatefulWidget {
 }
 
 class _SignUpState extends State<SignUp> {
-  bool _isLoading = false;
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passController = TextEditingController();
+  final TextEditingController confirmController = TextEditingController();
 
-  Future<void> SignApi() async {
+  bool _isLoading = false;
+  bool _obscure = true;
+  bool _obscureConfirm = true;
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passController.dispose();
+    confirmController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
 
     setState(() => _isLoading = true);
     const String apiUrl = '$kBaseUrl/user/signup';
-    final response = await http.post(
+    http.Response response;
+    try {
+      response = await http.post(
         Uri.parse(apiUrl),
-        body: ({
-          'name': nameController.text,
-          'email': emailController.text,
+        body: {
+          'name': nameController.text.trim(),
+          'email': emailController.text.trim(),
           'password': passController.text,
-        })
-    );
+        },
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sin conexión con el servidor')),
+      );
+      return;
+    }
     if (!mounted) return;
     setState(() => _isLoading = false);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(response.body)),
     );
     if (response.statusCode == 200) {
-      print('API Response: ${response.body}');
-      await Navigator.pushNamed(context, MyRoutes.LoginRoutes);
-    } else {
-      print('Failed to join the team. Status Code: ${response.statusCode}');
-      print('Error Message: ${response.body}');
+      await Navigator.pushNamed(context, MyRoutes.loginRoutes);
     }
   }
-
-  final _formKey = GlobalKey<FormState>();
-  TextEditingController emailController = TextEditingController();
-  TextEditingController nameController = TextEditingController();
-  TextEditingController passController = TextEditingController();
-  TextEditingController comfpassController = TextEditingController();
-
-  bool obscureText = true;
-  bool obscureConfirmText = true;
 
   @override
   Widget build(BuildContext context) {
     final heightOfScreen = MediaQuery.of(context).size.height;
 
     return AppScaffold(
-      padding: const EdgeInsets.symmetric(horizontal: 36),
       scrollable: true,
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(height: heightOfScreen * 0.05),
-          Center(
-            child: Container(
-              width: 96,
-              height: 96,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.textPrimary,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Image.asset(
-                "lib/assets/signup.png",
-                fit: BoxFit.contain,
-              ),
-            ),
+          SizedBox(height: heightOfScreen * 0.03),
+          const AuthHeader(
+            station: AuthStation.signUp,
+            title: 'Crea tu cuenta',
+            subtitle: 'Entra a la cabina con tu equipo.',
           ),
-          const SizedBox(height: 24),
-          const Text(
-            "Crea tu cuenta,",
-            style: TextStyle(
-              color: AppColors.textMuted,
-              fontWeight: FontWeight.w400,
-              fontSize: 16,
-            ),
-          ),
-          const Text(
-            "Registrarse",
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w800,
-              fontSize: 28,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            "Al continuar aceptas los términos y condiciones",
-            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: heightOfScreen * 0.04),
+          const SizedBox(height: AppSpacing.xl),
           Form(
             key: _formKey,
-            child: Column(
+            child: AuthFormPanel(
               children: [
-                AppTextField(
-                  controller: nameController,
-                  prefixIcon: const Icon(Icons.person_outline, color: AppColors.textMuted),
-                  hintText: "Nombre de usuario",
-                  validator: (value) {
-                    if ((value ?? '').trim().isEmpty) {
-                      return 'Ingresa tu nombre';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-                AppTextField(
-                  controller: emailController,
-                  textInputType: TextInputType.emailAddress,
-                  prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textMuted),
-                  hintText: "Correo electrónico",
-                  validator: (value) {
-                    final email = value?.trim() ?? '';
-                    if (email.isEmpty) {
-                      return 'Ingresa tu correo';
-                    }
-                    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
-                      return 'Correo inválido';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-                AppTextField(
-                  controller: passController,
-                  obscured: obscureText,
-                  prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMuted),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      obscureText ? Icons.visibility_off : Icons.visibility,
-                      color: AppColors.textMuted,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        obscureText = !obscureText;
-                      });
-                    },
+                AuthField(
+                  label: 'Nombre',
+                  child: AppTextField(
+                    controller: nameController,
+                    prefixIcon: const Icon(Icons.person_outline_rounded),
+                    hintText: 'Cómo te llaman en la radio',
+                    validator: (value) =>
+                        (value ?? '').trim().isEmpty ? 'Ingresa tu nombre' : null,
                   ),
-                  hintText: "Contraseña",
-                  validator: (value) {
-                    if ((value ?? '').length < 6) {
-                      return 'Mínimo 6 caracteres';
-                    }
-                    return null;
-                  },
                 ),
-                const SizedBox(height: 20),
-                AppTextField(
-                  controller: comfpassController,
-                  obscured: obscureConfirmText,
-                  prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMuted),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      obscureConfirmText ? Icons.visibility_off : Icons.visibility,
-                      color: AppColors.textMuted,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        obscureConfirmText = !obscureConfirmText;
-                      });
-                    },
+                const SizedBox(height: AppSpacing.lg),
+                AuthField(
+                  label: 'Correo',
+                  child: AppTextField(
+                    controller: emailController,
+                    textInputType: TextInputType.emailAddress,
+                    prefixIcon: const Icon(Icons.alternate_email_rounded),
+                    hintText: 'nombre@radiodoliv.com',
+                    validator: AuthValidators.email,
                   ),
-                  hintText: "Confirmar contraseña",
-                  validator: (value) {
-                    if (value != passController.text) {
-                      return 'Las contraseñas no coinciden';
-                    }
-                    return null;
-                  },
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: AppSpacing.lg),
+                AuthField(
+                  label: 'Contraseña',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AppTextField(
+                        controller: passController,
+                        obscured: _obscure,
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        suffixIcon: PasswordVisibilityToggle(
+                          obscured: _obscure,
+                          onToggle: () => setState(() => _obscure = !_obscure),
+                        ),
+                        hintText: 'Mínimo 6 caracteres',
+                        validator: AuthValidators.password,
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      PasswordStrengthMeter(password: passController.text),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                AuthField(
+                  label: 'Confirmar contraseña',
+                  child: AppTextField(
+                    controller: confirmController,
+                    obscured: _obscureConfirm,
+                    prefixIcon: const Icon(Icons.lock_outline_rounded),
+                    suffixIcon: PasswordVisibilityToggle(
+                      obscured: _obscureConfirm,
+                      onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                    ),
+                    hintText: 'Repite la contraseña',
+                    validator: (value) =>
+                        value != passController.text ? 'Las contraseñas no coinciden' : null,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
                 AppButton(
-                  label: _isLoading ? 'Cargando...' : "Registrarse",
+                  label: 'Crear cuenta',
                   loading: _isLoading,
-                  onPressed: _isLoading ? null : SignApi,
+                  onPressed: _isLoading ? null : _signUp,
                 ),
-                const SizedBox(height: 24),
-                GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, MyRoutes.LoginRoutes),
-                  child: RichText(
-                    text: const TextSpan(
-                      children: [
-                        TextSpan(
-                          text: "¿Ya tienes una cuenta? ",
-                          style: TextStyle(color: AppColors.textMuted, fontSize: 14),
-                        ),
-                        TextSpan(
-                          text: "Iniciar sesión",
-                          style: TextStyle(
-                            color: AppColors.accentStrong,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                const SizedBox(height: AppSpacing.md),
+                const Text(
+                  'Al crear tu cuenta aceptas los términos y condiciones.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
-                const SizedBox(height: 24),
               ],
             ),
           ),
+          const SizedBox(height: AppSpacing.lg),
+          AuthFooterLink(
+            prompt: '¿Ya tienes una cuenta?',
+            action: 'Iniciar sesión',
+            onTap: () => Navigator.pushReplacementNamed(context, MyRoutes.loginRoutes),
+          ),
+          const SizedBox(height: AppSpacing.xl),
         ],
       ),
     );
