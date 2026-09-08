@@ -4,7 +4,7 @@ import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/models.dart';
 import 'package:doliv_social/core/session.dart';
 import 'package:doliv_social/shared/auth/login.dart';
-import 'package:doliv_social/shared/chat/chatHistory.dart';
+import 'package:doliv_social/shared/chat/chat_history.dart';
 import 'package:doliv_social/shared/widgets/app_menu_sections.dart';
 
 export 'package:doliv_social/shared/widgets/app_menu_sections.dart'

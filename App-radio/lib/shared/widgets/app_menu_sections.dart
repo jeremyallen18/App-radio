@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:doliv_social/models/models.dart';
-import 'package:doliv_social/core/Routes.dart';
+import 'package:doliv_social/core/routes.dart';
 import 'package:doliv_social/shared/home/progress.dart';
 import 'package:doliv_social/shared/home/tasks.dart';
 import 'package:doliv_social/shared/home/teams.dart';
@@ -162,7 +162,7 @@ List<AppMenuSection> _employeeSections(
         AppMenuEntry(
           icon: Icons.add_circle_outline,
           title: 'Crear equipo',
-          onTap: () => pushNamed(MyRoutes.CreateTeamScreen),
+          onTap: () => pushNamed(MyRoutes.createTeamScreen),
         ),
         AppMenuEntry(
           icon: Icons.group_add_outlined,
