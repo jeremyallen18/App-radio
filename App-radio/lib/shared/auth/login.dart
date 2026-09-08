@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:doliv_social/design/design.dart';
-import 'package:doliv_social/core/Routes.dart';
+import 'package:doliv_social/core/routes.dart';
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/push/push_service.dart';
 import 'package:doliv_social/core/session.dart';
@@ -101,7 +101,7 @@ class _LoginState extends State<Login> {
       );
       await Navigator.pushNamedAndRemoveUntil(
         context,
-        MyRoutes.BottomNavBar,
+        MyRoutes.bottomNavBar,
         (route) => false,
       );
     } else if (response.statusCode == 403 &&
@@ -224,7 +224,7 @@ class _LoginState extends State<Login> {
                       ),
                     ),
                     TextButton(
-                      onPressed: () => Navigator.pushNamed(context, MyRoutes.Reset),
+                      onPressed: () => Navigator.pushNamed(context, MyRoutes.reset),
                       child: const Text(
                         '¿Olvidaste tu contraseña?',
                         style: TextStyle(color: AppColors.accentStrong, fontSize: 13),
@@ -245,7 +245,7 @@ class _LoginState extends State<Login> {
           AuthFooterLink(
             prompt: '¿No tienes cuenta?',
             action: 'Regístrate',
-            onTap: () => Navigator.pushReplacementNamed(context, MyRoutes.SignUpRoutes),
+            onTap: () => Navigator.pushReplacementNamed(context, MyRoutes.signUpRoutes),
           ),
           const SizedBox(height: AppSpacing.xl),
         ],

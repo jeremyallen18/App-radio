@@ -1,10 +1,17 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 import 'dart:convert';
+
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:doliv_social/shared/auth/forgot_password/new_password.dart';
+import 'package:doliv_social/shared/auth/forgot_password/reset_api.dart';
+import 'package:doliv_social/shared/auth/widgets/auth_form_panel.dart';
+import 'package:doliv_social/shared/auth/widgets/auth_header.dart';
+import 'package:doliv_social/shared/auth/widgets/otp_code_field.dart';
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/design/design.dart';
 
+/// Paso 2 de 3: verificar el código de 6 dígitos enviado a [email].
 class OTPVerify extends StatefulWidget {
   final String email;
 
@@ -15,157 +22,169 @@ class OTPVerify extends StatefulWidget {
 }
 
 class _OTPVerifyState extends State<OTPVerify> {
+  static const int _resendCooldownSeconds = 60;
+  static const int _codeLength = 6;
+
   final TextEditingController otpController = TextEditingController();
-
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _resending = false;
+  int _cooldown = _resendCooldownSeconds;
+  Timer? _cooldownTimer;
 
-  Future<String?> takeOTPAPI(String otp) async {
-    final String apiUrl =
-        '$kBaseUrl/user/verifyOTP/${widget.email}';
-    var body = jsonEncode({
-      "OTP": otp,
-    });
-    var headers = {'Content-Type': 'application/json'};
-    try {
-      var response =
-          await http.post(Uri.parse(apiUrl), headers: headers, body: body);
-
-      if (response.statusCode == 200) {
-        print('OTP verified');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Código OTP verificado"),
-          ),
-        );
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChangePassword(
-              email: widget.email,
-            ),
-          ),
-        );
-        print(jsonDecode(response.body));
-        return null;
-      } else {
-        print('Error: ${response.statusCode}');
-        print(jsonDecode(response.body));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${response.body}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return jsonDecode(response.body)['error'];
-      }
-    } catch (e) {
-      print('Error: $e');
-    }
-    return null;
+  @override
+  void initState() {
+    super.initState();
+    _startCooldown();
   }
 
-  void _verifyOTP(BuildContext context) async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+  @override
+  void dispose() {
+    _cooldownTimer?.cancel();
+    otpController.dispose();
+    super.dispose();
+  }
 
+  void _startCooldown() {
+    _cooldownTimer?.cancel();
+    setState(() => _cooldown = _resendCooldownSeconds);
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      if (_cooldown <= 1) {
+        t.cancel();
+        setState(() => _cooldown = 0);
+      } else {
+        setState(() => _cooldown--);
+      }
+    });
+  }
+
+  Future<String?> _verifyOnServer(String otp) async {
+    final String apiUrl = '$kBaseUrl/user/verifyOTP/${widget.email}';
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: const {'Content-Type': 'application/json'},
+        body: jsonEncode({'OTP': otp}),
+      );
+      if (response.statusCode == 200) return null;
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['error'] != null) {
+          return decoded['error'].toString();
+        }
+      } catch (_) {}
+      return 'Código incorrecto o vencido';
+    } catch (_) {
+      return 'Sin conexión con el servidor';
+    }
+  }
+
+  Future<void> _verify() async {
+    final otp = otpController.text.trim();
+    if (otp.length != _codeLength) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Escribe los 6 dígitos del código')),
+      );
+      return;
+    }
+    FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
-    String otp = otpController.text.trim();
-    String? error = await takeOTPAPI(otp);
+    final error = await _verifyOnServer(otp);
     if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $error'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(error), backgroundColor: AppColors.error),
       );
+      return;
     }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => ChangePassword(email: widget.email)),
+    );
+  }
+
+  Future<void> _resend() async {
+    setState(() => _resending = true);
+    final error = await sendResetCode(widget.email);
+    if (!mounted) return;
+    setState(() => _resending = false);
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: AppColors.error),
+      );
+      return;
+    }
+    otpController.clear();
+    _startCooldown();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Te enviamos un código nuevo')),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final heightOfScreen = MediaQuery.of(context).size.height;
+    final canResend = _cooldown == 0 && !_resending && !_isLoading;
 
     return AppScaffold(
-      padding: const EdgeInsets.symmetric(horizontal: 36),
       scrollable: true,
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(height: heightOfScreen * 0.06),
-          Center(
-            child: Container(
-              width: 96,
-              height: 96,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.textPrimary,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Image.asset(
-                "lib/assets/reset.png",
-                fit: BoxFit.contain,
-              ),
-            ),
+          SizedBox(height: heightOfScreen * 0.04),
+          AuthHeader(
+            station: AuthStation.resetCode,
+            title: 'Ingresa el código',
+            subtitle: 'Lo enviamos a ${widget.email}',
           ),
-          const SizedBox(height: 24),
-          const Text(
-            "Casi listo,",
-            style: TextStyle(
-              color: AppColors.textMuted,
-              fontWeight: FontWeight.w400,
-              fontSize: 16,
-            ),
-          ),
-          const Text(
-            "Ingresa el código",
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w800,
-              fontSize: 26,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Te enviamos un código OTP a ${widget.email}",
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: heightOfScreen * 0.05),
-          Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                AppTextField(
+          const SizedBox(height: AppSpacing.xl),
+          AuthFormPanel(
+            children: [
+              AuthField(
+                label: 'Código de 6 dígitos',
+                child: OtpCodeField(
                   controller: otpController,
-                  textInputType: TextInputType.number,
-                  prefixIcon: const Icon(Icons.pin_outlined, color: AppColors.textMuted),
-                  hintText: "Código OTP",
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Ingresa el código OTP';
-                    }
-                    return null;
+                  length: _codeLength,
+                  onCompleted: (_) {
+                    if (!_isLoading) _verify();
                   },
                 ),
-                const SizedBox(height: 28),
-                AppButton(
-                  label: _isLoading ? 'Verificando...' : 'Verificar y continuar',
-                  loading: _isLoading,
-                  onPressed: _isLoading ? null : () => _verifyOTP(context),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              AppButton(
+                label: 'Verificar y continuar',
+                loading: _isLoading,
+                onPressed: _isLoading ? null : _verify,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Center(
+                child: TextButton(
+                  onPressed: canResend ? _resend : null,
+                  child: Text(
+                    _resending
+                        ? 'Reenviando...'
+                        : _cooldown > 0
+                            ? 'Reenviar código en ${_cooldown}s'
+                            : 'Reenviar código',
+                    style: TextStyle(
+                      color: canResend ? AppColors.accentStrong : AppColors.textMuted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 24),
-              ],
-            ),
+              ),
+            ],
           ),
+          const SizedBox(height: AppSpacing.lg),
+          AuthFooterLink(
+            prompt: '¿Correo equivocado?',
+            action: 'Cambiar correo',
+            onTap: () => Navigator.maybePop(context),
+          ),
+          const SizedBox(height: AppSpacing.xl),
         ],
       ),
     );

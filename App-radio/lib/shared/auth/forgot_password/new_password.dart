@@ -1,10 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:doliv_social/shared/auth/login.dart';
+import 'package:doliv_social/core/routes.dart';
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/design/design.dart';
+import 'package:doliv_social/shared/auth/widgets/auth_form_panel.dart';
+import 'package:doliv_social/shared/auth/widgets/auth_header.dart';
+import 'package:doliv_social/shared/auth/widgets/password_strength_meter.dart';
 
+/// Paso 3 de 3: elegir la contraseña nueva.
 class ChangePassword extends StatefulWidget {
   final String email;
   const ChangePassword({super.key, required this.email});
@@ -15,196 +19,138 @@ class ChangePassword extends StatefulWidget {
 
 class _ChangePasswordState extends State<ChangePassword> {
   final TextEditingController newPasswordController = TextEditingController();
-  final TextEditingController confirmPasswordController =
-      TextEditingController();
-
+  final TextEditingController confirmPasswordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _obscure = true;
+  bool _obscureConfirm = true;
 
-  Future<String?> takePassAPI(String password, String confirmpass) async {
-    final String apiUrl =
-        '$kBaseUrl/user/newPassword/${widget.email}';
+  @override
+  void dispose() {
+    newPasswordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
 
-    var body = jsonEncode({
-      "newPassword": password,
-      "confirmPassword": confirmpass,
-    });
-    var headers = {
-      'Content-Type': 'application/json',
-    };
-
+  Future<String?> _saveOnServer(String password, String confirm) async {
+    final String apiUrl = '$kBaseUrl/user/newPassword/${widget.email}';
     try {
-      var response =
-          await http.post(Uri.parse(apiUrl), headers: headers, body: body);
-
-      if (response.statusCode == 200) {
-        print('Password changed successfully');
-        print(jsonDecode(response.body));
-        return null;
-      } else {
-        print('Error: ${response.statusCode}');
-        print(jsonDecode(response.body));
-        return jsonDecode(response.body)['error'];
-      }
-    } catch (e) {
-      print('Error: $e');
-      return 'An error occurred';
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: const {'Content-Type': 'application/json'},
+        body: jsonEncode({'newPassword': password, 'confirmPassword': confirm}),
+      );
+      if (response.statusCode == 200) return null;
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['error'] != null) {
+          return decoded['error'].toString();
+        }
+      } catch (_) {}
+      return 'No se pudo cambiar la contraseña (${response.statusCode})';
+    } catch (_) {
+      return 'Sin conexión con el servidor';
     }
   }
 
-  void _passwordchange(BuildContext context) async {
+  Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    FocusScope.of(context).unfocus();
 
     setState(() => _isLoading = true);
-    String password = newPasswordController.text;
-    String? error =
-        await takePassAPI(password, confirmPasswordController.text);
+    final error = await _saveOnServer(
+      newPasswordController.text,
+      confirmPasswordController.text,
+    );
     if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $error'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(error), backgroundColor: AppColors.error),
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('¡Contraseña cambiada con éxito!'),
-        ),
-      );
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const Login(),
-        ),
-      );
+      return;
     }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Contraseña cambiada. Ya puedes iniciar sesión.')),
+    );
+    // Se vacía la pila: las tres pantallas de recuperación ya no tienen
+    // sentido detrás del login.
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      MyRoutes.loginRoutes,
+      (route) => false,
+    );
   }
-
-  bool obscureText = true;
-  bool obscureText2 = true;
 
   @override
   Widget build(BuildContext context) {
     final heightOfScreen = MediaQuery.of(context).size.height;
 
     return AppScaffold(
-      padding: const EdgeInsets.symmetric(horizontal: 36),
       scrollable: true,
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(height: heightOfScreen * 0.06),
-          Center(
-            child: Container(
-              width: 96,
-              height: 96,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.textPrimary,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Image.asset(
-                "lib/assets/reset.png",
-                fit: BoxFit.contain,
-              ),
-            ),
+          SizedBox(height: heightOfScreen * 0.04),
+          const AuthHeader(
+            station: AuthStation.resetPassword,
+            title: 'Crea una nueva contraseña',
+            subtitle: 'Debe ser distinta a la que usabas antes.',
           ),
-          const SizedBox(height: 24),
-          const Text(
-            "Último paso,",
-            style: TextStyle(
-              color: AppColors.textMuted,
-              fontWeight: FontWeight.w400,
-              fontSize: 16,
-            ),
-          ),
-          const Text(
-            "Crea una nueva contraseña",
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w800,
-              fontSize: 26,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            "Debe ser distinta a la que usabas antes.",
-            style: TextStyle(color: AppColors.textMuted, fontSize: 14),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: heightOfScreen * 0.05),
+          const SizedBox(height: AppSpacing.xl),
           Form(
             key: _formKey,
-            child: Column(
+            child: AuthFormPanel(
               children: [
-                AppTextField(
-                  controller: newPasswordController,
-                  obscured: obscureText,
-                  prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMuted),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      obscureText ? Icons.visibility_off : Icons.visibility,
-                      color: AppColors.textMuted,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        obscureText = !obscureText;
-                      });
-                    },
+                AuthField(
+                  label: 'Nueva contraseña',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AppTextField(
+                        controller: newPasswordController,
+                        obscured: _obscure,
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        suffixIcon: PasswordVisibilityToggle(
+                          obscured: _obscure,
+                          onToggle: () => setState(() => _obscure = !_obscure),
+                        ),
+                        hintText: 'Mínimo 6 caracteres',
+                        validator: AuthValidators.password,
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      PasswordStrengthMeter(password: newPasswordController.text),
+                    ],
                   ),
-                  hintText: "Nueva contraseña",
-                  validator: (value) {
-                    if ((value ?? '').length < 6) {
-                      return 'Mínimo 6 caracteres';
-                    }
-                    return null;
-                  },
                 ),
-                const SizedBox(height: 20),
-                AppTextField(
-                  controller: confirmPasswordController,
-                  obscured: obscureText2,
-                  prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMuted),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      obscureText2 ? Icons.visibility_off : Icons.visibility,
-                      color: AppColors.textMuted,
+                const SizedBox(height: AppSpacing.lg),
+                AuthField(
+                  label: 'Confirmar contraseña',
+                  child: AppTextField(
+                    controller: confirmPasswordController,
+                    obscured: _obscureConfirm,
+                    prefixIcon: const Icon(Icons.lock_outline_rounded),
+                    suffixIcon: PasswordVisibilityToggle(
+                      obscured: _obscureConfirm,
+                      onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
                     ),
-                    onPressed: () {
-                      setState(() {
-                        obscureText2 = !obscureText2;
-                      });
-                    },
+                    hintText: 'Repite la contraseña',
+                    validator: (value) => value != newPasswordController.text
+                        ? 'Las contraseñas no coinciden'
+                        : null,
                   ),
-                  hintText: "Confirmar contraseña",
-                  validator: (value) {
-                    if (value != newPasswordController.text) {
-                      return 'Las contraseñas no coinciden';
-                    }
-                    return null;
-                  },
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: AppSpacing.xl),
                 AppButton(
-                  label: _isLoading ? 'Guardando...' : 'Restablecer contraseña',
+                  label: 'Guardar contraseña',
                   loading: _isLoading,
-                  onPressed: _isLoading ? null : () => _passwordchange(context),
+                  onPressed: _isLoading ? null : _save,
                 ),
-                const SizedBox(height: 24),
               ],
             ),
           ),
+          const SizedBox(height: AppSpacing.xl),
         ],
       ),
     );
