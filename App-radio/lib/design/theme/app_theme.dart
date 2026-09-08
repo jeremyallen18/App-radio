@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:doliv_social/design/motion/app_motion.dart';
 import 'package:doliv_social/design/tokens/colors.dart';
 import 'package:doliv_social/design/tokens/spacing.dart';
 import 'package:doliv_social/design/tokens/typography.dart';
@@ -31,6 +32,15 @@ class AppTheme {
       textTheme: AppTypography.dark,
       splashColor: AppColors.accent.withValues(alpha: 0.12),
       highlightColor: Colors.transparent,
+
+      // Transición de página común (fade + desplazamiento corto).
+      // Respeta "reducir movimiento" (ver el builder).
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: AppFadeThroughPageTransitionsBuilder(),
+          TargetPlatform.iOS: AppFadeThroughPageTransitionsBuilder(),
+        },
+      ),
 
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.bgBase,
@@ -147,23 +157,6 @@ class AppTheme {
             color: selected ? AppColors.textPrimary : AppColors.textMuted,
           );
         }),
-      ),
-
-      navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: AppColors.surface,
-        indicatorColor: AppColors.brandBlue,
-        selectedLabelTextStyle: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-        unselectedLabelTextStyle: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w400,
-          color: AppColors.textMuted,
-        ),
-        selectedIconTheme: const IconThemeData(color: AppColors.textPrimary),
-        unselectedIconTheme: const IconThemeData(color: AppColors.textMuted),
       ),
 
       switchTheme: SwitchThemeData(

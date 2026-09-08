@@ -17,20 +17,19 @@ import 'package:doliv_social/features/dashboard/director/site_content/site_conte
 import 'package:doliv_social/shared/teams/join_team.dart';
 import 'package:doliv_social/shared/auth/signup.dart';
 import 'package:doliv_social/shared/auth/login.dart';
-import 'package:doliv_social/core/Routes.dart';
+import 'package:doliv_social/core/routes.dart';
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb, kReleaseMode;
+    show TargetPlatform, defaultTargetPlatform, kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' show Intl;
 import 'package:intl/date_symbol_data_local.dart' show initializeDateFormatting;
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/design/gallery/component_gallery_screen.dart';
-import 'package:doliv_social/shared/teams/create_join_team/create-team.dart';
+import 'package:doliv_social/shared/teams/create_join_team/create_team.dart';
 import 'package:doliv_social/features/shell/bottomnavbar.dart';
 import 'package:doliv_social/shared/auth/forgot_password/forgot_pass.dart';
 import 'package:just_audio_background/just_audio_background.dart';
-import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:doliv_social/core/connectivity_gate.dart';
 import 'package:doliv_social/core/audio/radio_player.dart';
 import 'package:doliv_social/core/route_refresh.dart';
@@ -39,10 +38,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Push (FCM) solo está configurado para Android (ver firebase_options.dart,
-  // que lanza en otras plataformas). En Windows/Linux/Web se omite para no
-  // romper el arranque de la app. Nunca debe impedir llegar a `runApp`.
+  // que lanza en otras plataformas). En iOS se omite para no romper el
+  // arranque de la app. Nunca debe impedir llegar a `runApp`.
   final bool supportsPush =
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+      defaultTargetPlatform == TargetPlatform.android;
   if (supportsPush) {
     try {
       await ensureFirebaseInitialized();
@@ -58,44 +57,26 @@ void main() async {
   Intl.defaultLocale = 'es_MX';
   await initializeDateFormatting('es_MX', null);
 
-  // just_audio no trae implementación nativa para Windows ni Linux (solo
-  // Android/iOS/macOS/Web). just_audio_media_kit le agrega esas dos
-  // plataformas por debajo con media_kit (libmpv) sin cambiar la API que
-  // usa `RadioPlayer`; en el resto de plataformas no hace nada (deja la
-  // implementación nativa de just_audio intacta).
-  JustAudioMediaKit.title = 'Radio Doliv';
-  JustAudioMediaKit.ensureInitialized();
-
   // `just_audio_background` (controles en notificación / pantalla de
-  // bloqueo) depende de audio_service, que TAMPOCO tiene implementación
-  // para Windows/Linux — inicializarlo ahí lanzaría una excepción antes de
-  // llegar a `runApp`. En esas dos plataformas la radio simplemente suena
-  // sin esos controles; en el resto (donde sí aplica el concepto de
-  // "reproducción en segundo plano") se inicializa como siempre.
-  final bool supportsBackgroundAudio = !kIsWeb &&
-      defaultTargetPlatform != TargetPlatform.windows &&
-      defaultTargetPlatform != TargetPlatform.linux;
-  if (supportsBackgroundAudio) {
-    // Debe inicializarse ANTES de crear cualquier AudioPlayer (por eso va
-    // antes de tocar RadioPlayer.instance): habilita el foreground service
-    // de Android que mantiene la radio sonando con la app minimizada o la
-    // pantalla bloqueada, con controles en la notificación.
-    //
-    // Si esta inicialización falla (por ejemplo audio_service no puede
-    // registrar su servicio en ciertas versiones/OEMs de Android), NO debe
-    // impedir que la app arranque: se captura el error y se sigue sin los
-    // controles en segundo plano — la radio igual suena desde la app.
-    try {
-      await JustAudioBackground.init(
-        androidNotificationChannelId: 'com.example.brl_task4.radio',
-        androidNotificationChannelName: 'Radio Doliv en vivo',
-        androidNotificationOngoing: true,
-      );
-      // Solo ahora es seguro usar el tag MediaItem al reproducir la radio.
-      radioBackgroundReady = true;
-    } catch (e, st) {
-      debugPrint('JustAudioBackground.init falló, se continúa sin él: $e\n$st');
-    }
+  // bloqueo). Debe inicializarse ANTES de crear cualquier AudioPlayer (por
+  // eso va antes de tocar RadioPlayer.instance): habilita el foreground
+  // service de Android que mantiene la radio sonando con la app minimizada o
+  // la pantalla bloqueada, con controles en la notificación.
+  //
+  // Si esta inicialización falla (por ejemplo audio_service no puede
+  // registrar su servicio en ciertas versiones/OEMs de Android), NO debe
+  // impedir que la app arranque: se captura el error y se sigue sin los
+  // controles en segundo plano — la radio igual suena desde la app.
+  try {
+    await JustAudioBackground.init(
+      androidNotificationChannelId: 'com.example.brl_task4.radio',
+      androidNotificationChannelName: 'Radio Doliv en vivo',
+      androidNotificationOngoing: true,
+    );
+    // Solo ahora es seguro usar el tag MediaItem al reproducir la radio.
+    radioBackgroundReady = true;
+  } catch (e, st) {
+    debugPrint('JustAudioBackground.init falló, se continúa sin él: $e\n$st');
   }
   // Referenciar el singleton aquí (antes de mostrar cualquier pantalla)
   // dispara su precarga del stream en segundo plano lo antes posible, para
@@ -140,11 +121,8 @@ class MyApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      // El centrado a ancho fijo en escritorio ahora lo decide cada pantalla
-      // (ver `AppScaffold.centerOnDesktop`): las pantallas de formulario/
-      // lectura siguen centradas y angostas, pero el shell principal
-      // (`BottomNavBar`) usa todo el ancho disponible para mostrar una barra
-      // de navegación lateral y grillas de varias columnas.
+      // Envuelve toda la app en el fondo de marca + el gate de conectividad
+      // (muestra `OfflineView` si el backend no responde).
       builder: (context, child) {
         if (child == null) return const SizedBox.shrink();
         return ColoredBox(
@@ -155,24 +133,24 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => hasSession ? const BottomNavBar() : const SignUp(),
-        MyRoutes.SignUpRoutes: (context) => const SignUp(),
-        MyRoutes.LoginRoutes: (context) => const Login(),
-        MyRoutes.dashbMemRoutes: (context) => const dashb_mem(),
-        MyRoutes.jointeamRoutes: (context) => const join_team(),
-        MyRoutes.CreateTeamScreen: (context) => const CreateTeamScreen(),
-        MyRoutes.BottomNavBar: (context) => const BottomNavBar(),
-        MyRoutes.RoleDashboardRoutes: (context) => const RoleDashboardRouter(),
-        MyRoutes.DirectorDashboardRoutes: (context) =>
+        MyRoutes.signUpRoutes: (context) => const SignUp(),
+        MyRoutes.loginRoutes: (context) => const Login(),
+        MyRoutes.dashbMemRoutes: (context) => const DashbMem(),
+        MyRoutes.jointeamRoutes: (context) => const JoinTeamScreen(),
+        MyRoutes.createTeamScreen: (context) => const CreateTeamScreen(),
+        MyRoutes.bottomNavBar: (context) => const BottomNavBar(),
+        MyRoutes.roleDashboardRoutes: (context) => const RoleDashboardRouter(),
+        MyRoutes.directorDashboardRoutes: (context) =>
             const DirectorDashboard(),
-        MyRoutes.ManagerDashboardRoutes: (context) => const ManagerDashboard(),
-        MyRoutes.EmployeeDashboardRoutes: (context) =>
+        MyRoutes.managerDashboardRoutes: (context) => const ManagerDashboard(),
+        MyRoutes.employeeDashboardRoutes: (context) =>
             const EmployeeDashboard(),
-        MyRoutes.SiteContentHubRoutes: (context) =>
+        MyRoutes.siteContentHubRoutes: (context) =>
             const SiteContentAuthGate(child: SiteContentHubScreen()),
-        MyRoutes.DirectoryRoutes: (context) => const ColleagueDirectoryScreen(),
-        MyRoutes.Reset: (context) => const ResetPass(),
+        MyRoutes.directoryRoutes: (context) => const ColleagueDirectoryScreen(),
+        MyRoutes.reset: (context) => const ResetPass(),
         if (!kReleaseMode)
-          MyRoutes.ComponentGallery: (context) =>
+          MyRoutes.componentGallery: (context) =>
               const ComponentGalleryScreen(),
       },
     );
