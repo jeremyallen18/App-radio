@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/models.dart';
+import 'package:doliv_social/services/profile_service.dart';
 import 'package:doliv_social/shared/chat/chat.dart';
 import 'package:doliv_social/shared/directory/colleague_directory_screen.dart';
 import 'package:doliv_social/shared/directory/directory_api.dart';
@@ -18,10 +19,16 @@ class ColleagueProfileScreen extends StatefulWidget {
     super.key,
     required this.colleagueId,
     this.preview,
+    this.viewerIsDirector = false,
   });
 
   final String colleagueId;
   final UserProfile? preview;
+
+  /// Si quien mira es el director general: habilita editar el número de
+  /// control de esta persona (para corregir inconsistencias). El resto lo ve
+  /// en solo lectura.
+  final bool viewerIsDirector;
 
   @override
   State<ColleagueProfileScreen> createState() => _ColleagueProfileScreenState();
@@ -92,6 +99,37 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
         .then((_) => _navigating = false);
   }
 
+  /// Entero de la secuencia a partir de `SPPRD-0000042` (→ 42), o null.
+  static int? _controlSeq(String? controlNumber) {
+    final cn = (controlNumber ?? '').trim();
+    if (!cn.startsWith('SPPRD-')) return null;
+    return int.tryParse(cn.substring(6));
+  }
+
+  Future<void> _editControlNumber(UserProfile user) async {
+    final number = await showDialog<int>(
+      context: context,
+      builder: (_) => _ControlNumberDialog(
+        initial: _controlSeq(user.controlNumber),
+        personName: user.name,
+      ),
+    );
+    if (number == null || !mounted) return;
+    try {
+      await ProfileApi.updateControlNumber(user.id, number);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Número de control actualizado')),
+      );
+      _load();
+    } on ProfileException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = _profile?.user ?? widget.preview;
@@ -110,6 +148,7 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
           }
 
           return RefreshIndicator(
+            color: AppColors.accent,
             onRefresh: _load,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(
@@ -138,6 +177,13 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
                     email: user.email,
                     onCopy: () => _copyEmail(user.email),
                   ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _ControlNumberRow(
+                  value: user.controlNumberLabel,
+                  onEdit: widget.viewerIsDirector
+                      ? () => _editControlNumber(user)
+                      : null,
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 AppButton(
@@ -226,6 +272,117 @@ class _ContactRow extends StatelessWidget {
           color: AppColors.accentStrong,
           tooltip: 'Copiar correo',
           visualDensity: VisualDensity.compact,
+        ),
+      ],
+    );
+  }
+}
+
+/// Fila del número de control bajo la cabecera. Solo lectura salvo que se
+/// pase [onEdit] (director), que muestra el lápiz de corrección.
+class _ControlNumberRow extends StatelessWidget {
+  const _ControlNumberRow({required this.value, this.onEdit});
+
+  final String value;
+  final VoidCallback? onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Icon(Icons.badge_outlined, size: 18, color: AppColors.textMuted),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+          ),
+        ),
+        if (onEdit != null)
+          IconButton(
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            color: AppColors.accentStrong,
+            tooltip: 'Editar número de control',
+            visualDensity: VisualDensity.compact,
+          ),
+      ],
+    );
+  }
+}
+
+/// Diálogo para corregir el número de control (solo director). Devuelve el
+/// entero de la secuencia (el backend lo formatea a `SPPRD-0000000`), o
+/// `null` si se cancela.
+class _ControlNumberDialog extends StatefulWidget {
+  const _ControlNumberDialog({required this.initial, required this.personName});
+
+  final int? initial;
+  final String personName;
+
+  @override
+  State<_ControlNumberDialog> createState() => _ControlNumberDialogState();
+}
+
+class _ControlNumberDialogState extends State<_ControlNumberDialog> {
+  late final TextEditingController _ctrl =
+      TextEditingController(text: widget.initial?.toString() ?? '');
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  int? get _parsed {
+    final n = int.tryParse(_ctrl.text.trim());
+    return (n != null && n >= 1) ? n : null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = _parsed;
+    final preview =
+        n != null ? 'SPPRD-${n.toString().padLeft(7, '0')}' : '—';
+    return AlertDialog(
+      title: const Text('Número de control'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Corrige el número de ${widget.personName}. Es único: si ya lo '
+            'tiene otra persona, el servidor lo rechaza.',
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppTextField(
+            controller: _ctrl,
+            hintText: 'Número (p. ej. 42)',
+            textInputType: TextInputType.number,
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            preview,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar',
+              style: TextStyle(color: AppColors.textMuted)),
+        ),
+        TextButton(
+          onPressed: n == null ? null : () => Navigator.pop(context, n),
+          child: const Text('Guardar',
+              style: TextStyle(color: AppColors.accentStrong)),
         ),
       ],
     );

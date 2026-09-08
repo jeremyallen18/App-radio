@@ -29,6 +29,18 @@ extension AppRoleLabel on AppRole {
         return 'Empleado';
     }
   }
+
+  /// Forma corta (una palabra) para espacios estrechos como el chip del header.
+  String get shortLabel {
+    switch (this) {
+      case AppRole.director:
+        return 'Director';
+      case AppRole.manager:
+        return 'Manager';
+      case AppRole.employee:
+        return 'Empleado';
+    }
+  }
 }
 
 class DepartmentInfo {
@@ -66,6 +78,11 @@ class UserProfile {
   final String email;
   final AppRole role;
   final String? position;
+
+  /// Número de control único e intransferible (`SPPRD-0000000`). El alta lo
+  /// autoasigna; solo el director lo corrige. `null` si el backend es anterior
+  /// a la migración 028 o si el autoasignado falló en el alta.
+  final String? controlNumber;
   final String? photoUrl;
   final DepartmentInfo? department;
 
@@ -80,6 +97,7 @@ class UserProfile {
     required this.email,
     required this.role,
     this.position,
+    this.controlNumber,
     this.photoUrl,
     this.department,
     this.emailVerified = true,
@@ -93,6 +111,7 @@ class UserProfile {
       email: json['email'] as String,
       role: appRoleFromString(json['role'] as String?),
       position: json['position'] as String?,
+      controlNumber: json['controlNumber'] as String?,
       photoUrl: json['photoUrl'] as String?,
       department: deptJson is Map<String, dynamic>
           ? DepartmentInfo.fromJson(deptJson)
@@ -106,6 +125,10 @@ class UserProfile {
   /// puesto concreto si lo tiene y, si no, el rol — nunca vacío.
   String get headline =>
       (position ?? '').isNotEmpty ? position! : role.label;
+
+  /// Número de control para mostrar; "Sin asignar" si todavía no tiene.
+  String get controlNumberLabel =>
+      (controlNumber ?? '').isNotEmpty ? controlNumber! : 'Sin asignar';
 
   /// Si esta persona es quien dirige su propio departamento. El backend
   /// referencia al manager por correo (`departments.manager_email`), así que
