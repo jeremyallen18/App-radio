@@ -136,7 +136,7 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-          leading: const AppBackButton(),
+          leading: const BackButton(),
           title: const Text('Reporte de asistencia')),
       body: Column(
         children: [
@@ -211,11 +211,15 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
                             padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
                                 AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
                             children: [
-                              if (_totals != null)
-                                _totalCard(_totals!),
-                              const SizedBox(height: AppSpacing.sm),
-                              for (final r in _rows) ...[
-                                _employeeCard(r),
+                              if (_totals != null) ...[
+                                AppFadeIn(child: _totalCard(_totals!)),
+                                const SizedBox(height: AppSpacing.lg),
+                              ],
+                              for (int i = 0; i < _rows.length; i++) ...[
+                                AppFadeIn.staggered(
+                                  index: i,
+                                  child: _employeeCard(_rows[i]),
+                                ),
                                 const SizedBox(height: AppSpacing.sm),
                               ],
                             ],
@@ -239,23 +243,43 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
         onTap: onTap,
       );
 
-  Widget _totalCard(AttendancePeriodSummary t) => AppCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Totales del mes',
-                style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14)),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              '${t.workedDays} días trabajados · ${t.totalLabel} · '
-              '${t.lateCount} tardanzas · ${t.absentDays} faltas',
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-            ),
-          ],
-        ),
+  Widget _totalCard(AttendancePeriodSummary t) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(title: 'Totales del mes'),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: AppSpacing.sm,
+            crossAxisSpacing: AppSpacing.sm,
+            childAspectRatio: 1.8,
+            children: [
+              StatTile(
+                icon: Icons.event_available_outlined,
+                value: '${t.workedDays}',
+                label: 'Días trabajados',
+              ),
+              StatTile(
+                icon: Icons.schedule_outlined,
+                value: t.totalLabel,
+                label: 'Horas trabajadas',
+              ),
+              StatTile(
+                icon: Icons.running_with_errors_outlined,
+                value: '${t.lateCount}',
+                label: 'Tardanzas',
+                accentColor: AppColors.warning,
+              ),
+              StatTile(
+                icon: Icons.event_busy_outlined,
+                value: '${t.absentDays}',
+                label: 'Faltas',
+                accentColor: AppColors.error,
+              ),
+            ],
+          ),
+        ],
       );
 
   Widget _employeeCard(AdminAttendanceSummaryRow r) {
@@ -268,35 +292,38 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
               style: const TextStyle(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w700,
-                  fontSize: 14)),
+                  fontSize: 15)),
           if ((r.position ?? '').isNotEmpty)
             Text(r.position!,
                 style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
-            spacing: AppSpacing.md,
-            runSpacing: 4,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             children: [
-              _pill('${s.workedDays}/${s.businessDays} días'),
-              _pill(s.totalLabel),
-              if (s.lateCount > 0) _pill('${s.lateCount} tarde', AppColors.warning),
-              if (s.absentDays > 0) _pill('${s.absentDays} faltas', AppColors.error),
-              if (s.vacationDays > 0) _pill('${s.vacationDays} vac.'),
-              if (s.incapacityDays > 0) _pill('${s.incapacityDays} incap.'),
-              if (s.permissionDays > 0) _pill('${s.permissionDays} perm.'),
-              if (s.onTimeRate != null) _pill('${s.onTimeRate}% punt.'),
+              AppBadge(label: '${s.workedDays}/${s.businessDays} días'),
+              AppBadge(label: s.totalLabel),
+              if (s.lateCount > 0)
+                AppBadge(
+                    label: '${s.lateCount} tarde',
+                    variant: AppBadgeVariant.warning),
+              if (s.absentDays > 0)
+                AppBadge(
+                    label: '${s.absentDays} faltas',
+                    variant: AppBadgeVariant.error),
+              if (s.vacationDays > 0) AppBadge(label: '${s.vacationDays} vac.'),
+              if (s.incapacityDays > 0)
+                AppBadge(label: '${s.incapacityDays} incap.'),
+              if (s.permissionDays > 0)
+                AppBadge(label: '${s.permissionDays} perm.'),
+              if (s.onTimeRate != null)
+                AppBadge(
+                    label: '${s.onTimeRate}% punt.',
+                    variant: AppBadgeVariant.info),
             ],
           ),
         ],
       ),
     );
   }
-
-  Widget _pill(String text, [Color? color]) => Text(
-        text,
-        style: TextStyle(
-            color: color ?? AppColors.textMuted,
-            fontSize: 11,
-            fontWeight: color != null ? FontWeight.w700 : FontWeight.w400),
-      );
 }
