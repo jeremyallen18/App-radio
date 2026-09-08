@@ -9,10 +9,10 @@ import 'package:doliv_social/shared/calendar/date_pickers.dart';
 class ApplyLeave extends StatefulWidget {
   final String teamid;
 
-  ApplyLeave({required this.teamid});
+  const ApplyLeave({super.key, required this.teamid});
 
   @override
-  _ApplyLeaveState createState() => _ApplyLeaveState();
+  State<ApplyLeave> createState() => _ApplyLeaveState();
 }
 
 class _ApplyLeaveState extends State<ApplyLeave> {
@@ -26,7 +26,7 @@ class _ApplyLeaveState extends State<ApplyLeave> {
   Future<String?> applyLeaveAPI(
       String startDate, String endDate, String reason) async {
 
-    String StoreLeaveId;
+    String storeLeaveId;
     dynamic storedValue = await secureStorage.readSecureData(key);
     final String apiUrl =
         '$kBaseUrl/leave/applyLeave/${widget.teamid}';
@@ -49,20 +49,20 @@ class _ApplyLeaveState extends State<ApplyLeave> {
           await http.post(Uri.parse(apiUrl), headers: headers, body: body);
 
       if (response.statusCode == 200) {
-        print('Leave applied successfully');
-        StoreLeaveId = jsonDecode(response.body)['_id'];
-        print(jsonDecode(response.body));
+        debugPrint('Leave applied successfully');
+        storeLeaveId = jsonDecode(response.body)['_id'];
+        debugPrint('${jsonDecode(response.body)}');
         if (!mounted) return null;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('¡Permiso solicitado con éxito!'),
           ),
         );
-        LeaveID(StoreLeaveId);
+        fetchLeaveResult(storeLeaveId);
         return null;
       } else {
-        print('Error: ${response.statusCode}');
-        print(jsonDecode(response.body));
+        debugPrint('Error: ${response.statusCode}');
+        debugPrint('${jsonDecode(response.body)}');
         String error = jsonDecode(response.body)['error'];
         if (!mounted) return error;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -74,7 +74,7 @@ class _ApplyLeaveState extends State<ApplyLeave> {
 
       }
     } catch (e) {
-      print('Error: $e');
+      debugPrint('Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error de red al solicitar el permiso')),
@@ -84,15 +84,15 @@ class _ApplyLeaveState extends State<ApplyLeave> {
     }
   }
 
-  Future<void> LeaveID(String StoreLeaveID) async {
+  Future<void> fetchLeaveResult(String storeLeaveId) async {
     dynamic storedValue = await secureStorage.readSecureData(key);
     final String apiUrl =
-        '$kBaseUrl/leave/leaveResult/$StoreLeaveID';
+        '$kBaseUrl/leave/leaveResult/$storeLeaveId';
 
     var headers = <String, String>{
       'Content-Type': 'application/json',
       'Authorization': storedValue,
-      'leaveId' : StoreLeaveID,
+      'leaveId' : storeLeaveId,
     };
     http.post(Uri.parse(apiUrl), headers: headers);
   }
@@ -117,7 +117,6 @@ class _ApplyLeaveState extends State<ApplyLeave> {
     return AppScaffold(
       appBar: AppBar(
         title: const Text('Solicitar permiso'),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       scrollable: true,

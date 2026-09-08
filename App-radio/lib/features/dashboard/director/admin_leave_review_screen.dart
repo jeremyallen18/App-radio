@@ -121,7 +121,7 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: const Text('Revisar solicitud'),
       ),
       body: Builder(

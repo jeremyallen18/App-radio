@@ -108,7 +108,7 @@ class _AttendanceCorrectionsScreenState
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-          leading: const AppBackButton(),
+          leading: const BackButton(),
           title: const Text('Correcciones de asistencia')),
       body: Column(
         children: [
@@ -134,6 +134,7 @@ class _AttendanceCorrectionsScreenState
                 : _error != null
                     ? ErrorState(message: _error!, onRetry: _load)
                     : RefreshIndicator(
+                        color: AppColors.accent,
                         onRefresh: _load,
                         child: _items.isEmpty
                             ? ListView(

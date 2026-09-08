@@ -34,7 +34,11 @@ class _InternalAnnouncementViewsScreenState
 
   Future<void> _reload() async {
     final f = InternalAnnouncementApi.views(widget.announcementId);
-    setState(() => _future = f);
+    // Cuerpo con bloque: `=> _future = f` devuelve el Future asignado y
+    // `setState` lo rechaza ("asynchronous work inside setState()").
+    setState(() {
+      _future = f;
+    });
     await f;
   }
 
@@ -49,7 +53,7 @@ class _InternalAnnouncementViewsScreenState
     return AppScaffold(
       padding: EdgeInsets.zero,
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: const Text('Visualizaciones'),
       ),
       body: FutureBuilder<AnnouncementViewsReport>(
@@ -68,6 +72,7 @@ class _InternalAnnouncementViewsScreenState
           final viewers = report.viewers;
 
           return RefreshIndicator(
+            color: AppColors.accent,
             onRefresh: _reload,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(

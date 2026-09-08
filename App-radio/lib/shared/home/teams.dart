@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/shared/auth/login.dart';
-import 'package:doliv_social/shared/teams/teamDetail.dart';
+import 'package:doliv_social/shared/teams/team_detail.dart';
 import 'package:doliv_social/core/api_config.dart';
-import 'package:doliv_social/core/Routes.dart';
+import 'package:doliv_social/core/routes.dart';
 
 class TeamPage extends StatefulWidget {
   const TeamPage({super.key});
@@ -60,33 +60,28 @@ class _TeamPageState extends State<TeamPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    return Column(
       children: [
-        Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
-              child: Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                children: [
-                  QuickActionChip(
-                    icon: Icons.add_circle_outline,
-                    label: 'Crear equipo',
-                    onTap: () => Navigator.pushNamed(context, MyRoutes.CreateTeamScreen),
-                  ),
-                  QuickActionChip(
-                    icon: Icons.group_add_outlined,
-                    label: 'Unirse a un equipo',
-                    onTap: () => Navigator.pushNamed(context, MyRoutes.jointeamRoutes),
-                  ),
-                ],
+        Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+          child: Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              QuickActionChip(
+                icon: Icons.add_circle_outline,
+                label: 'Crear equipo',
+                onTap: () => Navigator.pushNamed(context, MyRoutes.createTeamScreen),
               ),
-            ),
-            Expanded(child: _buildBody()),
-          ],
+              QuickActionChip(
+                icon: Icons.group_add_outlined,
+                label: 'Unirse a un equipo',
+                onTap: () => Navigator.pushNamed(context, MyRoutes.jointeamRoutes),
+              ),
+            ],
+          ),
         ),
-        const Align(alignment: Alignment.topLeft, child: FloatingBackButton()),
+        Expanded(child: _buildBody()),
       ],
     );
   }
@@ -104,6 +99,7 @@ class _TeamPageState extends State<TeamPage> {
     }
 
     return RefreshIndicator(
+      color: AppColors.accent,
       onRefresh: _loadTeams,
       child: ListView.separated(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -140,7 +136,7 @@ class _TeamPageState extends State<TeamPage> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => t_detail(team: team)),
+                MaterialPageRoute(builder: (context) => TeamDetailView(team: team)),
               );
             },
           );

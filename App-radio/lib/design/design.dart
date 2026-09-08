@@ -1,23 +1,21 @@
 /// Barrel: importa esto para tener tokens, tema y componentes base de una vez.
 library;
 
-export 'package:doliv_social/design/tokens/breakpoints.dart';
 export 'package:doliv_social/design/tokens/colors.dart';
 export 'package:doliv_social/design/tokens/spacing.dart';
 export 'package:doliv_social/design/tokens/typography.dart';
+export 'package:doliv_social/design/motion/app_motion.dart';
 export 'package:doliv_social/design/theme/app_theme.dart';
 export 'package:doliv_social/design/components/app_scaffold.dart';
-export 'package:doliv_social/design/components/app_back_button.dart';
-export 'package:doliv_social/design/components/desktop_center.dart';
+export 'package:doliv_social/design/components/glass_panel.dart';
 export 'package:doliv_social/design/components/offline_view.dart';
 export 'package:doliv_social/design/components/responsive_card_grid.dart';
 export 'package:doliv_social/design/components/app_button.dart';
 export 'package:doliv_social/design/components/app_card.dart';
 export 'package:doliv_social/design/components/app_text_field.dart';
 export 'package:doliv_social/design/components/state_views.dart';
-export 'package:doliv_social/design/components/coming_soon_card.dart';
-export 'package:doliv_social/design/components/coming_soon_list.dart';
 export 'package:doliv_social/design/components/section_header.dart';
+export 'package:doliv_social/design/components/info_banner.dart';
 export 'package:doliv_social/design/components/stat_tile.dart';
 export 'package:doliv_social/design/components/app_dialog.dart';
 export 'package:doliv_social/design/components/app_badge.dart';

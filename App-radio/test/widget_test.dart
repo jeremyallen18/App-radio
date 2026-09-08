@@ -15,7 +15,8 @@ void main() {
     await tester.pumpWidget(_wrap(const Login()));
 
     expect(find.text('Iniciar sesión'), findsWidgets);
-    expect(find.text('Correo electrónico'), findsOneWidget);
+    // Etiquetas encima de cada campo (rediseño de auth).
+    expect(find.text('Correo'), findsOneWidget);
     expect(find.text('Contraseña'), findsOneWidget);
     expect(find.text('¿Olvidaste tu contraseña?'), findsOneWidget);
   });
@@ -57,9 +58,9 @@ void main() {
   testWidgets('el botón de ver contraseña alterna el ocultamiento', (tester) async {
     await tester.pumpWidget(_wrap(const Login()));
 
-    expect(find.byIcon(Icons.visibility_off), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.visibility_off));
+    expect(find.byIcon(Icons.visibility_off_outlined), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.visibility_off_outlined));
     await tester.pump();
-    expect(find.byIcon(Icons.visibility), findsOneWidget);
+    expect(find.byIcon(Icons.visibility_outlined), findsOneWidget);
   });
 }

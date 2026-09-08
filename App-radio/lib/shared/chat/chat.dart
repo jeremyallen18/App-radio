@@ -211,7 +211,6 @@ class _ChatScreenState extends State<ChatScreen> {
       safeArea: false,
       appBar: AppBar(
         title: Text(_peerName),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       body: Column(

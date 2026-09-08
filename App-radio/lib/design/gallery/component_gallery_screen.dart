@@ -3,7 +3,7 @@ import 'package:doliv_social/design/design.dart';
 
 /// Pantalla de referencia visual del sistema de diseño (Fase 0). No forma
 /// parte del flujo de usuario: es para revisar tokens y componentes de un
-/// vistazo. Accesible desde [MyRoutes.ComponentGallery] en modo debug.
+/// vistazo. Accesible desde [MyRoutes.componentGallery] en modo debug.
 class ComponentGalleryScreen extends StatelessWidget {
   const ComponentGalleryScreen({super.key});
 

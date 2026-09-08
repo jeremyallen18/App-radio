@@ -185,7 +185,7 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
     final needsEvidence = _type.requiresEvidence;
     return AppScaffold(
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: Text(needsEvidence ? 'Solicitar incapacidad' : 'Solicitar permiso'),
       ),
       body: ListView(

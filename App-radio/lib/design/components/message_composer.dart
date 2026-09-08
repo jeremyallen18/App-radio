@@ -13,11 +13,17 @@ class MessageComposer extends StatelessWidget {
     this.hintText = 'Escribe un mensaje…',
     this.onToggleEmoji,
     this.emojiActive = false,
+    this.focusNode,
   });
 
   final TextEditingController controller;
   final VoidCallback onSend;
   final String hintText;
+
+  /// Nodo de foco del campo. La pantalla lo controla para poder cerrar el
+  /// teclado del sistema cuando abre su propio panel de emojis (y así no
+  /// quedan dos teclados de emojis abiertos a la vez).
+  final FocusNode? focusNode;
 
   /// Si se pasa, muestra un botón de emojis a la izquierda del campo. El
   /// selector de emojis vive en la pantalla que usa el composer (no aquí),
@@ -61,6 +67,7 @@ class MessageComposer extends StatelessWidget {
                 ),
                 child: TextField(
                   controller: controller,
+                  focusNode: focusNode,
                   minLines: 1,
                   maxLines: 4,
                   textCapitalization: TextCapitalization.sentences,

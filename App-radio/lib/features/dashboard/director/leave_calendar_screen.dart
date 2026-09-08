@@ -94,7 +94,7 @@ class _LeaveCalendarScreenState extends State<LeaveCalendarScreen> {
 
     return AppScaffold(
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: const Text('Ausencias del equipo'),
       ),
       body: ListView(

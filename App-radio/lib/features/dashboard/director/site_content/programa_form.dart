@@ -125,7 +125,6 @@ class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
 
     return AppScaffold(
       scrollable: true,
-      showBackButton: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

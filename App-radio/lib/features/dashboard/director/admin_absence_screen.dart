@@ -111,7 +111,7 @@ class _AdminAbsenceScreenState extends State<AdminAbsenceScreen>
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: const Text('Justificaciones de faltas'),
         bottom: TabBar(
           controller: _tab,
@@ -130,6 +130,7 @@ class _AdminAbsenceScreenState extends State<AdminAbsenceScreen>
             );
           }
           return RefreshIndicator(
+            color: AppColors.accent,
             onRefresh: _load,
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(

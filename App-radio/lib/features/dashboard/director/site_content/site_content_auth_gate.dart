@@ -40,9 +40,9 @@ class _SiteContentAuthGateState extends State<SiteContentAuthGate> {
     try {
       final supported = await _auth.isDeviceSupported();
       if (!supported) {
-        // Sin bloqueo de dispositivo configurado (p. ej. escritorio o
-        // emulador sin PIN/huella): no hay nada que verificar, así que se
-        // deja pasar en vez de bloquear el acceso sin salida.
+        // Sin bloqueo de dispositivo configurado (p. ej. un emulador sin
+        // PIN/huella): no hay nada que verificar, así que se deja pasar en
+        // vez de bloquear el acceso sin salida.
         if (!mounted) return;
         setState(() {
           _authenticated = true;

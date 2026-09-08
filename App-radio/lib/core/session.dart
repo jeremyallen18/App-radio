@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'package:doliv_social/models/models.dart';
-import 'package:doliv_social/core/storeToken.dart';
+import 'package:doliv_social/core/store_token.dart';
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, emailVerifiedKey;
 

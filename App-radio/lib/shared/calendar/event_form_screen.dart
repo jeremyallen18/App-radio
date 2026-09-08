@@ -78,11 +78,11 @@ class _EventFormScreenState extends State<EventFormScreen> {
       _lng = e.longitude;
       _radiusM = (e.radiusM ?? 50).toDouble();
       _entryTime = _parseTime(e.entryTime);
-      if (e.reminderOffsets.isNotEmpty) {
-        _reminderOffsets
-          ..clear()
-          ..addAll(e.reminderOffsets.where(_kReminderChoices.contains));
-      }
+      // Sincroniza siempre con el evento: una lista vacía es una elección
+      // válida del director ("sin recordatorios"), no un "usa el default".
+      _reminderOffsets
+        ..clear()
+        ..addAll(e.reminderOffsets.where(_kReminderChoices.contains));
       if (_byAreas) _loadDepartments();
     }
   }
@@ -243,7 +243,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
     return AppScaffold(
       padding: EdgeInsets.zero,
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: Text(_isEditing ? 'Editar evento' : 'Nuevo evento'),
       ),
       body: Form(

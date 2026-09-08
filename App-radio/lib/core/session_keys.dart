@@ -1,4 +1,4 @@
-import 'package:doliv_social/core/storeToken.dart';
+import 'package:doliv_social/core/store_token.dart';
 
 /// Claves de almacenamiento seguro y storage compartido de la sesion.
 ///

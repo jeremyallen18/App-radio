@@ -91,7 +91,7 @@ class _TeamAdminScreenState extends State<TeamAdminScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      appBar: AppBar(leading: const AppBackButton(), title: const Text('Equipos')),
+      appBar: AppBar(leading: const BackButton(), title: const Text('Equipos')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _createTeam,
         icon: const Icon(Icons.add),
@@ -109,6 +109,7 @@ class _TeamAdminScreenState extends State<TeamAdminScreen> {
             );
           }
           return RefreshIndicator(
+            color: AppColors.accent,
             onRefresh: _load,
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 96),

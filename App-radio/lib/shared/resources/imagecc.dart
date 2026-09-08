@@ -7,10 +7,10 @@ import 'package:doliv_social/core/api_config.dart';
 
 class ImageListScreen extends StatefulWidget {
   final String teamId;
-  ImageListScreen(this.teamId);
+  const ImageListScreen(this.teamId, {super.key});
 
   @override
-  _ImageListScreenState createState() => _ImageListScreenState();
+  State<ImageListScreen> createState() => _ImageListScreenState();
 }
 
 class _ImageListScreenState extends State<ImageListScreen> {
@@ -74,7 +74,6 @@ class _ImageListScreenState extends State<ImageListScreen> {
       padding: EdgeInsets.zero,
       appBar: AppBar(
         title: const Text('Recursos de imágenes'),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       body: isLoading
@@ -94,9 +93,10 @@ class _ImageListScreenState extends State<ImageListScreen> {
                         child: const Text('Actualizar'),
                       ),
                     )
-                  // En escritorio, con más ancho de sobra, entran más columnas en vez
-                  // de estirar cada imagen para llenar solo 2.
+                  // El ancho disponible decide cuántas columnas entran (2 en
+                  // vertical, más en horizontal), sin estirar las imágenes.
                   : RefreshIndicator(
+                      color: AppColors.accent,
                       onRefresh: getImage,
                       child: LayoutBuilder(
                         builder: (context, constraints) {
@@ -142,7 +142,7 @@ class _ImageListScreenState extends State<ImageListScreen> {
 class ImageDetailScreen extends StatelessWidget {
   final String imageUrl;
 
-  ImageDetailScreen({required this.imageUrl});
+  const ImageDetailScreen({super.key, required this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -150,7 +150,6 @@ class ImageDetailScreen extends StatelessWidget {
       padding: EdgeInsets.zero,
       appBar: AppBar(
         title: const Text('Imagen'),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       body: Center(

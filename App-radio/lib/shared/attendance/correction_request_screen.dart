@@ -119,7 +119,7 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-          leading: const AppBackButton(), title: const Text('Solicitar corrección')),
+          leading: const BackButton(), title: const Text('Solicitar corrección')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
             AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxl),

@@ -1,7 +1,7 @@
-import 'package:doliv_social/shared/resources/Leaderassist.dart';
+import 'package:doliv_social/shared/resources/leader_assist.dart';
 import 'package:doliv_social/shared/resources/doc.dart';
-import 'package:doliv_social/shared/resources/fetchR.dart';
-import 'package:doliv_social/shared/resources/getR.dart';
+import 'package:doliv_social/shared/resources/fetch_r.dart';
+import 'package:doliv_social/shared/resources/get_r.dart';
 import 'package:doliv_social/shared/resources/imagecc.dart';
 import 'package:doliv_social/shared/resources/team_documents_screen.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +13,7 @@ import 'package:doliv_social/design/design.dart';
 /// igual que el resto de los "hub" de la app (ver `SiteContentHubScreen`).
 class ResourceM extends StatelessWidget {
   final String teamId;
-  ResourceM(this.teamId);
+  const ResourceM(this.teamId, {super.key});
 
   List<_ResourceSection> get _sections => [
         _ResourceSection(
@@ -59,7 +59,6 @@ class ResourceM extends StatelessWidget {
     return AppScaffold(
       appBar: AppBar(
         title: const Text('Recursos del equipo'),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       scrollable: true,

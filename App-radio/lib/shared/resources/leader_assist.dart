@@ -8,10 +8,10 @@ import 'package:doliv_social/design/design.dart';
 class LeaderResource extends StatefulWidget {
   final String teamId;
 
-  LeaderResource(this.teamId);
+  const LeaderResource(this.teamId, {super.key});
 
   @override
-  _LeaderResourceState createState() => _LeaderResourceState();
+  State<LeaderResource> createState() => _LeaderResourceState();
 }
 
 class _LeaderResourceState extends State<LeaderResource> {
@@ -44,10 +44,11 @@ class _LeaderResourceState extends State<LeaderResource> {
 
     try {
       http.StreamedResponse response = await request.send();
+      final String responseBody = await response.stream.bytesToString();
 
       if (!mounted) return;
       if (response.statusCode == 200) {
-        print(await response.stream.bytesToString());
+        debugPrint(responseBody);
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -58,7 +59,7 @@ class _LeaderResourceState extends State<LeaderResource> {
         emailController.clear();
         messageController.clear();
       } else {
-        print(response.reasonPhrase);
+        debugPrint(response.reasonPhrase);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('No se pudo enviar el mensaje. Inténtalo de nuevo.'),
@@ -76,7 +77,6 @@ class _LeaderResourceState extends State<LeaderResource> {
     return AppScaffold(
       appBar: AppBar(
         title: const Text('Asistencia del líder'),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       scrollable: true,

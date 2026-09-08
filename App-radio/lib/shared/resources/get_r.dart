@@ -9,10 +9,10 @@ import 'package:doliv_social/design/design.dart';
 
 class PostTextScreen extends StatefulWidget {
   final String teamId;
-  PostTextScreen(this.teamId);
+  const PostTextScreen(this.teamId, {super.key});
 
   @override
-  _PostTextScreenState createState() => _PostTextScreenState();
+  State<PostTextScreen> createState() => _PostTextScreenState();
 }
 
 class _PostTextScreenState extends State<PostTextScreen> {
@@ -31,7 +31,7 @@ class _PostTextScreenState extends State<PostTextScreen> {
       if (pickedFile != null) {
         _image = File(pickedFile.path);
       } else {
-        print('No image selected');
+        debugPrint('No image selected');
       }
     });
   }
@@ -60,32 +60,33 @@ class _PostTextScreenState extends State<PostTextScreen> {
 
       request.fields.addAll({
         'imgName': _imageController.text,
-        'teamId': '${widget.teamId}',
+        'teamId': widget.teamId,
 
       });
-      print('${widget.teamId}');
+      debugPrint(widget.teamId);
 
       request.files
           .add(await http.MultipartFile.fromPath('photo', _image!.path));
 
       var response = await request.send();
+      final String responseBody = await response.stream.bytesToString();
 
       if (!mounted) return;
       if (response.statusCode == 200) {
-        print('Image uploaded successfully');
-        print(await response.stream.bytesToString());
+        debugPrint('Image uploaded successfully');
+        debugPrint(responseBody);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Imagen publicada')),
         );
       } else {
-        print('Failed to upload image. Status code: ${response.statusCode}');
-        print(response.reasonPhrase);
+        debugPrint('Failed to upload image. Status code: ${response.statusCode}');
+        debugPrint(response.reasonPhrase);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('No se pudo subir la imagen (${response.statusCode})')),
         );
       }
     } catch (e) {
-      print('Error uploading image: $e');
+      debugPrint('Error uploading image: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error de red al subir la imagen')),
@@ -127,12 +128,13 @@ class _PostTextScreenState extends State<PostTextScreen> {
       request.headers.addAll(headers);
 
       http.StreamedResponse response = await request.send();
+      final String responseBody = await response.stream.bytesToString();
 
+      if (!mounted) return;
       // El backend PHP responde 201 y el de Node 200; ambos significan que el
       // texto se guardó.
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final Map<String, dynamic> responseData =
-            json.decode(await response.stream.bytesToString());
+        final Map<String, dynamic> responseData = json.decode(responseBody);
         setState(() {
           _responseMessage = responseData['message'];
         });
@@ -144,7 +146,8 @@ class _PostTextScreenState extends State<PostTextScreen> {
         ));
       }
     } catch (e) {
-      print('Error posting text: $e');
+      debugPrint('Error posting text: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Ocurrió un error al publicar el texto.'),
 
@@ -160,7 +163,6 @@ class _PostTextScreenState extends State<PostTextScreen> {
     return AppScaffold(
       appBar: AppBar(
         title: const Text('Publicar recursos'),
-        leading: AppBackButton.leadingFor(context),
         automaticallyImplyLeading: false,
       ),
       scrollable: true,

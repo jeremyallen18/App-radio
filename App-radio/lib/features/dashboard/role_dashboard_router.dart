@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/models.dart';
-import 'package:doliv_social/core/storeToken.dart';
+import 'package:doliv_social/core/store_token.dart';
 import 'package:doliv_social/core/session.dart';
 import 'package:doliv_social/features/dashboard/director/dashboard_director.dart';
 import 'package:doliv_social/features/dashboard/employee/dashboard_employee.dart';
@@ -18,7 +18,11 @@ final SecureStorage _secureStorage = SecureStorage();
 /// necesidad de cerrar sesión. Si el rol no se pudo determinar, se trata
 /// como [AppRole.employee] por defecto.
 class RoleDashboardRouter extends StatefulWidget {
-  const RoleDashboardRouter({super.key});
+  /// Se propaga al dashboard de rol: `true` cuando es la pestaña "Inicio" del
+  /// `BottomNavBar` (el shell ya pone la `MyAppBar` fija).
+  const RoleDashboardRouter({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<RoleDashboardRouter> createState() => _RoleDashboardRouterState();
@@ -43,22 +47,38 @@ class _RoleDashboardRouterState extends State<RoleDashboardRouter> {
     return FutureBuilder<AppRole?>(
       future: _roleFuture,
       builder: (context, snapshot) {
+        final embedded = widget.embedded;
+        Widget content;
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            backgroundColor: AppColors.bgBase,
-            body: LoadingState(),
-          );
+          content = embedded
+              ? const ColoredBox(
+                  key: ValueKey('loading'),
+                  color: AppColors.bgBase,
+                  child: LoadingState(),
+                )
+              : const Scaffold(
+                  key: ValueKey('loading'),
+                  backgroundColor: AppColors.bgBase,
+                  body: LoadingState(),
+                );
+        } else {
+          switch (snapshot.data) {
+            case AppRole.director:
+              content = DirectorDashboard(
+                  key: const ValueKey('director'), embedded: embedded);
+            case AppRole.manager:
+              content = ManagerDashboard(
+                  key: const ValueKey('manager'), embedded: embedded);
+            case AppRole.employee:
+            case null:
+              content = EmployeeDashboard(
+                  key: const ValueKey('employee'), embedded: embedded);
+          }
         }
-
-        switch (snapshot.data) {
-          case AppRole.director:
-            return const DirectorDashboard();
-          case AppRole.manager:
-            return const ManagerDashboard();
-          case AppRole.employee:
-          case null:
-            return const EmployeeDashboard();
-        }
+        return AnimatedSwitcher(
+          duration: AppDurations.medium,
+          child: content,
+        );
       },
     );
   }

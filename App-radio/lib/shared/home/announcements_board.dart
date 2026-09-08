@@ -127,6 +127,7 @@ class _AnnouncementsBoardState extends State<AnnouncementsBoard> {
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
 
     return RefreshIndicator(
+      color: AppColors.accent,
       onRefresh: _load,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(

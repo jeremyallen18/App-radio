@@ -169,7 +169,7 @@ class _InternalAnnouncementFormScreenState
     return AppScaffold(
       padding: EdgeInsets.zero,
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: Text(widget.isEditing ? 'Editar anuncio' : 'Nuevo anuncio interno'),
       ),
       body: Form(

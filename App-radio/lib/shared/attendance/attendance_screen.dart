@@ -186,7 +186,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-        leading: const AppBackButton(),
+        leading: const BackButton(),
         title: const Text('Mi asistencia'),
       ),
       body: Builder(
@@ -197,6 +197,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           }
           final day = _day!;
           return RefreshIndicator(
+            color: AppColors.accent,
             onRefresh: _load,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(

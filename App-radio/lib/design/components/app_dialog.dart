@@ -3,7 +3,7 @@ import 'package:doliv_social/design/tokens/colors.dart';
 
 /// Diálogo de confirmación estándar. Devuelve `true`/`false`/`null`
 /// (cancelado tocando fuera). Reemplaza al `AlertDialog` repetido a mano en
-/// `tasks.dart` y `teamDetail.dart`.
+/// `tasks.dart` y `team_detail.dart`.
 Future<bool?> showAppConfirmDialog(
   BuildContext context, {
   required String title,

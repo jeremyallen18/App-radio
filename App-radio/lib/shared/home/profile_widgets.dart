@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/models.dart';
-import 'package:doliv_social/shared/teams/teamDetail.dart';
+import 'package:doliv_social/shared/teams/team_detail.dart';
 
 /// Fila de metadato (ícono + texto en gris tenue) bajo la cabecera del perfil.
 class ProfileMetaRow extends StatelessWidget {
@@ -143,7 +143,7 @@ class _TeamRow extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => t_detail(team: team)),
+          MaterialPageRoute(builder: (context) => TeamDetailView(team: team)),
         );
       },
       child: Row(
@@ -161,6 +161,215 @@ class _TeamRow extends StatelessWidget {
             ),
           ),
           const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
+        ],
+      ),
+    );
+  }
+}
+
+/// Cuerpo de la pestaña "Vista general" del perfil de un director: bloque de
+/// acceso, contadores de organización y accesos directos. Los demás roles ven
+/// [ProfileAreaCard] en su lugar.
+class DirectorOverviewTab extends StatelessWidget {
+  const DirectorOverviewTab({
+    super.key,
+    required this.areasCount,
+    required this.collaboratorsCount,
+    required this.onOpenAreas,
+    required this.onOpenDirectory,
+    required this.onOpenReports,
+    required this.onOpenSettings,
+  });
+
+  final int? areasCount;
+  final int? collaboratorsCount;
+  final VoidCallback onOpenAreas;
+  final VoidCallback onOpenDirectory;
+  final VoidCallback onOpenReports;
+  final VoidCallback onOpenSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AppCard(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _RoundIcon(icon: Icons.public, filled: true),
+              SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Acceso global',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Tienes acceso a todas las áreas y colaboradores de Radio Doliv.',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        const SectionHeader(title: 'Organización'),
+        Row(
+          children: [
+            Expanded(
+              child: StatTile(
+                icon: Icons.apartment_outlined,
+                value: areasCount?.toString() ?? '—',
+                label: 'Áreas',
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: StatTile(
+                icon: Icons.groups_outlined,
+                value: collaboratorsCount?.toString() ?? '—',
+                label: 'Colaboradores',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        const SectionHeader(title: 'Acciones rápidas'),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _DirectorActionCard(
+                  icon: Icons.apartment_outlined,
+                  title: 'Áreas',
+                  subtitle: 'Consulta y administra todas las áreas.',
+                  onTap: onOpenAreas,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: _DirectorActionCard(
+                  icon: Icons.groups_outlined,
+                  title: 'Colaboradores',
+                  subtitle: 'Busca y consulta a cualquier miembro.',
+                  onTap: onOpenDirectory,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _DirectorActionCard(
+                  icon: Icons.insights_outlined,
+                  title: 'Reportes',
+                  subtitle: 'Visualiza el progreso general.',
+                  onTap: onOpenReports,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: _DirectorActionCard(
+                  icon: Icons.settings_outlined,
+                  title: 'Configuración',
+                  subtitle: 'Administración de la organización.',
+                  onTap: onOpenSettings,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Ícono en círculo: tenue por defecto, o relleno de acento (`filled`) para
+/// el bloque destacado.
+class _RoundIcon extends StatelessWidget {
+  const _RoundIcon({required this.icon, this.filled = false});
+
+  final IconData icon;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 44,
+      height: 44,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.accent.withValues(alpha: filled ? 1 : 0.14),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        icon,
+        size: 22,
+        color: filled ? AppColors.bgBase : AppColors.accent,
+      ),
+    );
+  }
+}
+
+/// Tarjeta de acceso directo (ícono + chevron arriba, título y subtítulo
+/// abajo) de la cuadrícula "Acciones rápidas" del director.
+class _DirectorActionCard extends StatelessWidget {
+  const _DirectorActionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _RoundIcon(icon: icon),
+              const Spacer(),
+              const Icon(Icons.chevron_right,
+                  size: 20, color: AppColors.textMuted),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
         ],
       ),
     );

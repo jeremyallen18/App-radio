@@ -141,7 +141,6 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
 
     return AppScaffold(
       scrollable: true,
-      showBackButton: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

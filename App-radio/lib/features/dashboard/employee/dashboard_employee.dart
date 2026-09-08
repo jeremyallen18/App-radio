@@ -12,15 +12,20 @@ import 'package:doliv_social/shared/widgets/app_menu_drawer.dart';
 /// ([AnnouncementsBoard]); todas las secciones operativas viven ahora en el
 /// menú hamburguesa ([AppMenuDrawer]), que arma sus opciones según el rol.
 class EmployeeDashboard extends StatelessWidget {
-  const EmployeeDashboard({super.key});
+  /// Cuando se muestra como pestaña de `BottomNavBar`, el shell ya pinta la
+  /// `MyAppBar` y el menú (fijos, no se deslizan al cambiar de pestaña), así
+  /// que aquí se omiten. Como ruta suelta (`/dashboard/employee`) sí los trae.
+  const EmployeeDashboard({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
-    return const AppScaffold(
+    return AppScaffold(
       padding: EdgeInsets.zero,
-      appBar: MyAppBar(),
-      drawer: AppMenuDrawer(),
-      body: AnnouncementsBoard(),
+      appBar: embedded ? null : const MyAppBar(),
+      drawer: embedded ? null : const AppMenuDrawer(),
+      body: const AnnouncementsBoard(),
     );
   }
 }
