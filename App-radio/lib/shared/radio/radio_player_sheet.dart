@@ -96,7 +96,7 @@ class _RadioPlayerSheetState extends State<_RadioPlayerSheet> {
           children: [
             Row(
               children: [
-                const Text('Radio Doliv',
+                Text('Radio Doliv',
                     style: TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w800,
@@ -107,10 +107,11 @@ class _RadioPlayerSheetState extends State<_RadioPlayerSheet> {
             ),
             const SizedBox(height: 4),
             Text(
-              _nowPlaying ?? (_isPlaying ? 'Transmisión en vivo' : 'Fuera del aire'),
+              _nowPlaying ??
+                  (_isPlaying ? 'Transmisión en vivo' : 'Fuera del aire'),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
             ),
             const SizedBox(height: AppSpacing.lg),
 
@@ -160,8 +161,8 @@ class _RadioPlayerSheetState extends State<_RadioPlayerSheet> {
                   width: 36,
                   child: Text('${(_volume * 100).round()}%',
                       textAlign: TextAlign.end,
-                      style: const TextStyle(
-                          color: AppColors.textMuted, fontSize: 12)),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ),
               ],
             ),

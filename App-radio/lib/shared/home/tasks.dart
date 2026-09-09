@@ -143,7 +143,7 @@ class _TaskContainerState extends State<TaskContainer> {
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                     children: [
-                      const Text(
+                      Text(
                         'Mis tareas',
                         style: TextStyle(
                             color: AppColors.textPrimary,
@@ -210,7 +210,7 @@ class _TaskContainerState extends State<TaskContainer> {
 
   Widget _sectionTitle(String text) => Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.w700),
@@ -232,7 +232,7 @@ class _TaskContainerState extends State<TaskContainer> {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600),

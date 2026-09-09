@@ -259,7 +259,7 @@ class _LoginState extends State<Login> {
                                 onChanged: (v) =>
                                     setState(() => _rememberMe = v ?? false),
                               ),
-                              const Text(
+                              Text(
                                 'Recuérdame',
                                 style: TextStyle(
                                     color: AppColors.textMuted, fontSize: 13),
@@ -273,7 +273,7 @@ class _LoginState extends State<Login> {
                           child: ConstrainedBox(
                             constraints:
                                 BoxConstraints(maxWidth: constraints.maxWidth),
-                            child: const Text(
+                            child: Text(
                               '¿Olvidaste tu contraseña?',
                               textAlign: TextAlign.end,
                               style: TextStyle(

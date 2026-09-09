@@ -53,9 +53,13 @@ class WeeklyRhythmChart extends StatelessWidget {
                   return Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
-                      isToday ? 'Hoy' : _weekdayLetters[week[i].day.weekday - 1],
+                      isToday
+                          ? 'Hoy'
+                          : _weekdayLetters[week[i].day.weekday - 1],
                       style: TextStyle(
-                        color: isToday ? AppColors.accentStrong : AppColors.textMuted,
+                        color: isToday
+                            ? AppColors.accentStrong
+                            : AppColors.textMuted,
                         fontSize: 11,
                         fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
                       ),
@@ -68,14 +72,18 @@ class WeeklyRhythmChart extends StatelessWidget {
           barTouchData: BarTouchData(
             touchTooltipData: BarTouchTooltipData(
               getTooltipColor: (_) => AppColors.bgBase,
-              tooltipBorder: const BorderSide(color: AppColors.surfaceBorder),
-              tooltipPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              tooltipBorder: BorderSide(color: AppColors.surfaceBorder),
+              tooltipPadding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               getTooltipItem: (group, _, rod, __) {
                 final d = week[group.x];
                 final late = d.late > 0 ? ' · ${d.late} tarde' : '';
                 return BarTooltipItem(
                   '${d.total} ${d.total == 1 ? 'tarea' : 'tareas'}$late',
-                  const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+                  TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600),
                 );
               },
             ),
@@ -88,13 +96,15 @@ class WeeklyRhythmChart extends StatelessWidget {
                   BarChartRodData(
                     toY: week[i].total.toDouble(),
                     width: 18,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(6)),
                     borderSide: i == lastIndex
-                        ? const BorderSide(color: AppColors.accentStrong, width: 1.5)
+                        ? BorderSide(color: AppColors.accentStrong, width: 1.5)
                         : BorderSide.none,
                     color: AppColors.success,
                     rodStackItems: [
-                      BarChartRodStackItem(0, week[i].onTime.toDouble(), AppColors.success),
+                      BarChartRodStackItem(
+                          0, week[i].onTime.toDouble(), AppColors.success),
                       BarChartRodStackItem(
                         week[i].onTime.toDouble(),
                         week[i].total.toDouble(),

@@ -60,7 +60,7 @@ class AppButton extends StatelessWidget {
                   opacity: enabled ? 1 : 0.5,
                   child: Center(
                     child: loading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 22,
                             height: 22,
                             child: CircularProgressIndicator(
@@ -70,7 +70,7 @@ class AppButton extends StatelessWidget {
                           )
                         : Text(
                             label,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.textPrimary,
                               fontWeight: FontWeight.w700,
                               fontSize: 16,

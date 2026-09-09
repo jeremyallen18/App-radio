@@ -44,8 +44,18 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
 
   String get _monthLabel {
     const months = [
-      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre'
     ];
     return '${months[_month.month - 1]} ${_month.year}';
   }
@@ -150,9 +160,9 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
                   const SizedBox(height: AppSpacing.sm),
                   DropdownButtonFormField<String?>(
                     initialValue: _departmentId,
-                    decoration: const InputDecoration(
-                      prefixIcon:
-                          Icon(Icons.groups_2_outlined, color: AppColors.accent),
+                    decoration: InputDecoration(
+                      prefixIcon: Icon(Icons.groups_2_outlined,
+                          color: AppColors.accent),
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
@@ -173,7 +183,9 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: _exporting || _loading ? null : () => _export('csv'),
+                        onPressed: _exporting || _loading
+                            ? null
+                            : () => _export('csv'),
                         icon: const Icon(Icons.table_view, size: 18),
                         label: const Text('CSV'),
                       ),
@@ -181,12 +193,15 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: FilledButton.icon(
-                        onPressed: _exporting || _loading ? null : () => _export('pdf'),
+                        onPressed: _exporting || _loading
+                            ? null
+                            : () => _export('pdf'),
                         icon: _exporting
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2))
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2))
                             : const Icon(Icons.picture_as_pdf, size: 18),
                         label: const Text('PDF'),
                       ),
@@ -205,7 +220,8 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
                         ? const EmptyState(
                             icon: Icons.assignment_outlined,
                             title: 'Sin datos',
-                            message: 'No hay trabajadores en el alcance seleccionado.',
+                            message:
+                                'No hay trabajadores en el alcance seleccionado.',
                           )
                         : ListView(
                             padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
@@ -235,11 +251,11 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
         contentPadding: EdgeInsets.zero,
         leading: Icon(icon, color: AppColors.accent),
         title: Text(label,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
         subtitle: Text(value,
-            style: const TextStyle(
+            style: TextStyle(
                 color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
-        trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
+        trailing: Icon(Icons.chevron_right, color: AppColors.textMuted),
         onTap: onTap,
       );
 
@@ -307,13 +323,13 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(r.name,
-              style: const TextStyle(
+              style: TextStyle(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w700,
                   fontSize: 15)),
           if ((r.position ?? '').isNotEmpty)
             Text(r.position!,
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: AppSpacing.sm,

@@ -6,6 +6,7 @@ export 'package:doliv_social/design/tokens/spacing.dart';
 export 'package:doliv_social/design/tokens/typography.dart';
 export 'package:doliv_social/design/motion/app_motion.dart';
 export 'package:doliv_social/design/theme/app_theme.dart';
+export 'package:doliv_social/design/theme/theme_controller.dart';
 export 'package:doliv_social/design/components/app_scaffold.dart';
 export 'package:doliv_social/design/components/glass_panel.dart';
 export 'package:doliv_social/design/components/offline_view.dart';

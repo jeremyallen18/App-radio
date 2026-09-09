@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:doliv_social/design/tokens/colors.dart';
 
 /// Escala tipográfica de 6 pasos, mapeada sobre [TextTheme] de Material 3.
 /// Pesos tomados de la pantalla ya migrada `login.dart` (w800 títulos,
@@ -43,6 +42,4 @@ class AppTypography {
       ),
     );
   }
-
-  static final TextTheme dark = textTheme(AppColors.textPrimary, AppColors.textMuted);
 }

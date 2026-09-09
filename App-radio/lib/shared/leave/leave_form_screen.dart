@@ -76,11 +76,10 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
     final DateTime first = _minStart;
     // Para vacaciones el término no puede pasar de un mes desde el inicio ya
     // elegido; el resto de tipos usan la ventana fija del tipo.
-    final DateTime last = (!isStart &&
-            _type == LeaveType.vacaciones &&
-            _start != null)
-        ? oneCalendarMonthMaxEnd(_start!)
-        : _maxEnd;
+    final DateTime last =
+        (!isStart && _type == LeaveType.vacaciones && _start != null)
+            ? oneCalendarMonthMaxEnd(_start!)
+            : _maxEnd;
     var initial = isStart ? (_start ?? now) : (_end ?? _start ?? now);
     if (initial.isBefore(first)) initial = first;
     if (initial.isAfter(last)) initial = last;
@@ -116,12 +115,14 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined, color: AppColors.accent),
+              leading:
+                  Icon(Icons.photo_camera_outlined, color: AppColors.accent),
               title: const Text('Tomar foto'),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: AppColors.accent),
+              leading:
+                  Icon(Icons.photo_library_outlined, color: AppColors.accent),
               title: const Text('Elegir de la galería'),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
@@ -130,7 +131,8 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
       ),
     );
     if (source == null) return;
-    final x = await ImagePicker().pickImage(source: source, imageQuality: 85, maxWidth: 2000);
+    final x = await ImagePicker()
+        .pickImage(source: source, imageQuality: 85, maxWidth: 2000);
     if (x == null || !mounted) return;
     setState(() => _evidence = File(x.path));
   }
@@ -141,7 +143,8 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
     if (_end!.isBefore(_start!)) {
       return 'La fecha de término no puede ser anterior a la fecha de inicio.';
     }
-    if (_start!.weekday == DateTime.sunday || _end!.weekday == DateTime.sunday) {
+    if (_start!.weekday == DateTime.sunday ||
+        _end!.weekday == DateTime.sunday) {
       return 'El inicio y el término deben ser un día laboral (lunes a sábado).';
     }
     // Ventana de fechas por tipo (debe coincidir con leave_requests.php):
@@ -228,14 +231,18 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
     return AppScaffold(
       appBar: AppBar(
         leading: const BackButton(),
-        title: Text(needsEvidence ? 'Solicitar incapacidad' : 'Solicitar permiso'),
+        title:
+            Text(needsEvidence ? 'Solicitar incapacidad' : 'Solicitar permiso'),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxl,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.xxl,
         ),
         children: [
-          const Text('Tipo de permiso',
+          Text('Tipo de permiso',
               style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
           const SizedBox(height: AppSpacing.sm),
           DropdownButtonFormField<LeaveType>(
@@ -262,23 +269,26 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
                   !d.isBefore(_minStart) && !d.isAfter(_maxEnd);
               if (_start != null && !inWindow(_start!)) _start = null;
               if (_end != null && !inWindow(_end!)) _end = null;
-              if (_type == LeaveType.vacaciones && _start != null && _end != null) {
+              if (_type == LeaveType.vacaciones &&
+                  _start != null &&
+                  _end != null) {
                 final max = oneCalendarMonthMaxEnd(_start!);
                 if (_end!.isAfter(max)) _end = max;
               }
             }),
           ),
           const SizedBox(height: AppSpacing.lg),
-
           Row(
             children: [
-              Expanded(child: _DateField(
+              Expanded(
+                  child: _DateField(
                 label: 'Fecha de inicio',
                 value: _start,
                 onTap: () => _pickDate(isStart: true),
               )),
               const SizedBox(width: AppSpacing.md),
-              Expanded(child: _DateField(
+              Expanded(
+                  child: _DateField(
                 label: 'Fecha de término',
                 value: _end,
                 onTap: () => _pickDate(isStart: false),
@@ -289,13 +299,12 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
           Text(
             'Días solicitados: ${_businessDays > 0 ? _businessDays : '—'}'
             '  (el director confirma el total al aprobar)',
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
           const SizedBox(height: AppSpacing.lg),
-
           Text(
             needsEvidence ? 'Motivo' : 'Motivo (opcional)',
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
           const SizedBox(height: AppSpacing.sm),
           AppTextField(
@@ -305,25 +314,23 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
                 : 'Escribe un motivo (opcional)',
             maxLines: 3,
           ),
-
           if (needsEvidence) ...[
             const SizedBox(height: AppSpacing.lg),
-            const Text('Evidencia',
+            Text('Evidencia',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
             const SizedBox(height: AppSpacing.sm),
             _EvidencePicker(file: _evidence, onPick: _pickEvidence),
             const SizedBox(height: AppSpacing.sm),
-            const Text(
+            Text(
               'La evidencia será revisada por el Director antes de aprobar la solicitud.',
               style: TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
           ],
-
           if (_error != null) ...[
             const SizedBox(height: AppSpacing.md),
-            Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
+            Text(_error!,
+                style: TextStyle(color: AppColors.error, fontSize: 12)),
           ],
-
           const SizedBox(height: AppSpacing.xl),
           AppButton(
             label: 'ENVIAR SOLICITUD',
@@ -337,7 +344,8 @@ class _LeaveFormScreenState extends State<LeaveFormScreen> {
 }
 
 class _DateField extends StatelessWidget {
-  const _DateField({required this.label, required this.value, required this.onTap});
+  const _DateField(
+      {required this.label, required this.value, required this.onTap});
   final String label;
   final DateTime? value;
   final VoidCallback onTap;
@@ -351,7 +359,8 @@ class _DateField extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.field),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
+        padding:
+            const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.field),
@@ -360,13 +369,17 @@ class _DateField extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+            Text(label,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
             const SizedBox(height: 2),
             Row(
               children: [
-                const Icon(Icons.event, size: 15, color: AppColors.accent),
+                Icon(Icons.event, size: 15, color: AppColors.accent),
                 const SizedBox(width: 6),
-                Text(text, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                Text(text,
+                    style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600)),
               ],
             ),
           ],
@@ -389,7 +402,8 @@ class _EvidencePicker extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.card),
-            child: Image.file(file!, height: 180, width: double.infinity, fit: BoxFit.cover),
+            child: Image.file(file!,
+                height: 180, width: double.infinity, fit: BoxFit.cover),
           ),
           const SizedBox(height: AppSpacing.sm),
           TextButton.icon(

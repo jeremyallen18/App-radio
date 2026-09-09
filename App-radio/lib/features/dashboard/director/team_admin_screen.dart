@@ -61,7 +61,7 @@ class _CreateTeamDialogState extends State<CreateTeamDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
+          child: Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
         ),
         TextButton(
           onPressed: _submit,
@@ -148,7 +148,8 @@ class _TeamAdminScreenState extends State<TeamAdminScreen> {
       _load();
     } on TeamException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
       }
     }
   }
@@ -168,7 +169,9 @@ class _TeamAdminScreenState extends State<TeamAdminScreen> {
       body: Builder(
         builder: (context) {
           if (_loading) return const LoadingState();
-          if (_error != null) return ErrorState(message: _error!, onRetry: _load);
+          if (_error != null) {
+            return ErrorState(message: _error!, onRetry: _load);
+          }
           if (_companyMissing) {
             return CreateCompanyCard(onCreated: (_) => _load());
           }
@@ -183,16 +186,19 @@ class _TeamAdminScreenState extends State<TeamAdminScreen> {
             color: AppColors.accent,
             onRefresh: _load,
             child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 96),
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 96),
               itemCount: _departments.length,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: AppSpacing.md),
               itemBuilder: (_, i) {
                 final d = _departments[i];
                 final hasManager = (d.managerEmail ?? '').isNotEmpty;
                 return AppCard(
                   onTap: () async {
                     await Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => TeamDetailScreen(department: d)),
+                      MaterialPageRoute(
+                          builder: (_) => TeamDetailScreen(department: d)),
                     );
                     _load();
                   },
@@ -205,17 +211,23 @@ class _TeamAdminScreenState extends State<TeamAdminScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(d.name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     color: AppColors.textPrimary,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 15)),
                             const SizedBox(height: 2),
                             Text(
-                              hasManager ? 'Manager: ${d.managerEmail}' : 'Sin manager asignado',
+                              hasManager
+                                  ? 'Manager: ${d.managerEmail}'
+                                  : 'Sin manager asignado',
                               style: TextStyle(
-                                color: hasManager ? AppColors.textMuted : AppColors.warning,
+                                color: hasManager
+                                    ? AppColors.textMuted
+                                    : AppColors.warning,
                                 fontSize: 12,
-                                fontWeight: hasManager ? FontWeight.w400 : FontWeight.w600,
+                                fontWeight: hasManager
+                                    ? FontWeight.w400
+                                    : FontWeight.w600,
                               ),
                             ),
                           ],
@@ -223,7 +235,7 @@ class _TeamAdminScreenState extends State<TeamAdminScreen> {
                       ),
                       AppBadge(label: '${d.employeeCount} empleados'),
                       const SizedBox(width: AppSpacing.sm),
-                      const Icon(Icons.chevron_right, color: AppColors.textMuted),
+                      Icon(Icons.chevron_right, color: AppColors.textMuted),
                     ],
                   ),
                 );

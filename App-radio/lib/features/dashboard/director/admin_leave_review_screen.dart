@@ -127,11 +127,16 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
       body: Builder(
         builder: (context) {
           if (_loading) return const LoadingState();
-          if (_error != null) return ErrorState(message: _error!, onRetry: _load);
+          if (_error != null) {
+            return ErrorState(message: _error!, onRetry: _load);
+          }
           final r = _req!;
           return ListView(
             padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxl,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.xxl,
             ),
             children: [
               Row(
@@ -140,10 +145,10 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text('Solicitud de ${r.type.label.toLowerCase()}',
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18)),
+                        style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18)),
                   ),
                 ],
               ),
@@ -154,15 +159,21 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
                     _kv('Empleado', r.employee?.name ?? '--'),
                     if ((r.employee?.position ?? '').isNotEmpty)
                       _kv('Puesto', r.employee!.position!),
-                    const Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
+                    Divider(
+                        color: AppColors.surfaceBorder, height: AppSpacing.xl),
                     _kv('Periodo solicitado', r.requestedRangeLabel),
                     _kv('Días solicitados', '${r.requestedDays}'),
                     if (r.approvedStart != null) ...[
-                      const Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
-                      _kv('Periodo autorizado', r.approvedRangeLabel, highlight: true),
-                      _kv('Días autorizados', '${r.approvedDays ?? '--'}', highlight: true),
+                      Divider(
+                          color: AppColors.surfaceBorder,
+                          height: AppSpacing.xl),
+                      _kv('Periodo autorizado', r.approvedRangeLabel,
+                          highlight: true),
+                      _kv('Días autorizados', '${r.approvedDays ?? '--'}',
+                          highlight: true),
                     ],
-                    const Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
+                    Divider(
+                        color: AppColors.surfaceBorder, height: AppSpacing.xl),
                     _kv('Estado', r.status.label),
                     _kv('Enviada', LeaveRequest.fmtDate(r.createdAt)),
                   ],
@@ -174,18 +185,22 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
               ],
               if ((r.rejectionReason ?? '').isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.lg),
-                _note('Motivo del rechazo', r.rejectionReason!, color: AppColors.error),
+                _note('Motivo del rechazo', r.rejectionReason!,
+                    color: AppColors.error),
               ],
               if ((r.cancellationReason ?? '').isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.lg),
-                _note('Motivo de la revocación', r.cancellationReason!, color: AppColors.warning),
+                _note('Motivo de la revocación', r.cancellationReason!,
+                    color: AppColors.warning),
               ],
               if (r.hasEvidence) ...[
                 const SizedBox(height: AppSpacing.lg),
                 AppButton(
                   label: 'VER EVIDENCIA',
                   onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => EvidenceViewer(url: LeaveApi.evidenceUrl(r.id))),
+                    MaterialPageRoute(
+                        builder: (_) =>
+                            EvidenceViewer(url: LeaveApi.evidenceUrl(r.id))),
                   ),
                 ),
               ],
@@ -204,7 +219,7 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(top: 1),
                             child: Icon(Icons.warning_amber_rounded,
                                 size: 16, color: AppColors.warning),
@@ -216,7 +231,7 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
                               '${r.deptOverlaps.length == 1 ? 'persona del área ya tiene' : 'personas del área ya tienen'} '
                               'una ausencia que se cruza con estas fechas',
                               softWrap: true,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   color: AppColors.warning,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12),
@@ -229,7 +244,7 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
                         Text(
                           '• ${o.employeeName ?? 'Empleado'} — ${o.typeLabel} '
                           '(${o.statusLabel.toLowerCase()}) · ${o.rangeLabel}',
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppColors.textMuted, fontSize: 12),
                         ),
                     ],
@@ -256,12 +271,15 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
                                   title: 'Rechazar solicitud',
                                   hint: 'Motivo del rechazo',
                                   confirmLabel: 'CONFIRMAR RECHAZO',
-                                  run: (reason) => LeaveApi.reject(widget.requestId, reason: reason),
+                                  run: (reason) => LeaveApi.reject(
+                                      widget.requestId,
+                                      reason: reason),
                                   okMessage: 'Solicitud rechazada.',
                                 ),
                         icon: const Icon(Icons.close),
                         label: const Text('RECHAZAR'),
-                        style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
+                        style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.error),
                       ),
                     ),
                   ],
@@ -274,17 +292,20 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
                             title: 'Revocar permiso',
                             hint: 'Motivo de la revocación',
                             confirmLabel: 'CONFIRMAR REVOCACIÓN',
-                            run: (reason) => LeaveApi.adminCancel(widget.requestId, reason: reason),
+                            run: (reason) => LeaveApi.adminCancel(
+                                widget.requestId,
+                                reason: reason),
                             okMessage: 'Permiso revocado.',
                           ),
                   icon: const Icon(Icons.undo),
                   label: const Text('REVOCAR PERMISO'),
-                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.warning),
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.warning),
                 )
               else
                 Text(
                   'Esta solicitud ya fue ${r.status.label.toLowerCase()}.',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                 ),
             ],
           );
@@ -298,13 +319,18 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: Text(k, style: const TextStyle(color: AppColors.textMuted, fontSize: 13))),
+            Expanded(
+                child: Text(k,
+                    style:
+                        TextStyle(color: AppColors.textMuted, fontSize: 13))),
             Expanded(
               child: Text(
                 v,
                 textAlign: TextAlign.right,
                 style: TextStyle(
-                  color: highlight ? AppColors.accentStrong : AppColors.textPrimary,
+                  color: highlight
+                      ? AppColors.accentStrong
+                      : AppColors.textPrimary,
                   fontWeight: FontWeight.w700,
                   fontSize: 14,
                 ),
@@ -325,7 +351,8 @@ class _AdminLeaveReviewScreenState extends State<AdminLeaveReviewScreen> {
                   fontWeight: FontWeight.w700,
                 )),
             const SizedBox(height: 4),
-            Text(body, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+            Text(body,
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
           ],
         ),
       );

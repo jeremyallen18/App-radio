@@ -73,7 +73,9 @@ class _AbsenceJustificationScreenState
       body: Builder(
         builder: (context) {
           if (_loading) return const LoadingState();
-          if (_error != null) return ErrorState(message: _error!, onRetry: _load);
+          if (_error != null) {
+            return ErrorState(message: _error!, onRetry: _load);
+          }
           final data = _data!;
           if (data.unjustified.isEmpty && data.justifications.isEmpty) {
             return const EmptyState(
@@ -92,13 +94,14 @@ class _AbsenceJustificationScreenState
               children: [
                 if (data.unjustified.isNotEmpty) ...[
                   const SectionHeader(title: 'Faltas por justificar'),
-                  const Text(
+                  Text(
                     'Toda justificación requiere evidencia (foto o PDF).',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   for (final run in data.unjustified) ...[
-                    _RunCard(run: run, onJustify: () => _startJustification(run)),
+                    _RunCard(
+                        run: run, onJustify: () => _startJustification(run)),
                     const SizedBox(height: AppSpacing.sm),
                   ],
                   const SizedBox(height: AppSpacing.lg),
@@ -145,21 +148,20 @@ class _RunCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.event_busy_outlined,
+              Icon(Icons.event_busy_outlined,
                   size: 18, color: AppColors.warning),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   _range(run.start, run.end),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                   ),
                 ),
               ),
-              if (badge != null)
-                AppBadge(label: badge.$1, variant: badge.$2),
+              if (badge != null) AppBadge(label: badge.$1, variant: badge.$2),
             ],
           ),
           const SizedBox(height: 4),
@@ -167,14 +169,13 @@ class _RunCard extends StatelessWidget {
             run.days == 1
                 ? '1 día laboral sin asistencia'
                 : '${run.days} días laborales consecutivos sin asistencia',
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
           if (run.canSubmit) ...[
             const SizedBox(height: AppSpacing.md),
             AppButton(
-              label: status == 'rechazada'
-                  ? 'VOLVER A JUSTIFICAR'
-                  : 'JUSTIFICAR',
+              label:
+                  status == 'rechazada' ? 'VOLVER A JUSTIFICAR' : 'JUSTIFICAR',
               onPressed: onJustify,
             ),
           ],
@@ -204,7 +205,7 @@ class _JustificationCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   _range(item.start, item.end),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
@@ -219,13 +220,12 @@ class _JustificationCard extends StatelessWidget {
           if ((item.reason ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(item.reason!,
-                style: const TextStyle(
-                    color: AppColors.textMuted, fontSize: 12)),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           ],
           if ((item.reviewNote ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),
             Text('Nota del director: ${item.reviewNote}',
-                style: const TextStyle(color: AppColors.error, fontSize: 12)),
+                style: TextStyle(color: AppColors.error, fontSize: 12)),
           ],
           if (item.hasEvidence) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -268,7 +268,8 @@ class _JustifySheetState extends State<_JustifySheet> {
 
   Future<void> _submit() async {
     if (_evidence == null) {
-      setState(() => _error = 'Debes adjuntar evidencia para justificar la falta.');
+      setState(
+          () => _error = 'Debes adjuntar evidencia para justificar la falta.');
       return;
     }
     setState(() {
@@ -309,13 +310,13 @@ class _JustifySheetState extends State<_JustifySheet> {
           children: [
             Text(
               'Justificar ${_range(widget.run.start, widget.run.end)}',
-              style: const TextStyle(
+              style: TextStyle(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w800,
                   fontSize: 16),
             ),
             const SizedBox(height: AppSpacing.md),
-            const Text('Motivo (opcional)',
+            Text('Motivo (opcional)',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
             const SizedBox(height: AppSpacing.sm),
             AppTextField(
@@ -324,7 +325,7 @@ class _JustifySheetState extends State<_JustifySheet> {
               maxLines: 3,
             ),
             const SizedBox(height: AppSpacing.lg),
-            const Text('Evidencia (obligatoria)',
+            Text('Evidencia (obligatoria)',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
             const SizedBox(height: AppSpacing.sm),
             EvidencePicker(
@@ -334,7 +335,7 @@ class _JustifySheetState extends State<_JustifySheet> {
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.md),
               Text(_error!,
-                  style: const TextStyle(color: AppColors.error, fontSize: 12)),
+                  style: TextStyle(color: AppColors.error, fontSize: 12)),
             ],
             const SizedBox(height: AppSpacing.lg),
             AppButton(
@@ -345,7 +346,8 @@ class _JustifySheetState extends State<_JustifySheet> {
             const SizedBox(height: AppSpacing.sm),
             Center(
               child: TextButton(
-                onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+                onPressed:
+                    _submitting ? null : () => Navigator.of(context).pop(),
                 child: const Text('Cancelar'),
               ),
             ),

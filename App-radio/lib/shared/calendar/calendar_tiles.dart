@@ -25,12 +25,12 @@ class CalendarEventTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.event, color: AppColors.accent, size: 18),
+              Icon(Icons.event, color: AppColors.accent, size: 18),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   event.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
@@ -38,9 +38,10 @@ class CalendarEventTile extends StatelessWidget {
                 ),
               ),
               if (event.hasLocation)
-                const AppBadge(label: 'Con ubicación', variant: AppBadgeVariant.info),
+                const AppBadge(
+                    label: 'Con ubicación', variant: AppBadgeVariant.info),
               if (onEdit != null)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(left: AppSpacing.sm),
                   child: Icon(Icons.edit_outlined,
                       size: 16, color: AppColors.accent),
@@ -49,26 +50,28 @@ class CalendarEventTile extends StatelessWidget {
           ),
           if (timeLabel.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(timeLabel, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            Text(timeLabel,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           ],
           if ((event.locationText ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.place_outlined,
+                Icon(Icons.place_outlined,
                     size: 13, color: AppColors.textMuted),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(event.locationText!,
-                      style: const TextStyle(
-                          color: AppColors.textMuted, fontSize: 12)),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ),
               ],
             ),
           ],
           if ((event.description ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(event.description!, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            Text(event.description!,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           ],
           const SizedBox(height: 6),
           Wrap(
@@ -124,18 +127,21 @@ class CalendarActivityTile extends StatelessWidget {
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
-                    decoration: activity.completed ? TextDecoration.lineThrough : null,
+                    decoration:
+                        activity.completed ? TextDecoration.lineThrough : null,
                   ),
                 ),
                 if (sub.isNotEmpty) ...[
                   const SizedBox(height: 2),
-                  Text(sub, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  Text(sub,
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ],
                 if ((activity.assignedTo).isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     activity.assignedTo,
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                   ),
                 ],
               ],
@@ -144,7 +150,9 @@ class CalendarActivityTile extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           AppBadge(
             label: activity.completed ? 'Entregada' : 'A entregar',
-            variant: activity.completed ? AppBadgeVariant.success : AppBadgeVariant.warning,
+            variant: activity.completed
+                ? AppBadgeVariant.success
+                : AppBadgeVariant.warning,
           ),
         ],
       ),

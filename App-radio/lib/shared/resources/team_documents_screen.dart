@@ -21,8 +21,18 @@ class TeamDocumentsScreen extends StatefulWidget {
 }
 
 const List<String> _kAllowedExtensions = [
-  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
-  'txt', 'csv', 'zip', 'rar', '7z',
+  'pdf',
+  'doc',
+  'docx',
+  'xls',
+  'xlsx',
+  'ppt',
+  'pptx',
+  'txt',
+  'csv',
+  'zip',
+  'rar',
+  '7z',
 ];
 
 class _TeamDocumentsScreenState extends State<TeamDocumentsScreen> {
@@ -135,8 +145,7 @@ class _TeamDocumentsScreenState extends State<TeamDocumentsScreen> {
     final ok = await showAppConfirmDialog(
       context,
       title: 'Eliminar documento',
-      message:
-          '¿Eliminar "${doc.docName}"? Esta acción no se puede deshacer.',
+      message: '¿Eliminar "${doc.docName}"? Esta acción no se puede deshacer.',
       confirmLabel: 'Eliminar',
       danger: true,
     );
@@ -146,8 +155,8 @@ class _TeamDocumentsScreenState extends State<TeamDocumentsScreen> {
     try {
       await DocumentService.delete(doc.id);
       if (!mounted) return;
-      setState(() =>
-          _documents = _documents.where((d) => d.id != doc.id).toList());
+      setState(
+          () => _documents = _documents.where((d) => d.id != doc.id).toList());
       _snack('Documento eliminado.');
     } on DocumentException catch (e) {
       _snack(e.message);
@@ -261,7 +270,7 @@ class _DocumentCard extends StatelessWidget {
                   doc.docName,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
@@ -270,7 +279,7 @@ class _DocumentCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   meta,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textMuted,
                     fontSize: 12,
                   ),

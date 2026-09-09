@@ -118,51 +118,62 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final managerEmail = _dept.managerEmail ?? '';
-    final employees = _members.where((u) => u.role == AppRole.employee).toList();
+    final employees =
+        _members.where((u) => u.role == AppRole.employee).toList();
 
     return AppScaffold(
       appBar: AppBar(leading: const BackButton(), title: Text(_dept.name)),
       body: Builder(
         builder: (context) {
           if (_loading) return const LoadingState();
-          if (_error != null) return ErrorState(message: _error!, onRetry: _load);
+          if (_error != null) {
+            return ErrorState(message: _error!, onRetry: _load);
+          }
           return RefreshIndicator(
             color: AppColors.accent,
             onRefresh: _load,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxl,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.xxl,
               ),
               children: [
                 if ((_dept.description ?? '').isNotEmpty) ...[
-                  Text(_dept.description!, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                  Text(_dept.description!,
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 13)),
                   const SizedBox(height: AppSpacing.lg),
                 ],
-
                 const SectionHeader(title: 'Manager'),
                 AppCard(
                   child: Row(
                     children: [
-                      const Icon(Icons.badge_outlined, color: AppColors.accent),
+                      Icon(Icons.badge_outlined, color: AppColors.accent),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Text(
-                          managerEmail.isEmpty ? 'Sin manager asignado' : managerEmail,
+                          managerEmail.isEmpty
+                              ? 'Sin manager asignado'
+                              : managerEmail,
                           style: TextStyle(
-                            color: managerEmail.isEmpty ? AppColors.warning : AppColors.textPrimary,
+                            color: managerEmail.isEmpty
+                                ? AppColors.warning
+                                : AppColors.textPrimary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                       TextButton(
                         onPressed: _busy ? null : _assignManager,
-                        child: Text(managerEmail.isEmpty ? 'Asignar' : 'Cambiar'),
+                        child:
+                            Text(managerEmail.isEmpty ? 'Asignar' : 'Cambiar'),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
-
                 SectionHeader(
                   title: 'Miembros (${employees.length})',
                   action: TextButton.icon(
@@ -201,25 +212,31 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(u.name,
-                                      style: const TextStyle(
-                                          color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                                      style: TextStyle(
+                                          color: AppColors.textPrimary,
+                                          fontWeight: FontWeight.w600)),
                                   Text(u.headline,
-                                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                                      style: TextStyle(
+                                          color: AppColors.textMuted,
+                                          fontSize: 12)),
                                   Text(u.controlNumberLabel,
-                                      style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                                      style: TextStyle(
+                                          color: AppColors.textMuted,
+                                          fontSize: 11)),
                                 ],
                               ),
                             ),
                             IconButton(
-                              onPressed: _busy ? null : () => _removeEmployee(u),
-                              icon: const Icon(Icons.person_remove_alt_1, color: AppColors.error),
+                              onPressed:
+                                  _busy ? null : () => _removeEmployee(u),
+                              icon: Icon(Icons.person_remove_alt_1,
+                                  color: AppColors.error),
                               tooltip: 'Quitar del equipo',
                             ),
                           ],
                         ),
                       )),
                 const SizedBox(height: AppSpacing.xl),
-
                 AppButton(
                   label: 'VER TAREAS DEL EQUIPO',
                   onPressed: () => Navigator.of(context).push(

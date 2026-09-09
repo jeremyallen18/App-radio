@@ -17,7 +17,10 @@ class AttendanceStateHeader extends StatelessWidget {
       AttendanceState.sinEntrada => (AppColors.textMuted, Icons.schedule),
       AttendanceState.enJornada => (AppColors.success, Icons.work_outline),
       AttendanceState.enComida => (AppColors.warning, Icons.restaurant),
-      AttendanceState.jornadaTerminada => (AppColors.accent, Icons.check_circle_outline),
+      AttendanceState.jornadaTerminada => (
+          AppColors.accent,
+          Icons.check_circle_outline
+        ),
     };
     return AppCard(
       child: Row(
@@ -36,7 +39,7 @@ class AttendanceStateHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Estado actual',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
@@ -53,7 +56,7 @@ class AttendanceStateHeader extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     'Llegada tarde: ${attendanceMinutesLabel(day.lateMinutes)}',
-                    style: const TextStyle(color: AppColors.warning, fontSize: 12),
+                    style: TextStyle(color: AppColors.warning, fontSize: 12),
                   ),
                 ],
               ],
@@ -82,22 +85,24 @@ class AttendanceAbsenceCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.event_available, color: AppColors.success),
+          Icon(Icons.event_available, color: AppColors.success),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Asistencia no requerida hoy',
-                  style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Tienes una ausencia autorizada: ${absence.typeLabel}'
                   '${absence.rangeLabel.isNotEmpty ? ' (${absence.rangeLabel})' : ''}. '
                   'No necesitas registrar entrada, hora de comida ni salida.',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
               ],
             ),
@@ -117,10 +122,11 @@ class AttendancePlaceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (place == null) {
-      return const AppCard(
+      return AppCard(
         child: Row(
           children: [
-            Icon(Icons.location_off_outlined, color: AppColors.warning, size: 18),
+            Icon(Icons.location_off_outlined,
+                color: AppColors.warning, size: 18),
             SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
@@ -138,7 +144,7 @@ class AttendancePlaceCard extends StatelessWidget {
     return AppCard(
       child: Row(
         children: [
-          const Icon(Icons.place_outlined, color: AppColors.accent),
+          Icon(Icons.place_outlined, color: AppColors.accent),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -146,7 +152,7 @@ class AttendancePlaceCard extends StatelessWidget {
               children: [
                 Text(
                   (p.label ?? '').isNotEmpty ? p.label! : 'Lugar de asistencia',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                   ),
@@ -155,7 +161,7 @@ class AttendancePlaceCard extends StatelessWidget {
                 Text(
                   'Debes estar a menos de ${p.radiusM} m para registrar tu '
                   'entrada y para terminar tu hora de comida.',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
               ],
             ),
@@ -175,7 +181,8 @@ class AttendanceEventEntryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final place = (event.label ?? '').isNotEmpty ? event.label! : 'el lugar del evento';
+    final place =
+        (event.label ?? '').isNotEmpty ? event.label! : 'el lugar del evento';
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -186,7 +193,7 @@ class AttendanceEventEntryCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.event, color: AppColors.accent),
+          Icon(Icons.event, color: AppColors.accent),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -194,7 +201,9 @@ class AttendanceEventEntryCard extends StatelessWidget {
               children: [
                 Text(
                   'Hoy entras por el evento «${event.title}»',
-                  style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -202,7 +211,7 @@ class AttendanceEventEntryCard extends StatelessWidget {
                   '(a menos de ${event.radiusM} m)'
                   '${event.entryTime != null ? ', con hora de entrada ${event.entryTime}' : ''}. '
                   'La hora de comida y la salida no cambian.',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
               ],
             ),

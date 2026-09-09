@@ -59,9 +59,8 @@ class _SubTeamAdminScreenState extends State<SubTeamAdminScreen> {
       if (!mounted) return;
       var subTeams = results[0] as List<SubTeam>;
       if (widget.leadScope) {
-        subTeams = subTeams
-            .where((s) => s.isLeadUser(widget.currentUserId))
-            .toList();
+        subTeams =
+            subTeams.where((s) => s.isLeadUser(widget.currentUserId)).toList();
       }
       setState(() {
         _subTeams = subTeams;
@@ -130,7 +129,8 @@ class _SubTeamAdminScreenState extends State<SubTeamAdminScreen> {
     final ok = await showAppConfirmDialog(
       context,
       title: 'Eliminar sub-equipo',
-      message: '¿Eliminar "${s.name}"? Sus tareas quedarán como tareas de área.',
+      message:
+          '¿Eliminar "${s.name}"? Sus tareas quedarán como tareas de área.',
       confirmLabel: 'Eliminar',
       danger: true,
     );
@@ -210,7 +210,8 @@ class _SubTeamAdminScreenState extends State<SubTeamAdminScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppTextField(controller: nameCtrl, hintText: 'Nombre del sub-equipo'),
+            AppTextField(
+                controller: nameCtrl, hintText: 'Nombre del sub-equipo'),
             const SizedBox(height: AppSpacing.md),
             AppTextField(
               controller: descCtrl,
@@ -222,8 +223,8 @@ class _SubTeamAdminScreenState extends State<SubTeamAdminScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar',
-                style: TextStyle(color: AppColors.textMuted)),
+            child:
+                Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
           ),
           TextButton(
             onPressed: () {
@@ -282,7 +283,8 @@ class _SubTeamAdminScreenState extends State<SubTeamAdminScreen> {
               padding: const EdgeInsets.fromLTRB(
                   AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 96),
               itemCount: _subTeams.length,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: AppSpacing.md),
               itemBuilder: (_, i) => _SubTeamCard(
                 subTeam: _subTeams[i],
                 leadScope: widget.leadScope,
@@ -340,7 +342,7 @@ class _SubTeamCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   s.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
@@ -368,19 +370,21 @@ class _SubTeamCard extends StatelessWidget {
           if ((s.description ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(s.description!,
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
           ],
           const SizedBox(height: AppSpacing.md),
 
           // Sub-líder
           Row(
             children: [
-              const Icon(Icons.star_border_rounded,
+              Icon(Icons.star_border_rounded,
                   size: 18, color: AppColors.accent),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  s.lead == null ? 'Sin sub-líder' : 'Sub-líder: ${s.lead!.name}',
+                  s.lead == null
+                      ? 'Sin sub-líder'
+                      : 'Sub-líder: ${s.lead!.name}',
                   style: TextStyle(
                     color: s.lead == null
                         ? AppColors.warning
@@ -404,7 +408,7 @@ class _SubTeamCard extends StatelessWidget {
               ],
             ],
           ),
-          const Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
+          Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
 
           // Miembros
           Row(
@@ -412,7 +416,7 @@ class _SubTeamCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Miembros (${s.members.length})',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
@@ -427,7 +431,7 @@ class _SubTeamCard extends StatelessWidget {
             ],
           ),
           if (s.members.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
               child: Text('Aún no hay miembros.',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
@@ -438,12 +442,12 @@ class _SubTeamCard extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 4),
                 child: Row(
                   children: [
-                    const Icon(Icons.person_outline,
+                    Icon(Icons.person_outline,
                         size: 16, color: AppColors.textMuted),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(m.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppColors.textPrimary, fontSize: 13)),
                     ),
                     IconButton(

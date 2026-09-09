@@ -49,38 +49,47 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
             const SizedBox(height: AppSpacing.lg),
             AppTextField(
               controller: teamNameController,
-              prefixIcon: const Icon(Icons.groups_outlined, color: AppColors.textMuted),
+              prefixIcon:
+                  Icon(Icons.groups_outlined, color: AppColors.textMuted),
               hintText: 'Nombre del equipo',
             ),
             const SizedBox(height: AppSpacing.lg),
             MultiSelectDialogField<Domain>(
-              items: domains.map((d) => MultiSelectItem<Domain>(d, d.name)).toList(),
+              items: domains
+                  .map((d) => MultiSelectItem<Domain>(d, d.name))
+                  .toList(),
               initialValue: selectedDomains,
               title: const Text('Seleccionar áreas'),
               searchable: false,
               backgroundColor: AppColors.surface,
               selectedColor: AppColors.accent,
               checkColor: AppColors.textPrimary,
-              itemsTextStyle: const TextStyle(color: AppColors.textPrimary),
-              selectedItemsTextStyle: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w700),
+              itemsTextStyle: TextStyle(color: AppColors.textPrimary),
+              selectedItemsTextStyle: TextStyle(
+                  color: AppColors.accent, fontWeight: FontWeight.w700),
               unselectedColor: AppColors.textMuted,
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(AppRadius.field),
                 border: Border.all(color: AppColors.surfaceBorder),
               ),
-              buttonIcon: const Icon(Icons.domain_outlined, color: AppColors.textMuted),
+              buttonIcon:
+                  Icon(Icons.domain_outlined, color: AppColors.textMuted),
               buttonText: Text(
                 selectedDomains.isEmpty
                     ? 'Seleccionar áreas'
                     : selectedDomains.map((d) => d.name).join(', '),
                 style: TextStyle(
-                  color: selectedDomains.isEmpty ? AppColors.textMuted : AppColors.textPrimary,
+                  color: selectedDomains.isEmpty
+                      ? AppColors.textMuted
+                      : AppColors.textPrimary,
                   fontSize: 14,
                 ),
               ),
-              confirmText: const Text('Confirmar', style: TextStyle(color: AppColors.accentStrong)),
-              cancelText: const Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
+              confirmText: Text('Confirmar',
+                  style: TextStyle(color: AppColors.accentStrong)),
+              cancelText: Text('Cancelar',
+                  style: TextStyle(color: AppColors.textMuted)),
               onConfirm: (values) {
                 // Bug real que corregí: faltaba este setState — la selección
                 // quedaba guardada pero el botón nunca mostraba qué se eligió,
@@ -152,11 +161,13 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => TeamDetailsScreen(teamNameController.text, selectedDomains, teamId),
+            builder: (context) => TeamDetailsScreen(
+                teamNameController.text, selectedDomains, teamId),
           ),
         );
       } else {
-        _showErrorSnackBar(response.reasonPhrase ?? 'No se pudo crear el equipo');
+        _showErrorSnackBar(
+            response.reasonPhrase ?? 'No se pudo crear el equipo');
       }
     } catch (error) {
       if (!mounted) return;

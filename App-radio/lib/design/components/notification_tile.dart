@@ -26,23 +26,59 @@ class NotificationTile extends StatelessWidget {
   ({IconData icon, Color color, String category}) get _meta {
     switch (type) {
       case 'chat':
-        return (icon: Icons.chat_bubble_outline, color: AppColors.accent, category: 'Mensaje');
+        return (
+          icon: Icons.chat_bubble_outline,
+          color: AppColors.accent,
+          category: 'Mensaje'
+        );
       case 'member_removed':
-        return (icon: Icons.person_remove_outlined, color: AppColors.error, category: 'Equipo');
+        return (
+          icon: Icons.person_remove_outlined,
+          color: AppColors.error,
+          category: 'Equipo'
+        );
       case 'team_deleted':
-        return (icon: Icons.delete_outline, color: AppColors.error, category: 'Equipo');
+        return (
+          icon: Icons.delete_outline,
+          color: AppColors.error,
+          category: 'Equipo'
+        );
       case 'leader_assigned':
-        return (icon: Icons.shield_outlined, color: AppColors.accent, category: 'Liderazgo');
+        return (
+          icon: Icons.shield_outlined,
+          color: AppColors.accent,
+          category: 'Liderazgo'
+        );
       case 'department_manager_assigned':
-        return (icon: Icons.badge_outlined, color: AppColors.accent, category: 'Departamento');
+        return (
+          icon: Icons.badge_outlined,
+          color: AppColors.accent,
+          category: 'Departamento'
+        );
       case 'department_assigned':
-        return (icon: Icons.apartment_outlined, color: AppColors.success, category: 'Departamento');
+        return (
+          icon: Icons.apartment_outlined,
+          color: AppColors.success,
+          category: 'Departamento'
+        );
       case 'attendance_correction':
-        return (icon: Icons.schedule, color: AppColors.accent, category: 'Asistencia');
+        return (
+          icon: Icons.schedule,
+          color: AppColors.accent,
+          category: 'Asistencia'
+        );
       case 'attendance_reminder':
-        return (icon: Icons.alarm, color: AppColors.accent, category: 'Asistencia');
+        return (
+          icon: Icons.alarm,
+          color: AppColors.accent,
+          category: 'Asistencia'
+        );
       default:
-        return (icon: Icons.notifications_outlined, color: AppColors.textMuted, category: 'General');
+        return (
+          icon: Icons.notifications_outlined,
+          color: AppColors.textMuted,
+          category: 'General'
+        );
     }
   }
 
@@ -82,10 +118,15 @@ class NotificationTile extends StatelessWidget {
                   children: [
                     Text(
                       meta.category,
-                      style: TextStyle(color: meta.color, fontSize: 11, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                          color: meta.color,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700),
                     ),
                     const Spacer(),
-                    Text(_relativeTime, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                    Text(_relativeTime,
+                        style: TextStyle(
+                            color: AppColors.textMuted, fontSize: 11)),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -106,7 +147,8 @@ class NotificationTile extends StatelessWidget {
               margin: const EdgeInsets.only(top: 4),
               width: 8,
               height: 8,
-              decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                  color: AppColors.accent, shape: BoxShape.circle),
             ),
           ],
         ],

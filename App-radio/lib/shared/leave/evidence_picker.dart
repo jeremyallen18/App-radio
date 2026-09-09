@@ -24,12 +24,14 @@ class EvidencePicker extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined, color: AppColors.accent),
+              leading:
+                  Icon(Icons.photo_camera_outlined, color: AppColors.accent),
               title: const Text('Tomar foto'),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: AppColors.accent),
+              leading:
+                  Icon(Icons.photo_library_outlined, color: AppColors.accent),
               title: const Text('Elegir de la galería'),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),

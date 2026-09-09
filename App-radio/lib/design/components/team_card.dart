@@ -36,7 +36,8 @@ class TeamCard extends StatelessWidget {
 
   int get _totalTasks => pendingCount + completedCount;
 
-  double get _completionRatio => _totalTasks == 0 ? 0 : completedCount / _totalTasks;
+  double get _completionRatio =>
+      _totalTasks == 0 ? 0 : completedCount / _totalTasks;
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +69,7 @@ class TeamCard extends StatelessWidget {
                       teamName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
@@ -77,12 +78,13 @@ class TeamCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       'Código: $teamCode',
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: AppColors.textMuted),
+              Icon(Icons.chevron_right, color: AppColors.textMuted),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -90,14 +92,16 @@ class TeamCard extends StatelessWidget {
             children: [
               _statChip(Icons.people_outline, '$memberCount miembros'),
               const SizedBox(width: AppSpacing.sm),
-              _statChip(Icons.pending_actions, '$pendingCount pendientes', color: AppColors.warning),
+              _statChip(Icons.pending_actions, '$pendingCount pendientes',
+                  color: AppColors.warning),
               const SizedBox(width: AppSpacing.sm),
-              _statChip(Icons.check_circle_outline, '$completedCount hechas', color: AppColors.success),
+              _statChip(Icons.check_circle_outline, '$completedCount hechas',
+                  color: AppColors.success),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
           if (_totalTasks == 0)
-            const Text(
+            Text(
               'Sin tareas todavía',
               style: TextStyle(color: AppColors.textMuted, fontSize: 12),
             )
@@ -117,7 +121,7 @@ class TeamCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${(_completionRatio * 100).round()}% completado',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                 ),
               ],
             ),
@@ -126,18 +130,20 @@ class TeamCard extends StatelessWidget {
     );
   }
 
-  Widget _statChip(IconData icon, String label, {Color color = AppColors.textMuted}) {
+  Widget _statChip(IconData icon, String label, {Color? color}) {
+    final c = color ?? AppColors.textMuted;
     return Expanded(
       child: Row(
         children: [
-          Icon(icon, size: 14, color: color),
+          Icon(icon, size: 14, color: c),
           const SizedBox(width: 4),
           Flexible(
             child: Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                  color: c, fontSize: 11, fontWeight: FontWeight.w600),
             ),
           ),
         ],

@@ -25,11 +25,14 @@ class ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bubbleColor = isMe ? AppColors.brandBlue : AppColors.surface;
-    final displayName = username.contains('@') ? username.substring(0, username.indexOf('@')) : username;
+    final displayName = username.contains('@')
+        ? username.substring(0, username.indexOf('@'))
+        : username;
 
     final bubble = Container(
       constraints: const BoxConstraints(maxWidth: 280),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       decoration: BoxDecoration(
         color: bubbleColor,
         borderRadius: BorderRadius.only(
@@ -49,18 +52,24 @@ class ChatBubble extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 2),
               child: Text(
                 displayName,
-                style: TextStyle(color: IdentityAvatar.colorForId(username), fontSize: 11, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                    color: IdentityAvatar.colorForId(username),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700),
               ),
             ),
-          Text(message, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+          Text(message,
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
         ],
       ),
     );
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: AppSpacing.lg),
+      padding:
+          const EdgeInsets.symmetric(vertical: 4, horizontal: AppSpacing.lg),
       child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[

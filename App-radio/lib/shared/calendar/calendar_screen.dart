@@ -204,7 +204,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                   _focusedDay = foc;
                   _load();
                 },
-                calendarStyle: const CalendarStyle(
+                calendarStyle: CalendarStyle(
                   markerDecoration: BoxDecoration(
                     color: AppColors.accent,
                     shape: BoxShape.circle,
@@ -258,8 +258,18 @@ class _CalendarScreenState extends State<CalendarScreen>
 
   String _dayLabel(DateTime d) {
     const meses = [
-      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
     ];
     return '${d.day} de ${meses[d.month - 1]} de ${d.year}';
   }
