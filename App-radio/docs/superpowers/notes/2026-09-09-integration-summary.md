@@ -146,3 +146,33 @@ Return Task: la auditoría no encontró bugs.
 - **Fuga menor conocida**: el diálogo "Devolver tarea" no hace `dispose()` de
   su `TextEditingController` (un controlador por devolución). Fuera de alcance;
   impacto despreciable.
+
+---
+
+## Anexo — Fase 4: Documentos por departamento con RBAC (petición posterior)
+
+La verificación pedida ("botón para acceder a la documentación; director y
+manager suben/editan/eliminan; el resto solo ve, busca y descarga los de SU
+área") encontró que el apartado de documentos era el de *equipos legacy*, sin
+RBAC ni scoping por departamento. Se implementó:
+
+- **Backend** (`hive-backend/department_documents.php`, migración `032`):
+  tabla `department_documents` paralela a `documents`; endpoints
+  `/department-documents` (list / upload / update / download / delete).
+  Autorización autoritativa: director → cualquier departamento; manager →
+  solo el suyo (`require_department_manager_or_director`); empleado → solo
+  `list` + `download` de su departamento. Archivo en
+  `private/department_documents/`, descarga privada, 404 limpio.
+- **Flutter**: `DepartmentDocumentService`, `DepartmentDocumentsScreen`
+  (buscador + "Ver"/"Descargar" para todos; "Subir" y Renombrar/Eliminar solo
+  con `canManage`), `DepartmentDocumentsPicker` (el director elige depto).
+  Menú lateral: entrada real "Documentos del departamento" para las tres
+  vistas (reemplaza los placeholders "Próximamente").
+- **Pruebas**: `flutter analyze` limpio; `flutter test` **127/127**
+  (`department_documents_rbac_test`). Smoke RBAC de extremo a extremo contra
+  el backend en Apache: **13/13**.
+- **Pendiente producción**: correr
+  `hive-backend/migrations/032_department_documents.sql` sobre `hive_db` (ya
+  aplicada en la BD local de desarrollo).
+- El apartado "Documentos" por equipo legacy (`TeamDocumentsScreen`) sigue
+  igual; los dos coexisten.
