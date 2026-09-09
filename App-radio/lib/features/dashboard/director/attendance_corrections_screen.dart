@@ -67,13 +67,12 @@ class _AttendanceCorrectionsScreenState
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar',
+              child: Text('Cancelar',
                   style: TextStyle(color: AppColors.textMuted)),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child:
-                  const Text('Devolver', style: TextStyle(color: AppColors.error)),
+              child: Text('Devolver', style: TextStyle(color: AppColors.error)),
             ),
           ],
         ),
@@ -140,18 +139,23 @@ class _AttendanceCorrectionsScreenState
                             ? ListView(
                                 children: const [
                                   Padding(
-                                    padding: EdgeInsets.only(top: AppSpacing.xxl),
+                                    padding:
+                                        EdgeInsets.only(top: AppSpacing.xxl),
                                     child: EmptyState(
                                       icon: Icons.fact_check_outlined,
                                       title: 'Sin solicitudes',
-                                      message: 'No hay solicitudes en este filtro.',
+                                      message:
+                                          'No hay solicitudes en este filtro.',
                                     ),
                                   ),
                                 ],
                               )
                             : ListView.separated(
-                                padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
-                                    AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
+                                padding: const EdgeInsets.fromLTRB(
+                                    AppSpacing.lg,
+                                    AppSpacing.md,
+                                    AppSpacing.lg,
+                                    AppSpacing.xxl),
                                 itemCount: _items.length,
                                 separatorBuilder: (_, __) =>
                                     const SizedBox(height: AppSpacing.sm),
@@ -187,7 +191,7 @@ class _AttendanceCorrectionsScreenState
             children: [
               Expanded(
                 child: Text(c.employeeName ?? 'Empleado',
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w800,
                         fontSize: 14)),
@@ -200,16 +204,18 @@ class _AttendanceCorrectionsScreenState
                 ),
                 child: Text(c.status.label,
                     style: TextStyle(
-                        color: color, fontSize: 11, fontWeight: FontWeight.w700)),
+                        color: color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700)),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text('${c.kindLabel} · ${c.workDateLabel} → ${c.requestedTime}',
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
           const SizedBox(height: 2),
           Text(c.reason,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           if ((c.reviewNote ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),
             Text('Nota: ${c.reviewNote}',
@@ -224,8 +230,8 @@ class _AttendanceCorrectionsScreenState
                     onPressed: _busy ? null : () => _resolve(c, approve: false),
                     icon: const Icon(Icons.undo, size: 16),
                     label: const Text('Devolver'),
-                    style:
-                        OutlinedButton.styleFrom(foregroundColor: AppColors.error),
+                    style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.error),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),

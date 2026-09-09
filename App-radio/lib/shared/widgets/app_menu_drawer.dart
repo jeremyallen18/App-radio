@@ -68,7 +68,7 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
       ),
       child: Text(
         text.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           color: AppColors.textMuted,
           fontSize: 11,
           fontWeight: FontWeight.w700,
@@ -95,16 +95,16 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
       subtitle: entry.subtitle != null
           ? Text(
               entry.subtitle!,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
             )
           : null,
       trailing: entry.trailingLabel != null
           ? Text(
               entry.trailingLabel!,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 11),
             )
           : (active
-              ? const Icon(Icons.chevron_right, color: AppColors.textMuted)
+              ? Icon(Icons.chevron_right, color: AppColors.textMuted)
               : null),
       enabled: active,
       onTap: active
@@ -125,8 +125,7 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
         : appMenuSectionsForRole(
             profile,
             onPushScreen: _push,
-            onPushNamed: (routeName) =>
-                Navigator.pushNamed(context, routeName),
+            onPushNamed: (routeName) => Navigator.pushNamed(context, routeName),
           );
 
     return Drawer(
@@ -145,7 +144,7 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Menú',
                     style: TextStyle(
                       color: AppColors.textPrimary,
@@ -160,7 +159,7 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
                         : (departmentName != null
                             ? '${profile.name} · $departmentName'
                             : profile.name),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textMuted,
                       fontSize: 13,
                     ),
@@ -168,29 +167,28 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
                 ],
               ),
             ),
-            const Divider(color: AppColors.surfaceBorder, height: 1),
+            Divider(color: AppColors.surfaceBorder, height: 1),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.only(bottom: AppSpacing.lg),
                 children: [
                   _sectionTitle('Comunicación'),
                   ListTile(
-                    leading: const Icon(Icons.chat_outlined,
-                        color: AppColors.accent),
-                    title: const Text(
+                    leading: Icon(Icons.chat_outlined, color: AppColors.accent),
+                    title: Text(
                       'Chat del departamento',
                       style: TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    subtitle: const Text(
+                    subtitle: Text(
                       'Chat general de la empresa',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                     trailing: profile != null
-                        ? const Icon(Icons.chevron_right,
-                            color: AppColors.textMuted)
+                        ? Icon(Icons.chevron_right, color: AppColors.textMuted)
                         : null,
                     enabled: profile != null,
                     onTap: _openChat,
@@ -202,8 +200,21 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
                 ],
               ),
             ),
-            const Divider(color: AppColors.surfaceBorder, height: 1),
-            const Padding(
+            Divider(color: AppColors.surfaceBorder, height: 1),
+            SwitchListTile(
+              secondary: Icon(Icons.dark_mode_outlined, color: AppColors.accent),
+              title: Text(
+                'Tema oscuro',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              value: ThemeController.instance.isDark,
+              onChanged: (v) => ThemeController.instance.setDark(v),
+            ),
+            Divider(color: AppColors.surfaceBorder, height: 1),
+            Padding(
               padding: EdgeInsets.all(AppSpacing.lg),
               child: Text(
                 'Radio Doliv',

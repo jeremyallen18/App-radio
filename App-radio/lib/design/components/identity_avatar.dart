@@ -27,15 +27,18 @@ class IdentityAvatar extends StatelessWidget {
   final double radius;
   final String? photoUrl;
 
-  static const List<Color> _palette = [
-    AppColors.accent,
-    AppColors.accentStrong,
-    AppColors.success,
-    AppColors.warning,
-    AppColors.error,
-  ];
+  // Getter (no campo): `AppColors.*` ya no es constante y además cambia con
+  // el modo claro/oscuro, así que se resuelve en cada llamada.
+  static List<Color> get _palette => [
+        AppColors.accent,
+        AppColors.accentStrong,
+        AppColors.success,
+        AppColors.warning,
+        AppColors.error,
+      ];
 
-  static Color colorForId(String id) => _palette[id.hashCode.abs() % _palette.length];
+  static Color colorForId(String id) =>
+      _palette[id.hashCode.abs() % _palette.length];
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +58,8 @@ class IdentityAvatar extends StatelessWidget {
       onForegroundImageError: hasPhoto ? (_, __) {} : null,
       child: Text(
         initial,
-        style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: radius * 0.75),
+        style: TextStyle(
+            color: color, fontWeight: FontWeight.w800, fontSize: radius * 0.75),
       ),
     );
   }

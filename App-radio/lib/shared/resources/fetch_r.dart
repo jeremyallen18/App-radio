@@ -19,40 +19,39 @@ class _ShowTextScreenState extends State<ShowTextScreen> {
   List<Map<String, String>> images = [];
   bool isLoadingm = true;
 
+  Future<void> getImage() async {
+    dynamic storedValue = await secureStorage.readSecureData(key);
+    String url = '$kBaseUrl/image/showImage/${widget.teamId}';
+    String token = storedValue;
 
- Future<void> getImage() async {
-   dynamic storedValue = await secureStorage.readSecureData(key);
-  String url = '$kBaseUrl/image/showImage/${widget.teamId}';
-  String token = storedValue;
+    try {
+      http.Response response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization': token,
+        },
+      );
 
-  try {
-    http.Response response = await http.get(
-      Uri.parse(url),
-      headers: {
-        'Authorization': token,
-      },
-    );
-
-    if (response.statusCode == 200) {
-     
-      List<dynamic> responseData = json.decode(response.body);
-      setState(() {
-        images = responseData.map<Map<String, String>>((item) => {
-          'imgURL': item['imgURL'],
-          'imgName': item['imgName'],
-        }).toList();
-        isLoading = false;
-      });
-    } else {
-      
-      debugPrint('Failed to retrieve the image. Status code: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        List<dynamic> responseData = json.decode(response.body);
+        setState(() {
+          images = responseData
+              .map<Map<String, String>>((item) => {
+                    'imgURL': item['imgURL'],
+                    'imgName': item['imgName'],
+                  })
+              .toList();
+          isLoading = false;
+        });
+      } else {
+        debugPrint(
+            'Failed to retrieve the image. Status code: ${response.statusCode}');
+      }
+    } catch (error) {
+      debugPrint('Error: $error');
     }
-  } catch (error) {
-  
-    debugPrint('Error: $error');
   }
-}
- 
+
   Future<void> fetchMessages() async {
     try {
       dynamic storedValue = await secureStorage.readSecureData(key);
@@ -69,7 +68,7 @@ class _ShowTextScreenState extends State<ShowTextScreen> {
 
         setState(() {
           isLoading = false;
-          
+
           if (responseData['data'] is List) {
             messages = responseData['data'];
           } else {
@@ -77,7 +76,8 @@ class _ShowTextScreenState extends State<ShowTextScreen> {
           }
         });
       } else {
-        debugPrint('Failed to fetch messages. Status code: ${response.statusCode}');
+        debugPrint(
+            'Failed to fetch messages. Status code: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('Error fetching messages: $e');
@@ -125,12 +125,13 @@ class _ShowTextScreenState extends State<ShowTextScreen> {
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.person_outline, size: 16, color: AppColors.textMuted),
+                                Icon(Icons.person_outline,
+                                    size: 16, color: AppColors.textMuted),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
                                     '$email',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: AppColors.textPrimary,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 14,
@@ -142,12 +143,15 @@ class _ShowTextScreenState extends State<ShowTextScreen> {
                             const SizedBox(height: AppSpacing.sm),
                             for (int i = 0; i < texts.length; i++)
                               Padding(
-                                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                                padding: const EdgeInsets.only(
+                                    bottom: AppSpacing.sm),
                                 child: AppCard(
                                   padding: const EdgeInsets.all(AppSpacing.md),
                                   child: Text(
                                     texts[i]['text'] ?? '',
-                                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                                    style: TextStyle(
+                                        color: AppColors.textPrimary,
+                                        fontSize: 14),
                                   ),
                                 ),
                               ),
@@ -160,5 +164,3 @@ class _ShowTextScreenState extends State<ShowTextScreen> {
     );
   }
 }
-
-

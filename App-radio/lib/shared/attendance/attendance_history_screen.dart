@@ -18,7 +18,8 @@ class AttendanceHistoryScreen extends StatefulWidget {
   final String? title;
 
   @override
-  State<AttendanceHistoryScreen> createState() => _AttendanceHistoryScreenState();
+  State<AttendanceHistoryScreen> createState() =>
+      _AttendanceHistoryScreenState();
 }
 
 class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
@@ -131,7 +132,8 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                 AppSpacing.xxl,
               ),
               itemCount: _days.length,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: AppSpacing.md),
               itemBuilder: (_, i) => _HistoryDayCard(day: _days[i]),
             ),
           );
@@ -161,7 +163,7 @@ class _HistoryDayCard extends StatelessWidget {
             children: [
               Text(
                 day.workDateLabel,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
@@ -174,21 +176,20 @@ class _HistoryDayCard extends StatelessWidget {
           _line('Entrada', day.entrada ?? '—',
               trailing: day.isLate ? 'tarde ${day.lateMinutes} min' : null,
               trailingColor: AppColors.warning),
-          _line('Comida', comida,
-              trailing: day.mealMinutesLabel),
+          _line('Comida', comida, trailing: day.mealMinutesLabel),
           _line('Salida', day.salida ?? '—'),
           _line('Tiempo trabajado', day.workedLabel ?? '—', emphasize: true),
           if (day.mealExceeded) ...[
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
-                const Icon(Icons.warning_amber_rounded,
+                Icon(Icons.warning_amber_rounded,
                     size: 14, color: AppColors.error),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     'Hora de comida excedida por ${_fmtMin(day.mealExcessMinutes)}',
-                    style: const TextStyle(color: AppColors.error, fontSize: 12),
+                    style: TextStyle(color: AppColors.error, fontSize: 12),
                   ),
                 ),
               ],
@@ -222,7 +223,7 @@ class _HistoryDayCard extends StatelessWidget {
             width: 128,
             child: Text(
               label,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
             ),
           ),
           Expanded(

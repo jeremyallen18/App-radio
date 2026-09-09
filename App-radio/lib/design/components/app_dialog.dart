@@ -22,14 +22,15 @@ Future<bool?> showAppConfirmDialog(
           onPressed: () => Navigator.pop(dialogContext, false),
           child: Text(
             cancelLabel,
-            style: const TextStyle(color: AppColors.textMuted),
+            style: TextStyle(color: AppColors.textMuted),
           ),
         ),
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, true),
           child: Text(
             confirmLabel,
-            style: TextStyle(color: danger ? AppColors.error : AppColors.accentStrong),
+            style: TextStyle(
+                color: danger ? AppColors.error : AppColors.accentStrong),
           ),
         ),
       ],

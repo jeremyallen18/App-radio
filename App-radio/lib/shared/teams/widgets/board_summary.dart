@@ -18,7 +18,8 @@ enum BoardFilter {
 
   bool matches(DeptTask t, {String? currentUserId}) => switch (this) {
         BoardFilter.all => true,
-        BoardFilter.mine => t.assignedTo != null && t.assignedTo!.id == currentUserId,
+        BoardFilter.mine =>
+          t.assignedTo != null && t.assignedTo!.id == currentUserId,
         BoardFilter.open => !t.isDone,
         BoardFilter.toReview => t.awaitingReview,
         BoardFilter.overdue => TaskTone.of(t) == TaskTone.overdue,
@@ -56,7 +57,8 @@ class BoardSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final done = tasks.where((t) => t.isDone).length;
-    final inProgress = tasks.where((t) => t.status == DeptTaskStatus.enProgreso).length;
+    final inProgress =
+        tasks.where((t) => t.status == DeptTaskStatus.enProgreso).length;
     final pending = tasks.length - done - inProgress;
     final toReview = _count(BoardFilter.toReview);
     final overdue = _count(BoardFilter.overdue);
@@ -65,7 +67,8 @@ class BoardSummary extends StatelessWidget {
       BoardFilter.all,
       if (showMine) BoardFilter.mine,
       BoardFilter.open,
-      if (toReview > 0 || selected == BoardFilter.toReview) BoardFilter.toReview,
+      if (toReview > 0 || selected == BoardFilter.toReview)
+        BoardFilter.toReview,
       if (overdue > 0 || selected == BoardFilter.overdue) BoardFilter.overdue,
     ];
 
@@ -80,8 +83,14 @@ class BoardSummary extends StatelessWidget {
                 spacing: AppSpacing.lg,
                 runSpacing: 4,
                 children: [
-                  _Count(color: TaskTone.pending.color, n: pending, label: 'pendientes'),
-                  _Count(color: TaskTone.inProgress.color, n: inProgress, label: 'en curso'),
+                  _Count(
+                      color: TaskTone.pending.color,
+                      n: pending,
+                      label: 'pendientes'),
+                  _Count(
+                      color: TaskTone.inProgress.color,
+                      n: inProgress,
+                      label: 'en curso'),
                   _Count(color: TaskTone.done.color, n: done, label: 'hechas'),
                 ],
               ),
@@ -129,13 +138,19 @@ class _Count extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 6),
         Text(
           '$n ',
-          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w800),
+          style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w800),
         ),
-        Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+        Text(label, style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       ],
     );
   }

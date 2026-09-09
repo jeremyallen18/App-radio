@@ -26,8 +26,10 @@ class StatusLegend extends StatelessWidget {
       runSpacing: AppSpacing.sm,
       children: [
         ProgressLegendDot(color: AppColors.success, label: '$done hechas'),
-        ProgressLegendDot(color: AppColors.accent, label: '$inProgress en curso'),
-        ProgressLegendDot(color: AppColors.warning, label: '$pending pendientes'),
+        ProgressLegendDot(
+            color: AppColors.accent, label: '$inProgress en curso'),
+        ProgressLegendDot(
+            color: AppColors.warning, label: '$pending pendientes'),
       ],
     );
   }
@@ -49,7 +51,7 @@ class CardTitle extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
@@ -59,7 +61,7 @@ class CardTitle extends StatelessWidget {
           if (trailing != null)
             Text(
               trailing!,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
         ],
       ),
@@ -100,7 +102,8 @@ class PunctualityRow extends StatelessWidget {
             icon: Icons.event_busy_rounded,
             value: '${stats.overdue}',
             label: 'Vencidas',
-            accentColor: stats.overdue > 0 ? AppColors.error : AppColors.textMuted,
+            accentColor:
+                stats.overdue > 0 ? AppColors.error : AppColors.textMuted,
           ),
         ),
       ],
@@ -117,7 +120,7 @@ class UpcomingList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (tasks.isEmpty) {
-      return const Text(
+      return Text(
         'Nada con fecha límite por delante.',
         style: TextStyle(color: AppColors.textMuted, fontSize: 13),
       );
@@ -154,7 +157,9 @@ class _UpcomingTile extends StatelessWidget {
               ? Icons.play_circle_outline_rounded
               : Icons.radio_button_unchecked_rounded,
           size: 18,
-          color: task.status == DeptTaskStatus.enProgreso ? AppColors.accent : AppColors.textMuted,
+          color: task.status == DeptTaskStatus.enProgreso
+              ? AppColors.accent
+              : AppColors.textMuted,
         ),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
@@ -162,7 +167,10 @@ class _UpcomingTile extends StatelessWidget {
             task.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
+            style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500),
           ),
         ),
         const SizedBox(width: AppSpacing.sm),

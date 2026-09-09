@@ -33,8 +33,7 @@ class _LeaderResourceState extends State<LeaderResource> {
 
     var request = http.Request(
       'POST',
-      Uri.parse(
-          '$kBaseUrl/user/sendMessage/${widget.teamId}'),
+      Uri.parse('$kBaseUrl/user/sendMessage/${widget.teamId}'),
     );
     request.body = json.encode({
       "Correo": emailController.text,
@@ -86,25 +85,30 @@ class _LeaderResourceState extends State<LeaderResource> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: AppSpacing.lg),
-            const Text(
+            Text(
               'Envía un mensaje directo al líder de tu equipo para pedir ayuda o resolver una duda.',
               style: TextStyle(color: AppColors.textMuted, fontSize: 13),
             ),
             const SizedBox(height: AppSpacing.xl),
             AppTextField(
               controller: emailController,
-              prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textMuted),
+              prefixIcon:
+                  Icon(Icons.email_outlined, color: AppColors.textMuted),
               hintText: 'Correo del líder',
               textInputType: TextInputType.emailAddress,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Indica el correo del líder' : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'Indica el correo del líder'
+                  : null,
             ),
             const SizedBox(height: AppSpacing.lg),
             AppTextField(
               controller: messageController,
-              prefixIcon: const Icon(Icons.message_outlined, color: AppColors.textMuted),
+              prefixIcon:
+                  Icon(Icons.message_outlined, color: AppColors.textMuted),
               hintText: 'Escribe tu mensaje',
               maxLines: 5,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Escribe un mensaje' : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Escribe un mensaje' : null,
             ),
             const SizedBox(height: AppSpacing.xl),
             AppButton(

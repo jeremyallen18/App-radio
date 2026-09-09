@@ -47,8 +47,7 @@ class AppTextField extends StatelessWidget {
     return TextFormField(
       controller: controller,
       style: textStyle ??
-          const TextStyle(
-              color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+          TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500),
       cursorColor: AppColors.textPrimary,
       keyboardType: textInputType,
       validator: validator,
@@ -63,7 +62,7 @@ class AppTextField extends StatelessWidget {
         prefixIcon: prefixIcon,
         suffixIcon: suffixIcon,
         suffixText: suffixText,
-        suffixStyle: const TextStyle(
+        suffixStyle: TextStyle(
           color: AppColors.textMuted,
           fontWeight: FontWeight.w600,
         ),

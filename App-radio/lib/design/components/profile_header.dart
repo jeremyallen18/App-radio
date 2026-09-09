@@ -108,7 +108,7 @@ class ProfileHeader extends StatelessWidget {
                 Text(
                   name,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
@@ -118,7 +118,7 @@ class ProfileHeader extends StatelessWidget {
                 Text(
                   headline,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: AppColors.textMuted),
+                  style: TextStyle(fontSize: 14, color: AppColors.textMuted),
                 ),
                 if (badges.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.md),
@@ -131,7 +131,7 @@ class ProfileHeader extends StatelessWidget {
                 ],
                 if (footer != null) ...[
                   const SizedBox(height: AppSpacing.lg),
-                  const Divider(height: 1, color: AppColors.surfaceBorder),
+                  Divider(height: 1, color: AppColors.surfaceBorder),
                   const SizedBox(height: AppSpacing.md),
                   footer!,
                 ],
@@ -172,7 +172,7 @@ class _Avatar extends StatelessWidget {
         // de marca para que se lea como una capa encima, no como un parche.
         Container(
           padding: EdgeInsets.all(ringWidth),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.surface,
             shape: BoxShape.circle,
           ),
@@ -191,7 +191,7 @@ class _Avatar extends StatelessWidget {
                 color: AppColors.bgBase.withValues(alpha: 0.6),
                 shape: BoxShape.circle,
               ),
-              child: const Center(
+              child: Center(
                 child: SizedBox(
                   width: 26,
                   height: 26,
@@ -209,13 +209,13 @@ class _Avatar extends StatelessWidget {
             right: 0,
             child: Material(
               color: AppColors.bgBase,
-              shape: const CircleBorder(
+              shape: CircleBorder(
                 side: BorderSide(color: AppColors.surfaceBorder),
               ),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
                 onTap: uploading ? null : onEdit,
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.all(7),
                   child: Icon(
                     Icons.photo_camera_outlined,

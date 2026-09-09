@@ -7,8 +7,9 @@ import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/routes.dart';
 import 'package:doliv_social/shared/auth/login.dart';
 import 'package:doliv_social/shared/teams/team_detail_widgets.dart';
+
 class TeamDetailView extends StatefulWidget {
-   const TeamDetailView({super.key, required this.team});
+  const TeamDetailView({super.key, required this.team});
   final dynamic team;
   @override
   State<TeamDetailView> createState() => _TeamDetailViewState();
@@ -21,7 +22,7 @@ class _TeamDetailViewState extends State<TeamDetailView> {
   String? teamName;
   String? teamCode;
   String? teamId;
-  String teamId2="";
+  String teamId2 = "";
   Future<void>? _futureData;
   @override
   void initState() {
@@ -44,11 +45,13 @@ class _TeamDetailViewState extends State<TeamDetailView> {
       // Sin conexión: se queda sin resolver; _isLeader será false.
     }
   }
+
   List<dynamic>? domains;
 
   bool get _isLeader => email == leaderEmail;
 
-  Future<bool> _markTaskDone(String domainName, String assignedTo, String task) async {
+  Future<bool> _markTaskDone(
+      String domainName, String assignedTo, String task) async {
     dynamic storedValue = await secureStorage.readSecureData(key);
     final response = await http.post(
       Uri.parse('$kBaseUrl/team/taskDone'),
@@ -77,7 +80,8 @@ class _TeamDetailViewState extends State<TeamDetailView> {
     final bool? confirmed = await showAppConfirmDialog(
       context,
       title: 'Eliminar equipo',
-      message: 'Se eliminará "$teamName" junto con sus áreas, tareas y recursos. '
+      message:
+          'Se eliminará "$teamName" junto con sus áreas, tareas y recursos. '
           'Esta acción no se puede deshacer.',
       confirmLabel: 'Eliminar',
       danger: true,
@@ -99,14 +103,18 @@ class _TeamDetailViewState extends State<TeamDetailView> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Equipo eliminado')),
         );
-        Navigator.pushNamedAndRemoveUntil(context, MyRoutes.bottomNavBar, (route) => false);
+        Navigator.pushNamedAndRemoveUntil(
+            context, MyRoutes.bottomNavBar, (route) => false);
       } else if (response.statusCode == 403) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Solo el líder puede eliminar el equipo')),
+          const SnackBar(
+              content: Text('Solo el líder puede eliminar el equipo')),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo eliminar el equipo (${response.statusCode})')),
+          SnackBar(
+              content: Text(
+                  'No se pudo eliminar el equipo (${response.statusCode})')),
         );
       }
     } catch (_) {
@@ -117,15 +125,15 @@ class _TeamDetailViewState extends State<TeamDetailView> {
     }
   }
 
-  Future<void> data (dynamic teams) async{
-      setState(() {
-        teamId = teams['_id'];
-        teamId2 = teams['_id'];
-        teamName=teams['teamName'];
-        domains = teams['domains'] ?? [];
-        leaderEmail= teams['leaderEmail'];
-        teamCode=teams['teamCode'];
-      });
+  Future<void> data(dynamic teams) async {
+    setState(() {
+      teamId = teams['_id'];
+      teamId2 = teams['_id'];
+      teamName = teams['teamName'];
+      domains = teams['domains'] ?? [];
+      leaderEmail = teams['leaderEmail'];
+      teamCode = teams['teamCode'];
+    });
   }
 
   void _openTaskPicker(int domainIndex) {
@@ -143,14 +151,16 @@ class _TeamDetailViewState extends State<TeamDetailView> {
         onSelected: (taskIndex) async {
           final t = tasks[taskIndex];
           final success = await _markTaskDone(
-            domain['name'], t['assignedTo'], t['description']);
+              domain['name'], t['assignedTo'], t['description']);
           if (success) {
             setState(() {
               tasks[taskIndex]['completed'] = true;
             });
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('"${t['description']}" marcada como completada')),
+                SnackBar(
+                    content:
+                        Text('"${t['description']}" marcada como completada')),
               );
             }
           }
@@ -166,100 +176,120 @@ class _TeamDetailViewState extends State<TeamDetailView> {
       data(teams);
     });
     return AppScaffold(
-        padding: EdgeInsets.zero,
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment(0.6, 0.8),
-              end: Alignment(0.4, 0.31),
-              colors: [AppColors.bgBase, AppColors.brandNavy],
-            ),
+      padding: EdgeInsets.zero,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment(0.6, 0.8),
+            end: Alignment(0.4, 0.31),
+            colors: [AppColors.bgBase, AppColors.brandNavy],
           ),
-          child: Column(
-            children:[
-              const SizedBox(height: 20,),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    Text("$teamName",textAlign: TextAlign.center,style: const TextStyle(color:AppColors.textPrimary,fontSize: 30,fontWeight: FontWeight.w800 ),),
-                    const SizedBox(height: 6,),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 16,
-                      runSpacing: 4,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.shield_outlined, size: 15, color: AppColors.textMuted),
-                            const SizedBox(width: 4),
-                            Text(
-                              leaderEmail == null ? "" : "Líder: ${leaderEmail!.substring(0,leaderEmail!.indexOf('@'))}",
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 14,fontWeight: FontWeight.w600 ),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.tag, size: 15, color: AppColors.textMuted),
-                            const SizedBox(width: 4),
-                            Text(
-                              teamCode ?? '',
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 14,fontWeight: FontWeight.w600 ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height:16),
-              Expanded(
-                child: FutureBuilder<void>(
-                  future: _futureData,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const LoadingState();
-                    } else if (snapshot.hasError) {
-                      return const ErrorState(
-                        message: 'No se pudo cargar la información del equipo.',
-                      );
-                    } else {
-                      return SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            ResponsiveCardGrid(
-                              children: [
-                                for (int i = 0; i < domains!.length; i++)
-                                  TeamDomainCard(
-                                    domain: domains![i],
-                                    isLeader: _isLeader,
-                                    onCompleteTask: () => _openTaskPicker(i),
-                                  ),
-                              ],
-                            ),
-                            TeamActionsCard(
-                              isLeader: _isLeader,
-                              teamId: teamId,
-                              teamId2: teamId2,
-                              leaderEmail: leaderEmail,
-                              onDeleteTeam: _confirmDeleteTeam,
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                  },
-                ),
-              ),
-            ],
         ),
+        child: Column(
+          children: [
+            const SizedBox(
+              height: 20,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  Text(
+                    "$teamName",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(
+                    height: 6,
+                  ),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 16,
+                    runSpacing: 4,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.shield_outlined,
+                              size: 15, color: AppColors.textMuted),
+                          const SizedBox(width: 4),
+                          Text(
+                            leaderEmail == null
+                                ? ""
+                                : "Líder: ${leaderEmail!.substring(0, leaderEmail!.indexOf('@'))}",
+                            style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.tag, size: 15, color: AppColors.textMuted),
+                          const SizedBox(width: 4),
+                          Text(
+                            teamCode ?? '',
+                            style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: FutureBuilder<void>(
+                future: _futureData,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const LoadingState();
+                  } else if (snapshot.hasError) {
+                    return const ErrorState(
+                      message: 'No se pudo cargar la información del equipo.',
+                    );
+                  } else {
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ResponsiveCardGrid(
+                            children: [
+                              for (int i = 0; i < domains!.length; i++)
+                                TeamDomainCard(
+                                  domain: domains![i],
+                                  isLeader: _isLeader,
+                                  onCompleteTask: () => _openTaskPicker(i),
+                                ),
+                            ],
+                          ),
+                          TeamActionsCard(
+                            isLeader: _isLeader,
+                            teamId: teamId,
+                            teamId2: teamId2,
+                            leaderEmail: leaderEmail,
+                            onDeleteTeam: _confirmDeleteTeam,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                },
+              ),
+            ),
+          ],
         ),
+      ),
     );
   }
 }

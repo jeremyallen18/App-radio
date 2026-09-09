@@ -10,14 +10,16 @@ import 'package:doliv_social/design/design.dart';
 class SiteFieldColors {
   SiteFieldColors._();
 
-  static const blue = AppColors.accent;
-  static const green = AppColors.success;
-  static const purple = Color(0xFF9B7FE8);
-  static const orange = AppColors.warning;
-  static const pink = Color(0xFFE86BA0);
-  static const teal = Color(0xFF4DC7C7);
-  static const red = AppColors.error;
-  static const whatsapp = Color(0xFF25D366);
+  // `blue/green/orange/red` dependen del modo (claro/oscuro), así que son
+  // getters que se resuelven en cada uso; el resto son literales fijos.
+  static Color get blue => AppColors.accent;
+  static Color get green => AppColors.success;
+  static const Color purple = Color(0xFF9B7FE8);
+  static Color get orange => AppColors.warning;
+  static const Color pink = Color(0xFFE86BA0);
+  static const Color teal = Color(0xFF4DC7C7);
+  static Color get red => AppColors.error;
+  static const Color whatsapp = Color(0xFF25D366);
 }
 
 /// Header propio de los formularios de contenido del sitio: botón volver +
@@ -25,7 +27,8 @@ class SiteFieldColors {
 /// `AppBar` para que el formulario se sienta como una pantalla dedicada
 /// (igual en Android/iOS/escritorio, sin depender del back nativo).
 class SiteFormHeader extends StatelessWidget {
-  const SiteFormHeader({super.key, required this.title, required this.subtitle});
+  const SiteFormHeader(
+      {super.key, required this.title, required this.subtitle});
 
   final String title;
   final String subtitle;
@@ -41,9 +44,10 @@ class SiteFormHeader extends StatelessWidget {
           child: InkWell(
             customBorder: const CircleBorder(),
             onTap: () => Navigator.of(context).maybePop(),
-            child: const Padding(
+            child: Padding(
               padding: EdgeInsets.all(AppSpacing.md),
-              child: Icon(Icons.arrow_back, color: AppColors.textPrimary, size: 20),
+              child: Icon(Icons.arrow_back,
+                  color: AppColors.textPrimary, size: 20),
             ),
           ),
         ),
@@ -54,14 +58,15 @@ class SiteFormHeader extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w800,
                   fontSize: 24,
                 ),
               ),
               const SizedBox(height: 2),
-              Text(subtitle, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+              Text(subtitle,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
             ],
           ),
         ),
@@ -79,7 +84,7 @@ class SiteFormField extends StatefulWidget {
     super.key,
     required this.icon,
     required this.label,
-    this.iconColor = SiteFieldColors.blue,
+    this.iconColor,
     this.required = false,
     this.controller,
     this.hintText,
@@ -94,7 +99,9 @@ class SiteFormField extends StatefulWidget {
 
   final IconData icon;
   final String label;
-  final Color iconColor;
+
+  /// Si es null, usa [SiteFieldColors.blue].
+  final Color? iconColor;
   final bool required;
   final TextEditingController? controller;
   final String? hintText;
@@ -117,7 +124,8 @@ class _SiteFormFieldState extends State<SiteFormField> {
   @override
   void initState() {
     super.initState();
-    _focusNode.addListener(() => setState(() => _focused = _focusNode.hasFocus));
+    _focusNode
+        .addListener(() => setState(() => _focused = _focusNode.hasFocus));
   }
 
   @override
@@ -128,8 +136,10 @@ class _SiteFormFieldState extends State<SiteFormField> {
 
   @override
   Widget build(BuildContext context) {
+    final iconColor = widget.iconColor ?? SiteFieldColors.blue;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.card),
@@ -146,10 +156,10 @@ class _SiteFormFieldState extends State<SiteFormField> {
             height: 40,
             margin: const EdgeInsets.only(top: 2),
             decoration: BoxDecoration(
-              color: widget.iconColor.withValues(alpha: 0.16),
+              color: iconColor.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(AppRadius.chip),
             ),
-            child: Icon(widget.icon, color: widget.iconColor, size: 20),
+            child: Icon(widget.icon, color: iconColor, size: 20),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -159,21 +169,26 @@ class _SiteFormFieldState extends State<SiteFormField> {
                 RichText(
                   text: TextSpan(
                     style: TextStyle(
-                      color: _focused ? AppColors.accentStrong : AppColors.textPrimary,
+                      color: _focused
+                          ? AppColors.accentStrong
+                          : AppColors.textPrimary,
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
                     ),
                     children: [
                       TextSpan(text: widget.label),
                       if (widget.required)
-                        const TextSpan(text: ' *', style: TextStyle(color: AppColors.error)),
+                        TextSpan(
+                            text: ' *',
+                            style: TextStyle(color: AppColors.error)),
                     ],
                   ),
                 ),
                 TextFormField(
                   controller: widget.controller,
                   focusNode: _focusNode,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, height: 1.4),
+                  style: TextStyle(
+                      color: AppColors.textPrimary, fontSize: 14, height: 1.4),
                   cursorColor: AppColors.textPrimary,
                   keyboardType: widget.textInputType,
                   maxLines: widget.maxLines,
@@ -185,19 +200,21 @@ class _SiteFormFieldState extends State<SiteFormField> {
                     isCollapsed: false,
                     filled: false,
                     hintText: widget.hintText,
-                    hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                    hintStyle:
+                        TextStyle(color: AppColors.textMuted, fontSize: 14),
                     contentPadding: const EdgeInsets.only(top: 4),
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
-                    counterStyle: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                    counterStyle:
+                        TextStyle(color: AppColors.textMuted, fontSize: 11),
                   ),
                 ),
                 if (widget.helperText != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     widget.helperText!,
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                   ),
                 ],
               ],
@@ -265,7 +282,8 @@ class _DashedBorderPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rrect = RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius));
+    final rrect =
+        RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius));
     final path = Path()..addRRect(rrect);
     final dashed = Path();
     const dashWidth = 6.0;
@@ -274,7 +292,9 @@ class _DashedBorderPainter extends CustomPainter {
       var distance = 0.0;
       while (distance < metric.length) {
         final next = distance + dashWidth;
-        dashed.addPath(metric.extractPath(distance, next.clamp(0, metric.length)), Offset.zero);
+        dashed.addPath(
+            metric.extractPath(distance, next.clamp(0, metric.length)),
+            Offset.zero);
         distance = next + dashSpace;
       }
     }
@@ -344,7 +364,7 @@ class SiteImagePickerField extends StatelessWidget {
         width: 56,
         height: 56,
         color: AppColors.bgBase,
-        child: const Icon(Icons.image_outlined, color: AppColors.textMuted),
+        child: Icon(Icons.image_outlined, color: AppColors.textMuted),
       );
 
   @override
@@ -353,7 +373,8 @@ class SiteImagePickerField extends StatelessWidget {
       onTap: onPick,
       borderRadius: BorderRadius.circular(AppRadius.card),
       child: CustomPaint(
-        painter: _DashedBorderPainter(color: AppColors.surfaceBorder, radius: AppRadius.card),
+        painter: _DashedBorderPainter(
+            color: AppColors.surfaceBorder, radius: AppRadius.card),
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
@@ -377,7 +398,7 @@ class SiteImagePickerField extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
@@ -390,12 +411,14 @@ class SiteImagePickerField extends StatelessWidget {
                           : existingImageUrl != null
                               ? 'Toca para cambiar la imagen'
                               : 'Toca para elegir una imagen',
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Recomendado: $aspectHint',
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 11),
                     ),
                   ],
                 ),
@@ -408,7 +431,8 @@ class SiteImagePickerField extends StatelessWidget {
                   color: SiteFieldColors.blue.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(AppRadius.chip),
                 ),
-                child: const Icon(Icons.add_photo_alternate_outlined, color: SiteFieldColors.blue, size: 20),
+                child: Icon(Icons.add_photo_alternate_outlined,
+                    color: SiteFieldColors.blue, size: 20),
               ),
             ],
           ),
@@ -422,7 +446,11 @@ class SiteImagePickerField extends StatelessWidget {
 /// patrocinador, episodios de un podcast): 2 o 3 campos de texto en línea
 /// más un botón para quitar la fila.
 class SiteRepeatRow extends StatelessWidget {
-  const SiteRepeatRow({super.key, required this.controllers, required this.hints, required this.onRemove});
+  const SiteRepeatRow(
+      {super.key,
+      required this.controllers,
+      required this.hints,
+      required this.onRemove});
 
   final List<TextEditingController> controllers;
   final List<String> hints;
@@ -438,11 +466,12 @@ class SiteRepeatRow extends StatelessWidget {
           for (int i = 0; i < controllers.length; i++) ...[
             if (i > 0) const SizedBox(width: AppSpacing.sm),
             Expanded(
-              child: AppTextField(controller: controllers[i], hintText: hints[i]),
+              child:
+                  AppTextField(controller: controllers[i], hintText: hints[i]),
             ),
           ],
           IconButton(
-            icon: const Icon(Icons.close, color: AppColors.error, size: 18),
+            icon: Icon(Icons.close, color: AppColors.error, size: 18),
             onPressed: onRemove,
           ),
         ],
@@ -462,7 +491,10 @@ class SiteFormSectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 15),
+      style: TextStyle(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w700,
+          fontSize: 15),
     );
   }
 }
@@ -482,7 +514,7 @@ Future<bool> confirmSiteDelete(BuildContext context, String label) async {
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Eliminar', style: TextStyle(color: AppColors.error)),
+          child: Text('Eliminar', style: TextStyle(color: AppColors.error)),
         ),
       ],
     ),
@@ -493,7 +525,8 @@ Future<bool> confirmSiteDelete(BuildContext context, String label) async {
 /// Botón "Eliminar ..." del pie del formulario, visible solo al editar un
 /// registro existente.
 class SiteDeleteButton extends StatelessWidget {
-  const SiteDeleteButton({super.key, required this.label, required this.onPressed});
+  const SiteDeleteButton(
+      {super.key, required this.label, required this.onPressed});
 
   final String label;
   final VoidCallback? onPressed;
@@ -503,8 +536,10 @@ class SiteDeleteButton extends StatelessWidget {
     return Center(
       child: TextButton.icon(
         onPressed: onPressed,
-        icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 18),
-        label: Text(label, style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
+        icon: Icon(Icons.delete_outline, color: AppColors.error, size: 18),
+        label: Text(label,
+            style:
+                TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
       ),
     );
   }

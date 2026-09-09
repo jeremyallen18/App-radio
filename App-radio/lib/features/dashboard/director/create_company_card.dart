@@ -68,13 +68,13 @@ class _CreateCompanyCardState extends State<CreateCompanyCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(
+                Icon(
                   Icons.add_business_outlined,
                   size: 40,
                   color: AppColors.accent,
                 ),
                 const SizedBox(height: AppSpacing.md),
-                const Text(
+                Text(
                   'Crea tu empresa',
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -84,7 +84,7 @@ class _CreateCompanyCardState extends State<CreateCompanyCard> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                const Text(
+                Text(
                   'Todavía no has configurado tu empresa. Créala para empezar '
                   'a organizar áreas, personas y anuncios internos.',
                   textAlign: TextAlign.center,

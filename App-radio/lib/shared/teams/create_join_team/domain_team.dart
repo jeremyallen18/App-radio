@@ -11,7 +11,8 @@ class TeamDetailsScreen extends StatelessWidget {
   final String teamname;
   final String teamId;
 
-  const TeamDetailsScreen(this.teamname, this.selectedDomains, this.teamId, {super.key});
+  const TeamDetailsScreen(this.teamname, this.selectedDomains, this.teamId,
+      {super.key});
 
   static const List<IconData> _domainIcons = [
     Icons.code_rounded,
@@ -35,7 +36,7 @@ class TeamDetailsScreen extends StatelessWidget {
           const SectionHeader(title: 'Invita miembros por área'),
           Text(
             'Toca un área para enviar invitaciones por correo. Puedes hacerlo ahora o más tarde desde el equipo.',
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
           const SizedBox(height: AppSpacing.lg),
           Expanded(
@@ -43,11 +44,13 @@ class TeamDetailsScreen extends StatelessWidget {
                 ? const EmptyState(
                     icon: Icons.domain_disabled_outlined,
                     title: 'Este equipo no tiene áreas',
-                    message: 'Vuelve a crear el equipo y selecciona al menos un área.',
+                    message:
+                        'Vuelve a crear el equipo y selecciona al menos un área.',
                   )
                 : ListView.separated(
                     itemCount: selectedDomains.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: AppSpacing.sm),
                     itemBuilder: (context, index) {
                       final domain = selectedDomains[index];
                       final icon = _domainIcons[index % _domainIcons.length];
@@ -56,7 +59,8 @@ class TeamDetailsScreen extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => InviteMembersScreen(domain, teamId: teamId),
+                              builder: (context) =>
+                                  InviteMembersScreen(domain, teamId: teamId),
                             ),
                           );
                         },
@@ -67,14 +71,15 @@ class TeamDetailsScreen extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 domain.name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: AppColors.textPrimary,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
-                            const Icon(Icons.chevron_right, color: AppColors.textMuted),
+                            Icon(Icons.chevron_right,
+                                color: AppColors.textMuted),
                           ],
                         ),
                       );
@@ -120,7 +125,8 @@ class _InviteMembersScreenState extends State<InviteMembersScreen> {
 
     var request = http.Request(
       'POST',
-      Uri.parse('$kBaseUrl/team/sendTeamcode/${widget.teamId}/${widget.domain.name}'),
+      Uri.parse(
+          '$kBaseUrl/team/sendTeamcode/${widget.teamId}/${widget.domain.name}'),
     );
 
     request.body = json.encode({
@@ -141,19 +147,23 @@ class _InviteMembersScreenState extends State<InviteMembersScreen> {
           emailController.clear();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(responseData['message']?.toString() ?? 'Invitación enviada'),
+              content: Text(
+                  responseData['message']?.toString() ?? 'Invitación enviada'),
             ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(responseData['message']?.toString() ?? 'No se pudo enviar la invitación'),
+              content: Text(responseData['message']?.toString() ??
+                  'No se pudo enviar la invitación'),
             ),
           );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo enviar la invitación (${response.statusCode})')),
+          SnackBar(
+              content: Text(
+                  'No se pudo enviar la invitación (${response.statusCode})')),
         );
       }
     } catch (error) {
@@ -180,12 +190,12 @@ class _InviteMembersScreenState extends State<InviteMembersScreen> {
           const SizedBox(height: AppSpacing.lg),
           Text(
             'La persona invitada recibirá el código para unirse al equipo en esta área.',
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
           const SizedBox(height: AppSpacing.lg),
           AppTextField(
             controller: emailController,
-            prefixIcon: const Icon(Icons.mail_outline, color: AppColors.textMuted),
+            prefixIcon: Icon(Icons.mail_outline, color: AppColors.textMuted),
             hintText: 'Correo para invitar',
             textInputType: TextInputType.emailAddress,
           ),

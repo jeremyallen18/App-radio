@@ -20,7 +20,11 @@ class PodcastFormScreen extends StatefulWidget {
 }
 
 class _EpisodeRow {
-  _EpisodeRow({String title = '', String category = '', String audio = '', String description = ''})
+  _EpisodeRow(
+      {String title = '',
+      String category = '',
+      String audio = '',
+      String description = ''})
       : title = TextEditingController(text: title),
         category = TextEditingController(text: category),
         audio = TextEditingController(text: audio),
@@ -36,9 +40,12 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
   final _api = SiteContentApi('podcasts');
   final _picker = ImagePicker();
 
-  late final _title = TextEditingController(text: widget.item?['title']?.toString() ?? '');
-  late final _filterIcon = TextEditingController(text: widget.item?['filter_icon']?.toString() ?? '');
-  late final _sortOrder = TextEditingController(text: widget.item?['sort_order']?.toString() ?? '0');
+  late final _title =
+      TextEditingController(text: widget.item?['title']?.toString() ?? '');
+  late final _filterIcon = TextEditingController(
+      text: widget.item?['filter_icon']?.toString() ?? '');
+  late final _sortOrder = TextEditingController(
+      text: widget.item?['sort_order']?.toString() ?? '0');
 
   late final List<_EpisodeRow> _episodes = _initialEpisodes();
 
@@ -61,7 +68,8 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
   }
 
   Future<void> _pickCover() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    final picked =
+        await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked == null) return;
     setState(() => _newCover = File(picked.path));
   }
@@ -109,13 +117,15 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
     final fields = {
       'title': _title.text.trim(),
       'filter_icon': _filterIcon.text.trim(),
-      'sort_order': _sortOrder.text.trim().isEmpty ? '0' : _sortOrder.text.trim(),
+      'sort_order':
+          _sortOrder.text.trim().isEmpty ? '0' : _sortOrder.text.trim(),
       'episodes_json': episodesJson,
     };
 
     try {
       if (_isEditing) {
-        await _api.update(widget.item!['id'].toString(), fields, imageFile: _newCover, imageField: 'cover');
+        await _api.update(widget.item!['id'].toString(), fields,
+            imageFile: _newCover, imageField: 'cover');
       } else {
         await _api.create(fields, imageFile: _newCover, imageField: 'cover');
       }
@@ -185,12 +195,16 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
               hints: const ['Título del episodio', 'Categoría'],
               onRemove: () => setState(() => _episodes.remove(episode)),
             ),
-            AppTextField(controller: episode.audio, hintText: 'assets/audio/podcasts/archivo.mp3'),
+            AppTextField(
+                controller: episode.audio,
+                hintText: 'assets/audio/podcasts/archivo.mp3'),
             const SizedBox(height: AppSpacing.xs),
-            AppTextField(controller: episode.description, hintText: 'Descripción del episodio'),
+            AppTextField(
+                controller: episode.description,
+                hintText: 'Descripción del episodio'),
             const SizedBox(height: AppSpacing.md),
           ],
-          const Text(
+          Text(
             'El audio se sube por FTP/cPanel a assets/audio/podcasts/; aquí solo se '
             'escribe la ruta relativa del archivo.',
             style: TextStyle(color: AppColors.textMuted, fontSize: 12),
@@ -198,8 +212,9 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
           const SizedBox(height: AppSpacing.sm),
           TextButton.icon(
             onPressed: () => setState(() => _episodes.add(_EpisodeRow())),
-            icon: const Icon(Icons.add, color: AppColors.accent),
-            label: const Text('Agregar episodio', style: TextStyle(color: AppColors.accent)),
+            icon: Icon(Icons.add, color: AppColors.accent),
+            label: Text('Agregar episodio',
+                style: TextStyle(color: AppColors.accent)),
           ),
           const SizedBox(height: AppSpacing.xl),
           AppButton(

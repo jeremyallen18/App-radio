@@ -28,10 +28,13 @@ class ProfileMetaRow extends StatelessWidget {
             text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
         ),
-        if (trailing != null) ...[const SizedBox(width: AppSpacing.sm), trailing!],
+        if (trailing != null) ...[
+          const SizedBox(width: AppSpacing.sm),
+          trailing!
+        ],
       ],
     );
   }
@@ -51,10 +54,13 @@ class ProfileStatItem extends StatelessWidget {
       children: [
         Text(
           value,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+          style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary),
         ),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
+        Text(label, style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
       ],
     );
   }
@@ -113,7 +119,7 @@ class ProfileTeamsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (teams.isEmpty) {
-      return const AppCard(
+      return AppCard(
         child: Text(
           'Todavía no perteneces a ningún equipo.',
           style: TextStyle(color: AppColors.textMuted, fontSize: 13),
@@ -148,19 +154,19 @@ class _TeamRow extends StatelessWidget {
       },
       child: Row(
         children: [
-          const Icon(Icons.groups_outlined, size: 20, color: AppColors.accent),
+          Icon(Icons.groups_outlined, size: 20, color: AppColors.accent),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
               team['teamName']?.toString() ?? 'Equipo',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
                 color: AppColors.textPrimary,
               ),
             ),
           ),
-          const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
+          Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
         ],
       ),
     );
@@ -193,7 +199,7 @@ class DirectorOverviewTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AppCard(
+        AppCard(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -214,7 +220,8 @@ class DirectorOverviewTab extends StatelessWidget {
                     SizedBox(height: 4),
                     Text(
                       'Tienes acceso a todas las áreas y colaboradores de Radio Doliv.',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 13),
                     ),
                   ],
                 ),
@@ -352,14 +359,13 @@ class _DirectorActionCard extends StatelessWidget {
             children: [
               _RoundIcon(icon: icon),
               const Spacer(),
-              const Icon(Icons.chevron_right,
-                  size: 20, color: AppColors.textMuted),
+              Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w700,
               fontSize: 15,
@@ -368,7 +374,7 @@ class _DirectorActionCard extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             subtitle,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
         ],
       ),
@@ -401,12 +407,12 @@ class ProfileAreaCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.apartment_outlined, size: 20, color: AppColors.accent),
+              Icon(Icons.apartment_outlined, size: 20, color: AppColors.accent),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   dept?.name ?? 'Sin departamento asignado',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
@@ -424,24 +430,27 @@ class ProfileAreaCard extends StatelessWidget {
                     : (dept.employeeCount == 1
                         ? '1 persona en el área'
                         : '${dept.employeeCount} personas en el área'),
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
-              const Icon(Icons.person_search_outlined, size: 18, color: AppColors.accentStrong),
+              Icon(Icons.person_search_outlined,
+                  size: 18, color: AppColors.accentStrong),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  dept == null ? 'Buscar compañeros' : 'Ver y buscar compañeros de mi área',
-                  style: const TextStyle(
+                  dept == null
+                      ? 'Buscar compañeros'
+                      : 'Ver y buscar compañeros de mi área',
+                  style: TextStyle(
                     color: AppColors.accentStrong,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
+              Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
             ],
           ),
         ],

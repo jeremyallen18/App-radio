@@ -135,8 +135,14 @@ class _AdminLocationScreenState extends State<AdminLocationScreen> {
     final lat = double.tryParse(_lat.text.trim());
     final lng = double.tryParse(_lng.text.trim());
     final radius = int.tryParse(_radius.text.trim());
-    if (lat == null || lng == null || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      setState(() => _error = 'Escribe una latitud y longitud válidas, o usa tu ubicación actual.');
+    if (lat == null ||
+        lng == null ||
+        lat < -90 ||
+        lat > 90 ||
+        lng < -180 ||
+        lng > 180) {
+      setState(() => _error =
+          'Escribe una latitud y longitud válidas, o usa tu ubicación actual.');
       return;
     }
     if (radius == null || radius < 5 || radius > 1000) {
@@ -272,7 +278,8 @@ class _AdminLocationScreenState extends State<AdminLocationScreen> {
               ),
               if (_error != null) ...[
                 const SizedBox(height: AppSpacing.md),
-                Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
+                Text(_error!,
+                    style: TextStyle(color: AppColors.error, fontSize: 12)),
               ],
               const SizedBox(height: AppSpacing.xl),
               IntrinsicHeight(
@@ -284,7 +291,8 @@ class _AdminLocationScreenState extends State<AdminLocationScreen> {
                         onPressed: _locating ? null : _useCurrentLocation,
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(50),
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.sm),
                           textStyle: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -294,7 +302,8 @@ class _AdminLocationScreenState extends State<AdminLocationScreen> {
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Icon(Icons.my_location, size: 18),
                         label: const Text(
@@ -330,7 +339,7 @@ class _AdminLocationScreenState extends State<AdminLocationScreen> {
           padding: const EdgeInsets.only(left: 2, bottom: AppSpacing.xs),
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textMuted,
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -350,7 +359,7 @@ class _HeroBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const accent = AppColors.accent;
+    final accent = AppColors.accent;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -368,10 +377,10 @@ class _HeroBanner extends StatelessWidget {
               color: accent.withValues(alpha: 0.18),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.location_on, color: accent, size: 22),
+            child: Icon(Icons.location_on, color: accent, size: 22),
           ),
           const SizedBox(width: AppSpacing.md),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -419,7 +428,7 @@ class _FieldLabel extends StatelessWidget {
         const SizedBox(width: AppSpacing.sm),
         Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w700,
             fontSize: 15,
@@ -453,14 +462,14 @@ class _UnitSegment extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w700,
               fontSize: 14,
             ),
           ),
           const SizedBox(width: AppSpacing.xs),
-          const Icon(Icons.keyboard_arrow_down, color: AppColors.textMuted, size: 18),
+          Icon(Icons.keyboard_arrow_down, color: AppColors.textMuted, size: 18),
         ],
       ),
     );
@@ -504,24 +513,24 @@ class _SaveButton extends StatelessWidget {
               opacity: enabled ? 1 : 0.5,
               child: Center(
                 child: loading
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 22,
                         height: 22,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          color: AppColors.textPrimary,
+                          color: AppColors.onBrand,
                         ),
                       )
-                    : const Row(
+                    : Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.save_outlined,
-                              color: AppColors.textPrimary, size: 18),
+                              color: AppColors.onBrand, size: 18),
                           SizedBox(width: AppSpacing.sm),
                           Text(
                             'Guardar lugar',
                             style: TextStyle(
-                              color: AppColors.textPrimary,
+                              color: AppColors.onBrand,
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
                             ),
@@ -590,9 +599,7 @@ class _RadiusMapPreviewState extends State<_RadiusMapPreview> {
     super.didUpdateWidget(old);
     final p = widget.point;
     if (p == null) return;
-    if (old.point == null ||
-        old.point != p ||
-        old.radiusM != widget.radiusM) {
+    if (old.point == null || old.point != p || old.radiusM != widget.radiusM) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _recenter();
       });
@@ -711,11 +718,12 @@ class _MapPlaceholder extends StatelessWidget {
             Icon(Icons.map_outlined,
                 color: AppColors.textMuted.withValues(alpha: 0.7), size: 28),
             const SizedBox(height: AppSpacing.sm),
-            const Text(
+            Text(
               'Toca «Usar mi ubicación actual» o escribe las coordenadas para '
               'ver el radio en el mapa.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.4),
+              style: TextStyle(
+                  color: AppColors.textMuted, fontSize: 12, height: 1.4),
             ),
           ],
         ),
@@ -760,7 +768,7 @@ class _StatusChip extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
@@ -768,7 +776,7 @@ class _StatusChip extends StatelessWidget {
                 ),
                 Text(
                   subtitle,
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 10.5),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 10.5),
                 ),
               ],
             ),
@@ -848,7 +856,7 @@ class _MapPill extends StatelessWidget {
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -874,7 +882,8 @@ class _PulseDot extends StatefulWidget {
   State<_PulseDot> createState() => _PulseDotState();
 }
 
-class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixin {
+class _PulseDotState extends State<_PulseDot>
+    with SingleTickerProviderStateMixin {
   AnimationController? _c;
 
   @override
@@ -903,7 +912,8 @@ class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixi
           color: Colors.white,
           shape: BoxShape.circle,
           boxShadow: [
-            BoxShadow(color: Color(0x66000000), blurRadius: 4, offset: Offset(0, 1)),
+            BoxShadow(
+                color: Color(0x66000000), blurRadius: 4, offset: Offset(0, 1)),
           ],
         ),
       ),
@@ -925,7 +935,7 @@ class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixi
                 child: Container(
                   width: 18 + t * 42,
                   height: 18 + t * 42,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.accent,
                     shape: BoxShape.circle,
                   ),

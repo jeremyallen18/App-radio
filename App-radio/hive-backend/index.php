@@ -16,6 +16,7 @@ require __DIR__ . '/auth.php';
 require __DIR__ . '/chat.php';
 require __DIR__ . '/devices.php';
 require __DIR__ . '/documents.php';
+require __DIR__ . '/department_documents.php';
 require __DIR__ . '/legacy_teams.php';
 require __DIR__ . '/notifications.php';
 require __DIR__ . '/org.php';
@@ -72,6 +73,13 @@ $routes = [
     ['POST', '#^/document/upload/?$#',                        'teamDocumentUpload'],
     ['GET',  '#^/document/download/([^/]+)/?$#',              'teamDocumentDownload'],
     ['POST', '#^/document/([^/]+)/delete/?$#',                'teamDocumentDelete'],
+    // Documentos por departamento (RBAC): director/manager suben, renombran y
+    // eliminan; el resto del departamento solo lista y descarga.
+    ['GET',  '#^/department-documents/?$#',                    'deptDocumentsList'],
+    ['POST', '#^/department-documents/?$#',                    'deptDocumentUpload'],
+    ['GET',  '#^/department-documents/([^/]+)/download/?$#',   'deptDocumentDownload'],
+    ['POST', '#^/department-documents/([^/]+)/delete/?$#',     'deptDocumentDelete'],
+    ['POST', '#^/department-documents/([^/]+)/?$#',            'deptDocumentUpdate'],
     ['POST', '#^/leave/applyLeave/([^/]+)/?$#',                'applyLeave'],
     ['POST', '#^/leave/leaveResult/([^/]+)/?$#',               'leaveResult'],
     ['GET',  '#^/notifications/?$#',                          'listNotifications'],

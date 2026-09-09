@@ -85,7 +85,8 @@ class _SiteContentHubScreenState extends State<SiteContentHubScreen> {
             title: 'Podcasts',
             resource: 'podcasts',
             itemTitle: (item) => item['title']?.toString() ?? '',
-            itemSubtitle: (item) => '${(item['episodes'] as List?)?.length ?? 0} episodios',
+            itemSubtitle: (item) =>
+                '${(item['episodes'] as List?)?.length ?? 0} episodios',
             itemImage: (item) => item['cover']?.toString(),
             formBuilder: (context, item) => PodcastFormScreen(item: item),
           ),
@@ -98,7 +99,8 @@ class _SiteContentHubScreenState extends State<SiteContentHubScreen> {
         _HubSection(
           icon: Icons.groups_outlined,
           label: 'Equipo',
-          description: 'Locutores y staff que aparecen en la página del equipo.',
+          description:
+              'Locutores y staff que aparecen en la página del equipo.',
           resource: 'equipo',
           builder: (context) => SiteContentListScreen(
             title: 'Equipo',
@@ -126,7 +128,8 @@ class _SiteContentHubScreenState extends State<SiteContentHubScreen> {
         _HubSection(
           icon: Icons.storefront_outlined,
           label: 'Sección Azul (patrocinadores)',
-          description: 'Marcas y aliados comerciales que patrocinan la emisora.',
+          description:
+              'Marcas y aliados comerciales que patrocinan la emisora.',
           resource: 'patrocinadores',
           builder: (context) => SiteContentListScreen(
             title: 'Sección Azul',
@@ -182,7 +185,7 @@ class _SiteContentHubScreenState extends State<SiteContentHubScreen> {
             AppSpacing.xxxl,
           ),
           children: [
-            const InfoBanner(
+            InfoBanner(
               icon: Icons.public,
               color: AppColors.warning,
               message:
@@ -216,7 +219,8 @@ class _SiteContentHubScreenState extends State<SiteContentHubScreen> {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.section, required this.count, required this.onTap});
+  const _SectionCard(
+      {required this.section, required this.count, required this.onTap});
 
   final _HubSection section;
   final int? count;
@@ -244,7 +248,7 @@ class _SectionCard extends StatelessWidget {
               children: [
                 Text(
                   section.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
@@ -253,11 +257,11 @@ class _SectionCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   section.description,
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 count == null
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 12,
                         height: 12,
                         child: CircularProgressIndicator(
@@ -267,7 +271,7 @@ class _SectionCard extends StatelessWidget {
                       )
                     : Text(
                         count == 1 ? '1 elemento' : '$count elementos',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textMuted,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -277,7 +281,7 @@ class _SectionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          const Icon(Icons.chevron_right, color: AppColors.textMuted),
+          Icon(Icons.chevron_right, color: AppColors.textMuted),
         ],
       ),
     );

@@ -59,7 +59,7 @@ class ProfileHero extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(_ringWidth),
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: AppColors.bgBase,
                       shape: BoxShape.circle,
                     ),
@@ -78,7 +78,7 @@ class ProfileHero extends StatelessWidget {
                           color: AppColors.bgBase.withValues(alpha: 0.6),
                           shape: BoxShape.circle,
                         ),
-                        child: const Center(
+                        child: Center(
                           child: SizedBox(
                             width: 24,
                             height: 24,
@@ -95,13 +95,13 @@ class ProfileHero extends StatelessWidget {
                     right: 0,
                     child: Material(
                       color: AppColors.bgBase,
-                      shape: const CircleBorder(
+                      shape: CircleBorder(
                         side: BorderSide(color: AppColors.surfaceBorder),
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: InkWell(
                         onTap: uploadingPhoto ? null : onEditPhoto,
-                        child: const Padding(
+                        child: Padding(
                           padding: EdgeInsets.all(7),
                           child: Icon(
                             Icons.photo_camera_outlined,
@@ -126,7 +126,7 @@ class ProfileHero extends StatelessWidget {
             children: [
               Text(
                 name,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
@@ -135,7 +135,7 @@ class ProfileHero extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 headline,
-                style: const TextStyle(fontSize: 14, color: AppColors.textMuted),
+                style: TextStyle(fontSize: 14, color: AppColors.textMuted),
               ),
             ],
           ),
