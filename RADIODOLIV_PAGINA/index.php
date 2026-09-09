@@ -88,16 +88,25 @@ foreach ($podcasts as $podcast) {
     }
 }
 
-// Comentarios de muestra para el widget "Comentarios en vivo" del hero.
-// Estatico por ahora (sin backend): el formulario solo agrega el mensaje
-// del propio oyente a la lista mientras la pestaña sigue abierta.
-$liveComments = [
-    ['name' => 'María López',   'time' => '10:45 AM', 'text' => '¡Saludos desde Santiago Tilapa! Escuchando su programa favorito 💙'],
-    ['name' => 'JuanOrtiz_88',  'time' => '10:46 AM', 'text' => 'Excelente selección musical hoy 🔥'],
-    ['name' => 'Ana Celeste',   'time' => '10:47 AM', 'text' => 'Me encanta Radio Doliv, me acompaña todos los días en el trabajo 🎵'],
-    ['name' => 'RadioFan_25',   'time' => '10:48 AM', 'text' => '¿Qué canción viene ahora? ¡Pura buena vibra! 🙌'],
-    ['name' => 'Luis Fernández','time' => '10:49 AM', 'text' => 'Los mejores locutores, la mejor radio 💙'],
-];
+// Comentarios en vivo del hero: estado inicial que pinta el servidor. La caja
+// "se reinicia cada hora" (franja de la hora en punto); el polling de
+// assets/js/pages/index.js mantiene la lista al día. Si la BD no está
+// disponible o la tabla aún no se ha migrado, se degrada a una lista vacía
+// sin romper la portada.
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/inc/data/live_comments.php';
+$liveComments = [];
+$liveCommentsBucket = '';
+$liveCommentsCount = 0;
+try {
+    $pdoLive = get_pdo();
+    $liveComments = get_live_comments();
+    $liveCommentsBucket = live_comments_bucket($pdoLive);
+    $liveCommentsCount = count_live_comments($pdoLive);
+} catch (Throwable $e) {
+    // BD caída o tabla sin crear: la caja arranca vacía y el front reintenta
+    // por polling. No es motivo para tumbar la home.
+}
 ?>
 <!DOCTYPE html>
 <html lang="es" data-page="<?= $activePage ?? '' ?>">
@@ -137,27 +146,31 @@ $liveComments = [
                 <div class="home-comments-card">
                     <div class="home-comments-card-head">
                         <span class="home-comments-title">Comentarios en vivo <span class="home-comments-status"><span class="pulse-dot" aria-hidden="true"></span> En línea</span></span>
-                        <span class="home-comments-count"><i data-lucide="users"></i> <span id="liveCommentsCount">128</span></span>
+                        <span class="home-comments-count"><i data-lucide="users"></i> <span id="liveCommentsCount"><?= (int) $liveCommentsCount ?></span></span>
                     </div>
 
-                    <ul class="home-comments-list" id="liveCommentsList">
+                    <ul class="home-comments-list" id="liveCommentsList" data-bucket="<?= h($liveCommentsBucket) ?>">
                         <?php foreach ($liveComments as $comment): ?>
-                        <li class="home-comment">
+                        <li class="home-comment" data-comment-id="<?= (int) $comment['id'] ?>">
                             <span class="home-comment-avatar"><?= h(mb_strtoupper(mb_substr($comment['name'], 0, 1) . mb_substr((strrpos($comment['name'], ' ') !== false ? substr($comment['name'], strrpos($comment['name'], ' ') + 1) : ''), 0, 1))) ?></span>
                             <span class="home-comment-body">
                                 <span class="home-comment-top">
                                     <strong class="home-comment-name"><?= h($comment['name']) ?></strong>
                                     <span class="home-comment-time"><?= h($comment['time']) ?></span>
                                 </span>
-                                <span class="home-comment-text"><?= h($comment['text']) ?></span>
+                                <span class="home-comment-text"><?= h($comment['body'] ?? ($comment['text'] ?? '')) ?></span>
                             </span>
                         </li>
                         <?php endforeach; ?>
                     </ul>
 
                     <form class="home-comments-form" id="liveCommentsForm">
-                        <input type="text" id="liveCommentsInput" class="home-comments-input" placeholder="Escribe tu comentario..." maxlength="240" aria-label="Escribe tu comentario">
-                        <button type="submit" class="home-comments-send" aria-label="Enviar comentario"><i data-lucide="send"></i></button>
+                        <input type="text" id="liveCommentsName" class="home-comments-input" placeholder="Tu nombre" maxlength="60" autocomplete="nickname" aria-label="Tu nombre">
+                        <div class="home-comments-row">
+                            <input type="text" id="liveCommentsInput" class="home-comments-input" placeholder="Escribe tu comentario..." maxlength="240" aria-label="Escribe tu comentario">
+                            <button type="submit" class="home-comments-send" aria-label="Enviar comentario"><i data-lucide="send"></i></button>
+                        </div>
+                        <p class="home-comments-error" id="liveCommentsError" role="alert" hidden></p>
                     </form>
                     <p class="home-comments-hint">Recuerda ser respetuoso y seguir las normas de la comunidad.</p>
                 </div>
