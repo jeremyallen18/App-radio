@@ -543,6 +543,13 @@ function attendanceMealStart(PDO $pdo) {
         attendance_fail('Ya indicaste que hoy no tomarás hora de comida.');
     }
 
+    // Ventana de comida: no se puede iniciar antes de la hora asignada.
+    $mealEff = attendance_effective_time($pdo, $user['id'], $workDate, 'meal_time');
+    if ($mealEff !== null && time() < strtotime($workDate . ' ' . $mealEff)) {
+        attendance_window_fail('MEAL_TOO_EARLY',
+            'Tu hora de comida empieza a las ' . substr($mealEff, 0, 5) . '. Aún no puedes iniciarla.');
+    }
+
     $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'inicio_comida', request_body());
     $events = attendance_events_for($pdo, $user['id'], $workDate);
     json_response([
@@ -654,6 +661,13 @@ function attendanceExit(PDO $pdo) {
     }
     if ($state === 'en_comida') {
         attendance_fail('No puedes registrar tu salida mientras estás en hora de comida.');
+    }
+
+    // Ventana de salida: solo a partir de la hora asignada ("justo a la hora").
+    $exitEff = attendance_effective_time($pdo, $user['id'], $workDate, 'exit_time');
+    if ($exitEff !== null && time() < strtotime($workDate . ' ' . $exitEff)) {
+        attendance_window_fail('EXIT_TOO_EARLY',
+            'Tu salida es a las ' . substr($exitEff, 0, 5) . '. Aún no puedes registrarla.');
     }
 
     $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'salida', request_body());
