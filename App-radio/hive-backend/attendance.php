@@ -150,6 +150,7 @@ function attendance_schedule_payload(array $s): array {
         'exitTime'       => substr($s['exit_time'], 0, 5),
         'mealTime'       => substr($s['meal_time'], 0, 5),
         'mealMaxMinutes' => (int) $s['meal_max_minutes'],
+        'lateToleranceMinutes' => (int) ($s['late_tolerance_minutes'] ?? 15),
         'updatedAt'      => $s['updated_at'] ?? null,
     ];
 }
@@ -187,20 +188,22 @@ function attendance_snapshot_schedule(PDO $pdo, string $employeeId, string $work
     $exit    = $sched['exit_time'] ?? '17:00:00';
     $meal    = $sched['meal_time'] ?? '14:00:00';
     $mealMax = $sched['meal_max_minutes'] ?? 60;
+    $lateTol = $sched['late_tolerance_minutes'] ?? 15;
 
     $stmt = $pdo->prepare(
         'INSERT INTO attendance_schedule_snapshots
-           (employee_id, work_date, entry_time, exit_time, meal_time, meal_max_minutes)
-         VALUES (?, ?, ?, ?, ?, ?)'
+           (employee_id, work_date, entry_time, exit_time, meal_time, meal_max_minutes, late_tolerance_minutes)
+         VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
-    $stmt->execute([$employeeId, $workDate, $entry, $exit, $meal, $mealMax]);
+    $stmt->execute([$employeeId, $workDate, $entry, $exit, $meal, $mealMax, $lateTol]);
     return [
-        'employee_id'      => $employeeId,
-        'work_date'        => $workDate,
-        'entry_time'       => $entry,
-        'exit_time'        => $exit,
-        'meal_time'        => $meal,
-        'meal_max_minutes' => $mealMax,
+        'employee_id'            => $employeeId,
+        'work_date'              => $workDate,
+        'entry_time'             => $entry,
+        'exit_time'              => $exit,
+        'meal_time'              => $meal,
+        'meal_max_minutes'       => $mealMax,
+        'late_tolerance_minutes' => $lateTol,
     ];
 }
 

@@ -237,6 +237,7 @@ function adminScheduleSave(PDO $pdo, string $employeeId) {
     $exit  = attendance_valid_time((string) ($body['exitTime'] ?? ''));
     $meal  = attendance_valid_time((string) ($body['mealTime'] ?? ''));
     $max   = (int) ($body['mealMaxMinutes'] ?? 0);
+    $lateTol = (int) ($body['lateToleranceMinutes'] ?? 15);
 
     if (!$entry || !$exit || !$meal) {
         error_response('Horario inválido: usa el formato HH:MM (por ejemplo 09:00).', 400);
@@ -244,19 +245,23 @@ function adminScheduleSave(PDO $pdo, string $employeeId) {
     if ($max < 1 || $max > 240) {
         error_response('El límite de comida debe estar entre 1 y 240 minutos.', 400);
     }
+    if ($lateTol < 0 || $lateTol > 60) {
+        error_response('La tolerancia de retardo debe estar entre 0 y 60 minutos.', 400);
+    }
 
     $stmt = $pdo->prepare(
         'INSERT INTO employee_schedules
-           (employee_id, entry_time, exit_time, meal_time, meal_max_minutes, updated_by)
-         VALUES (?, ?, ?, ?, ?, ?)
+           (employee_id, entry_time, exit_time, meal_time, meal_max_minutes, late_tolerance_minutes, updated_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
            entry_time = VALUES(entry_time),
            exit_time = VALUES(exit_time),
            meal_time = VALUES(meal_time),
            meal_max_minutes = VALUES(meal_max_minutes),
+           late_tolerance_minutes = VALUES(late_tolerance_minutes),
            updated_by = VALUES(updated_by)'
     );
-    $stmt->execute([$emp['id'], $entry, $exit, $meal, $max, $admin['id']]);
+    $stmt->execute([$emp['id'], $entry, $exit, $meal, $max, $lateTol, $admin['id']]);
 
     json_response([
         'success'  => true,
@@ -293,11 +298,15 @@ function adminScheduleBulkSave(PDO $pdo) {
     $exit  = attendance_valid_time((string) ($src['exitTime'] ?? ''));
     $meal  = attendance_valid_time((string) ($src['mealTime'] ?? ''));
     $max   = (int) ($src['mealMaxMinutes'] ?? 0);
+    $lateTol = (int) ($src['lateToleranceMinutes'] ?? 15);
     if (!$entry || !$exit || !$meal) {
         error_response('Horario inválido: usa el formato HH:MM (por ejemplo 09:00).', 400);
     }
     if ($max < 1 || $max > 240) {
         error_response('El límite de comida debe estar entre 1 y 240 minutos.', 400);
+    }
+    if ($lateTol < 0 || $lateTol > 60) {
+        error_response('La tolerancia de retardo debe estar entre 0 y 60 minutos.', 400);
     }
 
     $applied = [];
@@ -307,11 +316,12 @@ function adminScheduleBulkSave(PDO $pdo) {
         $chk = $pdo->prepare("SELECT id, role, email_verified_at FROM users WHERE id = ?");
         $up = $pdo->prepare(
             'INSERT INTO employee_schedules
-               (employee_id, entry_time, exit_time, meal_time, meal_max_minutes, updated_by)
-             VALUES (?, ?, ?, ?, ?, ?)
+               (employee_id, entry_time, exit_time, meal_time, meal_max_minutes, late_tolerance_minutes, updated_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
                entry_time = VALUES(entry_time), exit_time = VALUES(exit_time),
                meal_time = VALUES(meal_time), meal_max_minutes = VALUES(meal_max_minutes),
+               late_tolerance_minutes = VALUES(late_tolerance_minutes),
                updated_by = VALUES(updated_by)'
         );
         foreach ($ids as $eid) {
@@ -322,7 +332,7 @@ function adminScheduleBulkSave(PDO $pdo) {
                 $failed[] = $eid;
                 continue;
             }
-            $up->execute([$eid, $entry, $exit, $meal, $max, $admin['id']]);
+            $up->execute([$eid, $entry, $exit, $meal, $max, $lateTol, $admin['id']]);
             $applied[] = $eid;
         }
         $pdo->commit();
