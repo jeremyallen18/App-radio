@@ -6,7 +6,7 @@
 // Esquema "doble aviso":
 //   entry_pre  = entry - 10 min   entry_late = entry + 10 min
 //   meal_pre   = meal  - 15 min
-//   exit_due   = exit             exit_late  = exit  + 15 min
+//   exit_pre   = exit  - 15 min   exit_due   = exit   exit_late = exit + 15 min
 //
 // Cada (trabajador, día, kind) se emite UNA vez (attendance_reminders_sent, PK).
 // La ventana de gracia evita disparar avisos rancios si el cron se retrasa.
@@ -85,6 +85,8 @@ function attendance_dispatch_due_reminders(PDO $pdo, ?string $onlyUserId = null)
                 'msg' => 'Tu hora de comida está por empezar (a las ' . substr($mealEff, 0, 5) . ').'];
         }
         if ($hasEntry && !$hasExit && $exitTs !== null) {
+            $due['exit_pre']  = ['target' => $exitTs - 15 * 60, 'grace' => 15 * 60,
+                'msg' => 'Tu salida es a las ' . substr($exitEff, 0, 5) . '. Prepárate para registrarla.'];
             $due['exit_due']  = ['target' => $exitTs, 'grace' => 15 * 60,
                 'msg' => 'Ya son las ' . substr($exitEff, 0, 5) . '. No olvides registrar tu salida.'];
             $due['exit_late'] = ['target' => $exitTs + 15 * 60, 'grace' => ATT_REMINDER_GRACE_MIN * 60,
