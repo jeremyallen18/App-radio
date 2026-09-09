@@ -121,7 +121,7 @@ App-radio/
 │   ├── services/        una clase por recurso del backend (llamadas HTTP)
 │   ├── models/          modelos de datos
 │   ├── shared/          widgets y utilidades compartidas
-│   └── design/          tema Material 3 oscuro propio
+│   └── design/          tema Material 3 oscuro propio (tokens, componentes, motion)
 ├── android/ ios/ windows/ linux/ web/   proyectos nativos por plataforma
 ├── pubspec.yaml
 └── hive-backend/        ← API REST PHP (ver sección 7)
@@ -160,7 +160,7 @@ RADIODOLIV_PAGINA/
 
 | Capa | Tecnología |
 |---|---|
-| Cliente | **Flutter / Dart** (SDK Dart `>=3.2.0 <4.0.0`, Material 3). Paquetes clave: `http`, `just_audio` (radio en vivo), `flutter_map` + `latlong2` (elegir ubicación), `fl_chart`, `flutter_secure_storage`, `local_auth`, `shared_preferences`, `intl` (es_MX), `share_plus` + `path_provider` (exportar reporte). |
+| Cliente | **Flutter / Dart** (SDK Dart `>=3.2.0 <4.0.0`, Material 3). Paquetes clave: `http`, `just_audio` (radio en vivo), `flutter_map` + `latlong2` (elegir ubicación y previsualizar el radio del lugar de asistencia), `fl_chart`, `flutter_secure_storage`, `local_auth`, `shared_preferences`, `intl` (es_MX), `share_plus` + `path_provider` (exportar reporte). |
 | Backend interno | **PHP 8+** sobre **Apache**, **PDO/MySQL**. Sin framework. `PHPMailer` para el OTP por correo (SMTP) y `fpdf` para el PDF de asistencia. |
 | Sitio web | **PHP 8+** sobre **Apache**, renderizado en el servidor (plantillas en `inc/partials`, datos en `inc/data/*.php`). CSS/JS propios, sin build system. |
 | Base de datos | **MySQL 8+ / 9.x**, base `hive_db`, `utf8mb4_unicode_ci`. Puerto `3306`. |

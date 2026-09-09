@@ -130,12 +130,16 @@ lib/design/
 ├── components/  app_scaffold.dart · app_button.dart · app_card.dart · app_text_field.dart
 │                state_views.dart (LoadingState/EmptyState/ErrorState) · section_header.dart
 │                stat_tile.dart · app_dialog.dart (showAppConfirmDialog) · app_badge.dart
+├── motion/      app_motion.dart  # AppFadeIn · AppPressable · SkeletonBox · transición de página
+│                                 # (bajo coste; respeta "reducir movimiento" del sistema)
 └── design.dart  # barrel: import '../design/design.dart' trae todo lo anterior
 ```
 
 **Regla de uso de color, no opinable**: `AppColors.brandNavy` y `AppColors.brandBlue` (los azules del logo) solo sirven como **relleno** (fondos, botones sólidos) — su contraste como texto/ícono sobre el fondo oscuro es de 1.48:1 y 1.94:1, muy por debajo del mínimo AA (4.5:1). Para texto, íconos, enlaces y bordes sobre fondo oscuro se usan `AppColors.accent` (5.65:1) o `AppColors.accentStrong` (7.29:1). Nunca uses `Colors.black`, `Colors.white` ni un `Color(0x...)` suelto en una pantalla — todo sale de estos tokens.
 
 ⚠️ **Ojo con `elevatedButtonTheme.minimumSize`** (`app_theme.dart`): tiene que ser un `Size` de ancho **finito** (hoy `Size(64, 50)`). `Size.fromHeight(...)` fija un ancho mínimo infinito, que revienta con `BoxConstraints... NOT NORMALIZED` en cualquier `ElevatedButton` que además reciba un `maximumSize` explícito (pasó en `home_page/teams.dart`).
+
+**Ancho de `AppButton`**: es el CTA primario (pastilla con degradado). Se estira con su contenedor pero se topa en `maxWidth` (por defecto 440) y queda centrado, así en móvil se ve casi a todo el ancho y en pantalla ancha/tablet no degenera en una cinta. Para un botón que abarque solo su contenido (acción suelta a media pantalla, no CTA de formulario) no se usa `AppButton`: se arma un botón local con el mismo lenguaje visual (ver `_SendMessageButton` en `shared/directory/colleague_profile_screen.dart`).
 
 Pantalla de referencia visual (solo debug, no es parte del flujo de usuario): `/_ComponentGallery` — ver `lib/design/gallery/component_gallery_screen.dart`.
 
