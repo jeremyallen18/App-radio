@@ -273,7 +273,7 @@ class _Dial extends StatelessWidget {
               ),
             ),
           ),
-          Icon(Icons.wifi_off_rounded, color: AppColors.textPrimary, size: 34),
+          Icon(Icons.wifi_off_rounded, color: AppColors.onBrand, size: 34),
         ],
       ),
     );

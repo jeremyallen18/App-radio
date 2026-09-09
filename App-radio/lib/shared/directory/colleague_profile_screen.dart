@@ -550,12 +550,12 @@ class _SendMessageButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.chat_bubble_outline,
-                        color: AppColors.textPrimary, size: 18),
+                        color: AppColors.onBrand, size: 18),
                     SizedBox(width: AppSpacing.sm),
                     Text(
                       'Enviar mensaje',
                       style: TextStyle(
-                        color: AppColors.textPrimary,
+                        color: AppColors.onBrand,
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
                       ),

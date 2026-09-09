@@ -137,7 +137,7 @@ class _SiteContentListScreenState extends State<SiteContentListScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(),
         backgroundColor: AppColors.brandBlue,
-        child: Icon(Icons.add, color: AppColors.textPrimary),
+        child: Icon(Icons.add, color: AppColors.onBrand),
       ),
       body: RefreshIndicator(
         color: AppColors.accent,

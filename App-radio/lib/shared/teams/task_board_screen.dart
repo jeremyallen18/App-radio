@@ -593,7 +593,7 @@ class _NewTaskButton extends StatelessWidget {
       label: const Text('Nueva'),
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.brandBlue,
-        foregroundColor: AppColors.textPrimary,
+        foregroundColor: AppColors.onBrand,
         padding:
             const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
         textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),

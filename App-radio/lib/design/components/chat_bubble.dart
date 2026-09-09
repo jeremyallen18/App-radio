@@ -59,7 +59,11 @@ class ChatBubble extends StatelessWidget {
               ),
             ),
           Text(message,
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+              style: TextStyle(
+                  // Burbuja propia = fondo azul de marca: texto en blanco en
+                  // ambos modos (textPrimary sería casi negro en modo claro).
+                  color: isMe ? AppColors.onBrand : AppColors.textPrimary,
+                  fontSize: 14)),
         ],
       ),
     );

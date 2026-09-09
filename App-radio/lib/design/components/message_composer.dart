@@ -96,7 +96,7 @@ class MessageComposer extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.all(12),
                   child: Icon(Icons.send_rounded,
-                      color: AppColors.textPrimary, size: 20),
+                      color: AppColors.onBrand, size: 20),
                 ),
               ),
             ),
