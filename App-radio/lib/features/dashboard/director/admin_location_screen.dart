@@ -518,19 +518,19 @@ class _SaveButton extends StatelessWidget {
                         height: 22,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          color: AppColors.textPrimary,
+                          color: AppColors.onBrand,
                         ),
                       )
                     : Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.save_outlined,
-                              color: AppColors.textPrimary, size: 18),
+                              color: AppColors.onBrand, size: 18),
                           SizedBox(width: AppSpacing.sm),
                           Text(
                             'Guardar lugar',
                             style: TextStyle(
-                              color: AppColors.textPrimary,
+                              color: AppColors.onBrand,
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
                             ),

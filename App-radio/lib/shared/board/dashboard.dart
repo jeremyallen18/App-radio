@@ -190,7 +190,7 @@ class DashbMemState extends State<DashbMem> {
                         label: const Text('Nueva tarea'),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.brandBlue,
-                          foregroundColor: AppColors.textPrimary,
+                          foregroundColor: AppColors.onBrand,
                           padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.md, vertical: 10),
                           textStyle: const TextStyle(

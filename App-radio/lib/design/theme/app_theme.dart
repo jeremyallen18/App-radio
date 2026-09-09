@@ -123,6 +123,24 @@ class AppTheme {
         style: TextButton.styleFrom(foregroundColor: p.accent),
       ),
 
+      // FAB siempre azul de marca con contenido blanco en ambos modos (el
+      // `ColorScheme` sin `fromSeed` no deriva un `primaryContainer` usable).
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppColors.brandBlue,
+        foregroundColor: AppColors.onBrand,
+      ),
+
+      // `FilledButton` (no cubierto por elevatedButtonTheme): mismo criterio
+      // que el botón elevado — fondo azul de marca, contenido blanco fijo.
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.brandBlue,
+          foregroundColor: AppColors.onBrand,
+          disabledBackgroundColor: p.surface,
+          disabledForegroundColor: p.textMuted,
+        ),
+      ),
+
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: p.accent,

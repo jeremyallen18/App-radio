@@ -25,7 +25,9 @@ class AppFilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color border = selected ? AppColors.accent : AppColors.surfaceBorder;
-    final Color text = selected ? AppColors.textPrimary : AppColors.textMuted;
+    // Seleccionado = fondo azul de marca (fijo): el texto/contador van en
+    // blanco en ambos modos, no en textPrimary (casi negro en modo claro).
+    final Color text = selected ? AppColors.onBrand : AppColors.textMuted;
 
     return Material(
       color: selected ? AppColors.brandNavy : AppColors.surface,
@@ -58,7 +60,7 @@ class AppFilterChip extends StatelessWidget {
                 Text(
                   '$count',
                   style: TextStyle(
-                    color: selected ? AppColors.accentStrong : AppColors.textMuted,
+                    color: selected ? AppColors.onBrand : AppColors.textMuted,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
