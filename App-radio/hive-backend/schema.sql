@@ -294,6 +294,7 @@ CREATE TABLE IF NOT EXISTS employee_schedules (
   exit_time TIME NOT NULL DEFAULT '17:00:00',
   meal_time TIME NOT NULL DEFAULT '14:00:00',
   meal_max_minutes INT NOT NULL DEFAULT 60,
+  late_tolerance_minutes INT NOT NULL DEFAULT 15,
   updated_by CHAR(24) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -307,6 +308,7 @@ CREATE TABLE IF NOT EXISTS attendance_schedule_snapshots (
   exit_time TIME NOT NULL,
   meal_time TIME NOT NULL,
   meal_max_minutes INT NOT NULL,
+  late_tolerance_minutes INT NOT NULL DEFAULT 15,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (employee_id, work_date),
   FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE
@@ -363,6 +365,17 @@ CREATE TABLE IF NOT EXISTS attendance_location (
   label VARCHAR(255) NULL,
   updated_by CHAR(24) NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Deduplicación de recordatorios de asistencia (migración 031). Un aviso por
+-- (trabajador, día, tipo). Ver hive-backend/attendance_reminders.php.
+CREATE TABLE IF NOT EXISTS attendance_reminders_sent (
+  employee_id CHAR(24)    NOT NULL,
+  work_date   DATE        NOT NULL,
+  kind        VARCHAR(16) NOT NULL,
+  sent_at     DATETIME    NOT NULL,
+  PRIMARY KEY (employee_id, work_date, kind),
+  FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- Permisos, vacaciones e incapacidades (ver migrations/006_leave_requests.sql
