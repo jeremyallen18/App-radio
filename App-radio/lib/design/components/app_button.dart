@@ -60,18 +60,21 @@ class AppButton extends StatelessWidget {
                   opacity: enabled ? 1 : 0.5,
                   child: Center(
                     child: loading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 22,
                             height: 22,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.5,
-                              color: AppColors.textPrimary,
+                              color: AppColors.onBrand,
                             ),
                           )
                         : Text(
                             label,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
+                            style: TextStyle(
+                              // Fondo azul de marca (no cambia con el modo):
+                              // el texto queda fijo en blanco, no en
+                              // textPrimary (casi negro en modo claro).
+                              color: AppColors.onBrand,
                               fontWeight: FontWeight.w700,
                               fontSize: 16,
                             ),

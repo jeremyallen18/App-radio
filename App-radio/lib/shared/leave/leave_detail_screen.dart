@@ -72,7 +72,8 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
     } on LeaveException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
 
@@ -86,11 +87,16 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
       body: Builder(
         builder: (context) {
           if (_loading) return const LoadingState();
-          if (_error != null) return ErrorState(message: _error!, onRetry: _load);
+          if (_error != null) {
+            return ErrorState(message: _error!, onRetry: _load);
+          }
           final r = _req!;
           return ListView(
             padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxl,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.xxl,
             ),
             children: [
               Row(
@@ -99,7 +105,7 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   Text(
                     r.type.label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
@@ -116,11 +122,16 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
                     _kv('Periodo solicitado', r.requestedRangeLabel),
                     _kv('Días solicitados', '${r.requestedDays}'),
                     if (r.approvedStart != null) ...[
-                      const Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
-                      _kv('Periodo autorizado', r.approvedRangeLabel, highlight: true),
-                      _kv('Días autorizados', '${r.approvedDays ?? '--'}', highlight: true),
+                      Divider(
+                          color: AppColors.surfaceBorder,
+                          height: AppSpacing.xl),
+                      _kv('Periodo autorizado', r.approvedRangeLabel,
+                          highlight: true),
+                      _kv('Días autorizados', '${r.approvedDays ?? '--'}',
+                          highlight: true),
                     ],
-                    const Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
+                    Divider(
+                        color: AppColors.surfaceBorder, height: AppSpacing.xl),
                     _kv('Enviada', LeaveRequest.fmtDate(r.createdAt)),
                     if (r.approvedAt != null)
                       _kv('Decisión', LeaveRequest.fmtDate(r.approvedAt)),
@@ -154,15 +165,19 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
                 AppCard(
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => EvidenceViewer(url: LeaveApi.evidenceUrl(r.id)),
+                      builder: (_) =>
+                          EvidenceViewer(url: LeaveApi.evidenceUrl(r.id)),
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
                       Icon(Icons.attachment, color: AppColors.accent),
                       SizedBox(width: AppSpacing.md),
-                      Expanded(child: Text('Ver evidencia adjunta',
-                          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600))),
+                      Expanded(
+                          child: Text('Ver evidencia adjunta',
+                              style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600))),
                       Icon(Icons.chevron_right, color: AppColors.textMuted),
                     ],
                   ),
@@ -174,7 +189,8 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
                   onPressed: _busy ? null : _cancel,
                   icon: const Icon(Icons.cancel_outlined),
                   label: const Text('Cancelar solicitud'),
-                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.error),
                 ),
               ],
             ],
@@ -191,14 +207,16 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: Text(k, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+            child: Text(k,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
           ),
           Expanded(
             child: Text(
               v,
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: highlight ? AppColors.accentStrong : AppColors.textPrimary,
+                color:
+                    highlight ? AppColors.accentStrong : AppColors.textPrimary,
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
               ),
@@ -230,7 +248,8 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         status.label,
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
+        style:
+            TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -257,7 +276,8 @@ class _NoteCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(body, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+          Text(body,
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
         ],
       ),
     );

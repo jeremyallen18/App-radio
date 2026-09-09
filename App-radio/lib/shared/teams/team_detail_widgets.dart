@@ -45,19 +45,23 @@ class TeamDomainCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.workspaces_outline, color: AppColors.accent, size: 20),
+              Icon(Icons.workspaces_outline, color: AppColors.accent, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   domain['name'] ?? '',
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 10),
           if (members.isEmpty)
-            const Text("Sin miembros todavía", style: TextStyle(color: AppColors.textMuted, fontSize: 13))
+            Text("Sin miembros todavía",
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13))
           else
             Wrap(
               spacing: 6,
@@ -67,10 +71,12 @@ class TeamDomainCard extends StatelessWidget {
                 return Chip(
                   backgroundColor: AppColors.surface,
                   visualDensity: VisualDensity.compact,
-                  avatar: const Icon(Icons.person, size: 14, color: AppColors.textMuted),
+                  avatar:
+                      Icon(Icons.person, size: 14, color: AppColors.textMuted),
                   label: Text(
                     _shortName(s),
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
+                    style:
+                        TextStyle(color: AppColors.textPrimary, fontSize: 12),
                   ),
                 );
               }).toList(),
@@ -78,14 +84,17 @@ class TeamDomainCard extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              _statusPill(Icons.pending_actions, "$pendingCount pendientes", AppColors.error),
+              _statusPill(Icons.pending_actions, "$pendingCount pendientes",
+                  AppColors.error),
               const SizedBox(width: 8),
-              _statusPill(Icons.check_circle, "$doneCount hechas", AppColors.success),
+              _statusPill(
+                  Icons.check_circle, "$doneCount hechas", AppColors.success),
             ],
           ),
           const SizedBox(height: 10),
           if (tasks.isEmpty)
-            const Text("Sin tareas en esta área todavía", style: TextStyle(color: AppColors.textMuted, fontSize: 13))
+            Text("Sin tareas en esta área todavía",
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13))
           else
             Column(
               children: tasks.map<Widget>((t) {
@@ -97,7 +106,9 @@ class TeamDomainCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(
-                        done ? Icons.check_circle : Icons.radio_button_unchecked,
+                        done
+                            ? Icons.check_circle
+                            : Icons.radio_button_unchecked,
                         size: 18,
                         color: done ? AppColors.success : AppColors.error,
                       ),
@@ -109,14 +120,18 @@ class TeamDomainCard extends StatelessWidget {
                             Text(
                               t['description'] ?? '',
                               style: TextStyle(
-                                color: done ? AppColors.textMuted : AppColors.textPrimary,
+                                color: done
+                                    ? AppColors.textMuted
+                                    : AppColors.textPrimary,
                                 fontSize: 14,
-                                decoration: done ? TextDecoration.lineThrough : null,
+                                decoration:
+                                    done ? TextDecoration.lineThrough : null,
                               ),
                             ),
                             Text(
                               "Para: ${_shortName(assignedTo)}  ·  Vence: ${t['deadline']}",
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                              style: TextStyle(
+                                  color: AppColors.textMuted, fontSize: 11),
                             ),
                           ],
                         ),
@@ -154,7 +169,9 @@ class TeamDomainCard extends StatelessWidget {
         children: [
           Icon(icon, size: 13, color: color),
           const SizedBox(width: 4),
-          Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+          Text(label,
+              style: TextStyle(
+                  color: color, fontSize: 11, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -195,19 +212,35 @@ class TeamActionsCard extends StatelessWidget {
               runSpacing: 12,
               children: [
                 _actionButton("Salir", Icons.logout, () {
-                  Navigator.pushReplacement(context, MaterialPageRoute(
-                    builder: (context) => ApplyLeave(teamid: teamId2,),),);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ApplyLeave(
+                        teamid: teamId2,
+                      ),
+                    ),
+                  );
                 }),
                 _actionButton("Renunciar", Icons.person_remove_outlined, () {
-                  Navigator.pushReplacement(context,
-                      MaterialPageRoute(builder: (context) =>
-                          Mresign(teamId: teamId,emailId:leaderEmail)));
+                  Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              Mresign(teamId: teamId, emailId: leaderEmail)));
                 }),
                 _actionButton("Chat", Icons.chat_bubble_outline, () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(peerEmail: leaderEmail!, peerName: "Lider del equipo")));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ChatScreen(
+                              peerEmail: leaderEmail!,
+                              peerName: "Lider del equipo")));
                 }),
                 _actionButton("Recursos", Icons.folder_outlined, () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => ResourceM(teamId!)));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ResourceM(teamId!)));
                 }),
               ],
             )
@@ -217,24 +250,36 @@ class TeamActionsCard extends StatelessWidget {
               runSpacing: 12,
               children: [
                 _actionButton("Chat", Icons.chat_bubble_outline, () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(peerEmail: leaderEmail!, peerName: "Lider del equipo")));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ChatScreen(
+                              peerEmail: leaderEmail!,
+                              peerName: "Lider del equipo")));
                 }),
                 _actionButton("Recursos", Icons.folder_outlined, () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => ResourceM(teamId!)));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ResourceM(teamId!)));
                 }),
-                _actionButton("Gestionar miembros", Icons.manage_accounts_outlined, () {
-                  Navigator.pushReplacement(context,
-                      MaterialPageRoute(builder: (context) =>
-                          Resign(teamId: teamId)));
+                _actionButton(
+                    "Gestionar miembros", Icons.manage_accounts_outlined, () {
+                  Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => Resign(teamId: teamId)));
                 }),
-                _actionButton("Eliminar equipo", Icons.delete_outline,
-                    onDeleteTeam, danger: true),
+                _actionButton(
+                    "Eliminar equipo", Icons.delete_outline, onDeleteTeam,
+                    danger: true),
               ],
             ),
     );
   }
 
-  Widget _actionButton(String label, IconData icon, VoidCallback onTap, {bool danger = false}) {
+  Widget _actionButton(String label, IconData icon, VoidCallback onTap,
+      {bool danger = false}) {
     return ElevatedButton.icon(
       onPressed: onTap,
       style: danger
@@ -290,15 +335,18 @@ class TeamTaskPickerSheet extends StatelessWidget {
             ),
             Text(
               "Elige la tarea a completar",
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700),
             ),
             Text(
               "Área: ${domain['name']}",
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
             ),
             const SizedBox(height: 12),
             if (pending.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(vertical: 20),
                 child: Text(
                   "No hay tareas pendientes en esta área.",
@@ -310,23 +358,29 @@ class TeamTaskPickerSheet extends StatelessWidget {
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: pending.length,
-                  separatorBuilder: (_, __) => const Divider(color: AppColors.surfaceBorder, height: 1),
+                  separatorBuilder: (_, __) =>
+                      Divider(color: AppColors.surfaceBorder, height: 1),
                   itemBuilder: (context, i) {
                     final taskIndex = pending[i];
                     final t = tasks[taskIndex];
                     final assignedTo = t['assignedTo'] as String;
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.radio_button_unchecked, color: AppColors.error),
+                      leading: Icon(Icons.radio_button_unchecked,
+                          color: AppColors.error),
                       title: Text(
                         t['description'] ?? '',
-                        style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w600),
                       ),
                       subtitle: Text(
                         "Para: ${_shortName(assignedTo)}  ·  Vence: ${t['deadline']}",
-                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        style:
+                            TextStyle(color: AppColors.textMuted, fontSize: 12),
                       ),
-                      trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
+                      trailing:
+                          Icon(Icons.chevron_right, color: AppColors.textMuted),
                       onTap: () {
                         Navigator.pop(context);
                         onSelected(taskIndex);

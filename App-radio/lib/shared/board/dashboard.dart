@@ -190,7 +190,7 @@ class DashbMemState extends State<DashbMem> {
                         label: const Text('Nueva tarea'),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.brandBlue,
-                          foregroundColor: AppColors.textPrimary,
+                          foregroundColor: AppColors.onBrand,
                           padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.md, vertical: 10),
                           textStyle: const TextStyle(
@@ -198,7 +198,7 @@ class DashbMemState extends State<DashbMem> {
                         ),
                       ),
                     ),
-                    const Text(
+                    Text(
                       'Encarga una tarea a un departamento: le llega a su manager, que la reparte. '
                       'O entra a un equipo para ver su tablero.',
                       style:
@@ -232,7 +232,7 @@ class DashbMemState extends State<DashbMem> {
                               Expanded(
                                 child: Text(
                                   d.name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: AppColors.textPrimary,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 15,
@@ -241,7 +241,7 @@ class DashbMemState extends State<DashbMem> {
                               ),
                               AppBadge(label: '${d.employeeCount} empleados'),
                               const SizedBox(width: AppSpacing.sm),
-                              const Icon(Icons.chevron_right,
+                              Icon(Icons.chevron_right,
                                   color: AppColors.textMuted),
                             ],
                           ),
@@ -281,8 +281,8 @@ class DashbMemState extends State<DashbMem> {
                         profile.role == AppRole.manager
                             ? 'Crea tareas y subtareas para tu equipo y sigue su avance.'
                             : 'Revisa las tareas de tu equipo y márcalas como completadas.',
-                        style: const TextStyle(
-                            color: AppColors.textMuted, fontSize: 13),
+                        style:
+                            TextStyle(color: AppColors.textMuted, fontSize: 13),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                     ],

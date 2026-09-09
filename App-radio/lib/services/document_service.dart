@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
@@ -22,6 +24,13 @@ class DownloadedDocument {
   final Uint8List bytes;
   final String filename;
   final String? mime;
+}
+
+/// Documento escrito en un archivo local temporal, listo para abrirse con el
+/// visor nativo del sistema (`OpenFilex`).
+class OpenedDocument {
+  OpenedDocument(this.path);
+  final String path;
 }
 
 /// Cliente del apartado "Documentos" de un equipo (endpoints /document/* en
@@ -87,6 +96,27 @@ class DocumentService {
       filename: doc.originalName,
       mime: doc.mime,
     );
+  }
+
+  /// Limpia los caracteres que no son válidos como nombre de archivo en el
+  /// sistema de archivos local (se usa para el archivo temporal antes de
+  /// abrirlo con el visor nativo).
+  static String sanitizeFileName(String name) =>
+      name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+
+  /// Descarga el documento y lo escribe en la carpeta temporal del
+  /// dispositivo; devuelve la ruta local para abrirlo con `OpenFilex`. Para
+  /// "guardar como" (elegir carpeta) usa [download].
+  ///
+  /// Lanza [DocumentException] con un mensaje en español si el servidor no
+  /// devuelve el archivo (404 → "El archivo ya no está disponible.").
+  static Future<OpenedDocument> fetchToTemp(TeamDocument doc) async {
+    final DownloadedDocument dl = await download(doc);
+    final dir = await getTemporaryDirectory();
+    final safe = sanitizeFileName(doc.originalName);
+    final file = File('${dir.path}/${doc.id}_$safe');
+    await file.writeAsBytes(dl.bytes, flush: true);
+    return OpenedDocument(file.path);
   }
 
   static Future<void> delete(String documentId) async {

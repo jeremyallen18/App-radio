@@ -198,6 +198,28 @@ CREATE TABLE IF NOT EXISTS documents (
   FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Documentos por departamento (RBAC de la organización). Paralelo a
+-- `documents` (por equipo legacy). Ver migración
+-- migrations/032_department_documents.sql. Director sube/renombra/elimina en
+-- cualquier departamento; el manager solo en el suyo; el resto solo lista y
+-- descarga los de su departamento. El archivo vive en
+-- private/department_documents/ y solo se entrega por
+-- GET /department-documents/{id}/download.
+CREATE TABLE IF NOT EXISTS department_documents (
+  id CHAR(24) PRIMARY KEY,
+  department_id CHAR(24) NOT NULL,
+  doc_name VARCHAR(255) NOT NULL,
+  stored_path VARCHAR(255) NOT NULL,
+  original_name VARCHAR(255) NOT NULL,
+  mime VARCHAR(150) NULL,
+  file_size INT NOT NULL DEFAULT 0,
+  uploaded_by VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_deptdocs_dept (department_id, created_at),
+  FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS leader_messages (
   id INT AUTO_INCREMENT PRIMARY KEY,
   team_id CHAR(24) NOT NULL,

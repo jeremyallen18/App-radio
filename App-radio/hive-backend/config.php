@@ -127,6 +127,15 @@ if (!is_dir(DOCUMENT_DIR)) {
     @mkdir(DOCUMENT_DIR, 0700, true);
 }
 
+// Documentos por departamento (RBAC de la organización). Mismo trato privado
+// que DOCUMENT_DIR: solo se entregan por
+// GET /department-documents/{id}/download tras comprobar que quien pide
+// pertenece a ese departamento.
+define('DEPARTMENT_DOCUMENT_DIR', __DIR__ . '/private/department_documents/');
+if (!is_dir(DEPARTMENT_DOCUMENT_DIR)) {
+    @mkdir(DEPARTMENT_DOCUMENT_DIR, 0700, true);
+}
+
 // Detecta http vs https del request actual en vez de asumir uno fijo: en
 // local (XAMPP) es http, en Hostinger detrás de su proxy/SSL es https. Si
 // se sirve como http y se anuncia https (o viceversa), el navegador/WebView

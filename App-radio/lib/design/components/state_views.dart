@@ -21,13 +21,12 @@ class LoadingState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(color: AppColors.accent),
+            CircularProgressIndicator(color: AppColors.accent),
             if (message != null) ...[
               const SizedBox(height: AppSpacing.lg),
               Text(
                 message!,
-                style:
-                    const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -67,7 +66,7 @@ class EmptyState extends StatelessWidget {
               const SizedBox(height: AppSpacing.lg),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
@@ -78,8 +77,7 @@ class EmptyState extends StatelessWidget {
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   message!,
-                  style:
-                      const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -118,11 +116,11 @@ class ErrorState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 40, color: AppColors.error),
+              Icon(Icons.error_outline, size: 40, color: AppColors.error),
               const SizedBox(height: AppSpacing.lg),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
@@ -132,8 +130,7 @@ class ErrorState extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Text(
                 message,
-                style:
-                    const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                 textAlign: TextAlign.center,
               ),
               if (onRetry != null) ...[

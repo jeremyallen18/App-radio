@@ -164,7 +164,8 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
                   photoUrl: user.photoUrl,
                   avatarSeed: user.email,
                   badges: [
-                    AppBadge(label: user.role.label, variant: AppBadgeVariant.info),
+                    AppBadge(
+                        label: user.role.label, variant: AppBadgeVariant.info),
                     if (user.department != null)
                       AppBadge(label: user.department!.name),
                     if (user.leadsOwnDepartment)
@@ -197,18 +198,17 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
-
                 if (_error != null) ...[
                   ErrorState(message: _error!, onRetry: _load),
                   const SizedBox(height: AppSpacing.xl),
                 ],
-
                 const SectionHeader(title: 'Su área'),
                 if (user.department == null)
-                  const AppCard(
+                  AppCard(
                     child: Text(
                       'Todavía no pertenece a ningún departamento.',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 13),
                     ),
                   )
                 else
@@ -217,15 +217,13 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
                     onTap: () => _openArea(user.department!),
                   ),
                 const SizedBox(height: AppSpacing.xl),
-
                 const SectionHeader(title: 'Equipos'),
                 _TeamsSection(profile: _profile, loading: _loading),
-
                 if (_profile?.joinedAt != null) ...[
                   const SizedBox(height: AppSpacing.xl),
                   Text(
                     'En Radio Doliv desde ${_formatMonthYear(_profile!.joinedAt!)}',
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                   ),
                 ],
               ],
@@ -238,8 +236,18 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
 }
 
 const List<String> _months = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
 ];
 
 String _formatMonthYear(DateTime date) =>
@@ -255,14 +263,14 @@ class _ContactRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.mail_outline, size: 18, color: AppColors.textMuted),
+        Icon(Icons.mail_outline, size: 18, color: AppColors.textMuted),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Text(
             email,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
           ),
         ),
         IconButton(
@@ -289,12 +297,12 @@ class _ControlNumberRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.badge_outlined, size: 18, color: AppColors.textMuted),
+        Icon(Icons.badge_outlined, size: 18, color: AppColors.textMuted),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
           ),
         ),
         if (onEdit != null)
@@ -341,8 +349,7 @@ class _ControlNumberDialogState extends State<_ControlNumberDialog> {
   @override
   Widget build(BuildContext context) {
     final n = _parsed;
-    final preview =
-        n != null ? 'SPPRD-${n.toString().padLeft(7, '0')}' : '—';
+    final preview = n != null ? 'SPPRD-${n.toString().padLeft(7, '0')}' : '—';
     return AlertDialog(
       title: const Text('Número de control'),
       content: Column(
@@ -352,7 +359,7 @@ class _ControlNumberDialogState extends State<_ControlNumberDialog> {
           Text(
             'Corrige el número de ${widget.personName}. Es único: si ya lo '
             'tiene otra persona, el servidor lo rechaza.',
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
           const SizedBox(height: AppSpacing.md),
           AppTextField(
@@ -364,7 +371,7 @@ class _ControlNumberDialogState extends State<_ControlNumberDialog> {
           const SizedBox(height: AppSpacing.sm),
           Text(
             preview,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w700,
               fontSize: 15,
@@ -375,13 +382,12 @@ class _ControlNumberDialogState extends State<_ControlNumberDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar',
-              style: TextStyle(color: AppColors.textMuted)),
+          child: Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
         ),
         TextButton(
           onPressed: n == null ? null : () => Navigator.pop(context, n),
-          child: const Text('Guardar',
-              style: TextStyle(color: AppColors.accentStrong)),
+          child:
+              Text('Guardar', style: TextStyle(color: AppColors.accentStrong)),
         ),
       ],
     );
@@ -404,26 +410,26 @@ class _AreaCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.apartment_outlined, size: 20, color: AppColors.accent),
+              Icon(Icons.apartment_outlined, size: 20, color: AppColors.accent),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   department.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
                   ),
                 ),
               ),
-              const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
+              Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
             ],
           ),
           if (description.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
               description,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
             ),
           ],
           const SizedBox(height: AppSpacing.sm),
@@ -431,7 +437,7 @@ class _AreaCard extends StatelessWidget {
             department.employeeCount == 1
                 ? '1 persona en el área'
                 : '${department.employeeCount} personas en el área',
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
         ],
       ),
@@ -451,14 +457,14 @@ class _TeamsSection extends StatelessWidget {
       return AppCard(
         child: Text(
           loading ? 'Cargando equipos…' : 'No pudimos cargar sus equipos.',
-          style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
         ),
       );
     }
 
     final teams = profile!.teams;
     if (teams.isEmpty) {
-      return const AppCard(
+      return AppCard(
         child: Text(
           'Todavía no participa en ningún equipo.',
           style: TextStyle(color: AppColors.textMuted, fontSize: 13),
@@ -474,17 +480,18 @@ class _TeamsSection extends StatelessWidget {
       child: Column(
         children: [
           for (int i = 0; i < teams.length; i++) ...[
-            if (i > 0) const Divider(height: 1, color: AppColors.surfaceBorder),
+            if (i > 0) Divider(height: 1, color: AppColors.surfaceBorder),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
               child: Row(
                 children: [
-                  const Icon(Icons.groups_outlined, size: 18, color: AppColors.textMuted),
+                  Icon(Icons.groups_outlined,
+                      size: 18, color: AppColors.textMuted),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(
                       teams[i].name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -492,7 +499,8 @@ class _TeamsSection extends StatelessWidget {
                     ),
                   ),
                   if (teams[i].isLeader)
-                    const AppBadge(label: 'Líder', variant: AppBadgeVariant.success),
+                    const AppBadge(
+                        label: 'Líder', variant: AppBadgeVariant.success),
                 ],
               ),
             ),
@@ -533,7 +541,7 @@ class _SendMessageButton extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Padding(
+              child: Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: AppSpacing.xl,
                   vertical: 12,
@@ -542,12 +550,12 @@ class _SendMessageButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.chat_bubble_outline,
-                        color: AppColors.textPrimary, size: 18),
+                        color: AppColors.onBrand, size: 18),
                     SizedBox(width: AppSpacing.sm),
                     Text(
                       'Enviar mensaje',
                       style: TextStyle(
-                        color: AppColors.textPrimary,
+                        color: AppColors.onBrand,
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
                       ),

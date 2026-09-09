@@ -48,7 +48,8 @@ class _JoinTeamScreenState extends State<JoinTeamScreen> {
         Navigator.pushReplacementNamed(context, MyRoutes.dashbMemRoutes);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo unir al equipo. Verifica el código.')),
+          const SnackBar(
+              content: Text('No se pudo unir al equipo. Verifica el código.')),
         );
       }
     } catch (_) {
@@ -69,13 +70,16 @@ class _JoinTeamScreenState extends State<JoinTeamScreen> {
         child: Column(
           children: [
             const SizedBox(height: 80),
-            const Text(
+            Text(
               "Unirse a equipo",
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 32, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               "Pídele el código a quien lidera el equipo",
               style: TextStyle(color: AppColors.textMuted, fontSize: 14),
               textAlign: TextAlign.center,
@@ -83,7 +87,8 @@ class _JoinTeamScreenState extends State<JoinTeamScreen> {
             const SizedBox(height: AppSpacing.xl),
             AppTextField(
               controller: teamCodeController,
-              prefixIcon: const Icon(Icons.group_outlined, color: AppColors.textMuted),
+              prefixIcon:
+                  Icon(Icons.group_outlined, color: AppColors.textMuted),
               hintText: "Código de equipo",
             ),
             const SizedBox(height: AppSpacing.lg),

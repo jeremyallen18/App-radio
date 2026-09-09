@@ -146,7 +146,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
     if (picked != null) setState(() => _date = picked);
   }
 
-  Future<void> _pickTime(void Function(TimeOfDay) onPicked, TimeOfDay? initial) async {
+  Future<void> _pickTime(
+      void Function(TimeOfDay) onPicked, TimeOfDay? initial) async {
     final picked = await showTimePicker(
       context: context,
       initialTime: initial ?? const TimeOfDay(hour: 9, minute: 0),
@@ -157,7 +158,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
   Future<void> _pickLocation() async {
     final result = await Navigator.of(context).push<({double lat, double lng})>(
       MaterialPageRoute(
-        builder: (_) => LocationPickerMap(initialLatitude: _lat, initialLongitude: _lng),
+        builder: (_) =>
+            LocationPickerMap(initialLatitude: _lat, initialLongitude: _lng),
       ),
     );
     if (result != null) {
@@ -182,7 +184,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
       if (!_byAreas || _selectedAreas.isEmpty) {
         return 'Un evento con ubicación debe tener áreas asignadas.';
       }
-      if (_lat == null || _lng == null) return 'Marca la ubicación del evento en el mapa.';
+      if (_lat == null || _lng == null) {
+        return 'Marca la ubicación del evento en el mapa.';
+      }
       if (_entryTime == null) return 'Indica la hora de entrada del evento.';
     }
     return null;
@@ -203,7 +207,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
       'description': _description.text.trim(),
       'scope': _byAreas ? 'areas' : 'general',
       'locationText': _locationText.text.trim(),
-      'reminderOffsets': (_reminderOffsets.toList()..sort((a, b) => b - a)).join(','),
+      'reminderOffsets':
+          (_reminderOffsets.toList()..sort((a, b) => b - a)).join(','),
       if (_startTime != null) 'startTime': _fmtTime(_startTime!),
       if (_endTime != null) 'endTime': _fmtTime(_endTime!),
       if (_byAreas) 'areas': _selectedAreas.toList(),
@@ -260,7 +265,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
               controller: _title,
               hintText: 'Título del evento',
               prefixIcon: const Icon(Icons.event_outlined),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Escribe un título.' : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Escribe un título.' : null,
             ),
             const SizedBox(height: AppSpacing.md),
             AppTextField(
@@ -298,9 +304,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
                   : null,
             ),
             const SizedBox(height: AppSpacing.xl),
-
             const SectionHeader(title: 'Recordatorios'),
-            const Text(
+            Text(
               'Se avisará a la audiencia estos días antes del evento.',
               style: TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
@@ -320,7 +325,6 @@ class _EventFormScreenState extends State<EventFormScreen> {
               ],
             ),
             const SizedBox(height: AppSpacing.xl),
-
             const SectionHeader(title: 'Alcance'),
             Wrap(
               spacing: AppSpacing.sm,
@@ -352,7 +356,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
                   child: Center(child: CircularProgressIndicator()),
                 )
               else if (_departments.isEmpty)
-                const Text(
+                Text(
                   'No se pudieron cargar los departamentos. Revisa la conexión.',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 )
@@ -366,14 +370,15 @@ class _EventFormScreenState extends State<EventFormScreen> {
                         label: d.name,
                         selected: _selectedAreas.contains(d.id),
                         onTap: () => setState(() {
-                          if (!_selectedAreas.remove(d.id)) _selectedAreas.add(d.id);
+                          if (!_selectedAreas.remove(d.id)) {
+                            _selectedAreas.add(d.id);
+                          }
                         }),
                       ),
                   ],
                 ),
             ],
             const SizedBox(height: AppSpacing.xl),
-
             const SectionHeader(title: 'Ubicación'),
             AppCard(
               child: Column(
@@ -381,14 +386,17 @@ class _EventFormScreenState extends State<EventFormScreen> {
                 children: [
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text(
+                    title: Text(
                       'Con ubicación',
-                      style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600),
                     ),
-                    subtitle: const Text(
+                    subtitle: Text(
                       'Cambia el lugar y la hora de entrada de las áreas asignadas '
                       'solo ese día. Las áreas no incluidas siguen igual.',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                     value: _hasLocation,
                     onChanged: _byAreas
@@ -396,12 +404,13 @@ class _EventFormScreenState extends State<EventFormScreen> {
                         : null,
                   ),
                   if (!_byAreas)
-                    const Text(
+                    Text(
                       'Primero elige "Áreas específicas" para poder añadir ubicación.',
                       style: TextStyle(color: AppColors.warning, fontSize: 12),
                     ),
                   if (_hasLocation) ...[
-                    const Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
+                    Divider(
+                        color: AppColors.surfaceBorder, height: AppSpacing.xl),
                     _PickerRow(
                       icon: Icons.map_outlined,
                       label: 'Punto en el mapa',
@@ -413,7 +422,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
                     const SizedBox(height: AppSpacing.md),
                     Text(
                       'Radio permitido: ${_radiusM.round()} m',
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                     Slider(
                       value: _radiusM,
@@ -433,7 +443,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
                     _PickerRow(
                       icon: Icons.login,
                       label: 'Hora de entrada del evento',
-                      value: _entryTime != null ? _fmtTime(_entryTime!) : 'Elegir hora',
+                      value: _entryTime != null
+                          ? _fmtTime(_entryTime!)
+                          : 'Elegir hora',
                       onTap: () => _pickTime((t) => _entryTime = t, _entryTime),
                     ),
                   ],
@@ -479,14 +491,15 @@ class _PickerRow extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
               ),
             ),
             Text(
               value,
-              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                  color: AppColors.textPrimary, fontWeight: FontWeight.w600),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.textMuted),
+            Icon(Icons.chevron_right, color: AppColors.textMuted),
           ],
         ),
       ),

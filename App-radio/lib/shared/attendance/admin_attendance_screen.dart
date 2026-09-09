@@ -64,7 +64,9 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
 
   bool get _isToday {
     final now = DateTime.now();
-    return _date.year == now.year && _date.month == now.month && _date.day == now.day;
+    return _date.year == now.year &&
+        _date.month == now.month &&
+        _date.day == now.day;
   }
 
   @override
@@ -100,11 +102,12 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.event, size: 16, color: AppColors.textMuted),
+                    Icon(Icons.event, size: 16, color: AppColors.textMuted),
                     const SizedBox(width: AppSpacing.sm),
                     Text(
                       _isToday ? 'Hoy' : _fmtDate(_date),
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 13),
                     ),
                   ],
                 ),
@@ -150,10 +153,12 @@ class _SummaryStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    int count(bool Function(AdminAttendanceRow) test) => rows.where(test).length;
+    int count(bool Function(AdminAttendanceRow) test) =>
+        rows.where(test).length;
     final enJornada = count((r) => r.day.state == AttendanceState.enJornada);
     final enComida = count((r) => r.day.state == AttendanceState.enComida);
-    final completo = count((r) => r.day.state == AttendanceState.jornadaTerminada);
+    final completo =
+        count((r) => r.day.state == AttendanceState.jornadaTerminada);
     final sinEntrada = count((r) => r.day.state == AttendanceState.sinEntrada);
     final tarde = count((r) => r.day.isLate);
     final excedidas = count((r) => r.day.mealExceeded);
@@ -181,9 +186,10 @@ class _SummaryStrip extends StatelessWidget {
       children: [
         Text(
           '$value',
-          style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 20),
+          style: TextStyle(
+              color: color, fontWeight: FontWeight.w800, fontSize: 20),
         ),
-        Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+        Text(label, style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
       ],
     );
   }
@@ -224,7 +230,7 @@ class _EmployeeRowCard extends StatelessWidget {
                   children: [
                     Text(
                       row.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
@@ -233,13 +239,15 @@ class _EmployeeRowCard extends StatelessWidget {
                     if ((row.position ?? '').isNotEmpty)
                       Text(
                         row.position!,
-                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        style:
+                            TextStyle(color: AppColors.textMuted, fontSize: 12),
                       ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -260,7 +268,8 @@ class _EmployeeRowCard extends StatelessWidget {
             children: [
               _cell('Entrada', day.entrada ?? '--:--',
                   warn: day.isLate, warnText: day.isLate ? 'tarde' : null),
-              _cell('Comida', comida, warn: day.mealExceeded,
+              _cell('Comida', comida,
+                  warn: day.mealExceeded,
                   warnText: day.mealExceeded ? 'excedida' : null),
               _cell('Salida', day.salida ?? '--:--'),
               _cell('Trabajado', day.workedLabel ?? '—'),
@@ -268,7 +277,7 @@ class _EmployeeRowCard extends StatelessWidget {
           ),
           if (!row.hasSchedule) ...[
             const SizedBox(height: AppSpacing.sm),
-            const Text(
+            Text(
               'Sin horario asignado',
               style: TextStyle(color: AppColors.warning, fontSize: 11),
             ),
@@ -278,12 +287,14 @@ class _EmployeeRowCard extends StatelessWidget {
     );
   }
 
-  Widget _cell(String label, String value, {bool warn = false, String? warnText}) {
+  Widget _cell(String label, String value,
+      {bool warn = false, String? warnText}) {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
+          Text(label,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
           const SizedBox(height: 2),
           Text(
             value,
@@ -294,7 +305,8 @@ class _EmployeeRowCard extends StatelessWidget {
             ),
           ),
           if (warnText != null)
-            Text(warnText, style: const TextStyle(color: AppColors.warning, fontSize: 9)),
+            Text(warnText,
+                style: TextStyle(color: AppColors.warning, fontSize: 9)),
         ],
       ),
     );

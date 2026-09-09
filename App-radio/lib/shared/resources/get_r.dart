@@ -47,8 +47,7 @@ class _PostTextScreenState extends State<PostTextScreen> {
     setState(() => _postingImage = true);
     String storedValue = await secureStorage.readSecureData(key);
     try {
-      var apiUrl =
-          '$kBaseUrl/image/addImage';
+      var apiUrl = '$kBaseUrl/image/addImage';
 
       var headers = {
         'Authorization': storedValue,
@@ -61,7 +60,6 @@ class _PostTextScreenState extends State<PostTextScreen> {
       request.fields.addAll({
         'imgName': _imageController.text,
         'teamId': widget.teamId,
-
       });
       debugPrint(widget.teamId);
 
@@ -79,10 +77,13 @@ class _PostTextScreenState extends State<PostTextScreen> {
           const SnackBar(content: Text('Imagen publicada')),
         );
       } else {
-        debugPrint('Failed to upload image. Status code: ${response.statusCode}');
+        debugPrint(
+            'Failed to upload image. Status code: ${response.statusCode}');
         debugPrint(response.reasonPhrase);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo subir la imagen (${response.statusCode})')),
+          SnackBar(
+              content:
+                  Text('No se pudo subir la imagen (${response.statusCode})')),
         );
       }
     } catch (e) {
@@ -100,7 +101,7 @@ class _PostTextScreenState extends State<PostTextScreen> {
           _postingImage = false;
         });
       }
-     }
+    }
   }
 
   Future<void> postText() async {
@@ -121,9 +122,7 @@ class _PostTextScreenState extends State<PostTextScreen> {
       };
 
       var request = http.Request(
-          'POST',
-          Uri.parse(
-              '$kBaseUrl/text/addText/${widget.teamId}'));
+          'POST', Uri.parse('$kBaseUrl/text/addText/${widget.teamId}'));
       request.body = json.encode({"text": _textController.text});
       request.headers.addAll(headers);
 
@@ -140,9 +139,8 @@ class _PostTextScreenState extends State<PostTextScreen> {
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:
-              Text('Error al publicar el texto. Código: ${response.statusCode}'),
-
+          content: Text(
+              'Error al publicar el texto. Código: ${response.statusCode}'),
         ));
       }
     } catch (e) {
@@ -150,7 +148,6 @@ class _PostTextScreenState extends State<PostTextScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Ocurrió un error al publicar el texto.'),
-
       ));
     } finally {
       _textController.clear();
@@ -177,7 +174,8 @@ class _PostTextScreenState extends State<PostTextScreen> {
               children: [
                 AppTextField(
                   controller: _textController,
-                  prefixIcon: const Icon(Icons.notes_outlined, color: AppColors.textMuted),
+                  prefixIcon:
+                      Icon(Icons.notes_outlined, color: AppColors.textMuted),
                   hintText: 'Publica tus recursos',
                   maxLines: 4,
                 ),
@@ -192,7 +190,7 @@ class _PostTextScreenState extends State<PostTextScreen> {
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     _responseMessage,
-                    style: const TextStyle(color: AppColors.success, fontSize: 12),
+                    style: TextStyle(color: AppColors.success, fontSize: 12),
                   ),
                 ],
               ],
@@ -206,7 +204,8 @@ class _PostTextScreenState extends State<PostTextScreen> {
               children: [
                 AppTextField(
                   controller: _imageController,
-                  prefixIcon: const Icon(Icons.image_outlined, color: AppColors.textMuted),
+                  prefixIcon:
+                      Icon(Icons.image_outlined, color: AppColors.textMuted),
                   hintText: 'Nombre de la imagen',
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -229,7 +228,8 @@ class _PostTextScreenState extends State<PostTextScreen> {
                             border: Border.all(color: AppColors.surfaceBorder),
                             color: AppColors.bgBase,
                           ),
-                          child: const Icon(Icons.image_outlined, color: AppColors.textMuted, size: 32),
+                          child: Icon(Icons.image_outlined,
+                              color: AppColors.textMuted, size: 32),
                         ),
                 ),
                 const SizedBox(height: AppSpacing.md),

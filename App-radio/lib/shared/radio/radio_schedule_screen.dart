@@ -16,7 +16,13 @@ class RadioScheduleScreen extends StatefulWidget {
 class _RadioScheduleScreenState extends State<RadioScheduleScreen> {
   static const _dayLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   static const _dayLong = [
-    'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado',
+    'Domingo'
   ];
 
   int _weekday = DateTime.now().weekday; // 1..7
@@ -97,18 +103,23 @@ class _RadioScheduleScreenState extends State<RadioScheduleScreen> {
                             ? ListView(
                                 children: const [
                                   Padding(
-                                    padding: EdgeInsets.only(top: AppSpacing.xxl),
+                                    padding:
+                                        EdgeInsets.only(top: AppSpacing.xxl),
                                     child: EmptyState(
                                       icon: Icons.radio_outlined,
                                       title: 'Sin programas este día',
-                                      message: 'Prueba con otro día de la semana.',
+                                      message:
+                                          'Prueba con otro día de la semana.',
                                     ),
                                   ),
                                 ],
                               )
                             : ListView.separated(
-                                padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
-                                    AppSpacing.sm, AppSpacing.lg, AppSpacing.xxl),
+                                padding: const EdgeInsets.fromLTRB(
+                                    AppSpacing.lg,
+                                    AppSpacing.sm,
+                                    AppSpacing.lg,
+                                    AppSpacing.xxl),
                                 itemCount: _forDay.length + 1,
                                 separatorBuilder: (_, __) =>
                                     const SizedBox(height: AppSpacing.sm),
@@ -120,8 +131,9 @@ class _RadioScheduleScreenState extends State<RadioScheduleScreen> {
                                         _isToday
                                             ? 'Hoy · ${_dayLong[_weekday - 1]}'
                                             : _dayLong[_weekday - 1],
-                                        style: const TextStyle(
-                                            color: AppColors.textMuted, fontSize: 12),
+                                        style: TextStyle(
+                                            color: AppColors.textMuted,
+                                            fontSize: 12),
                                       ),
                                     );
                                   }
@@ -166,7 +178,8 @@ class _ProgramTile extends StatelessWidget {
                   width: 44,
                   height: 44,
                   color: AppColors.surface,
-                  child: const Icon(Icons.radio, color: AppColors.textMuted, size: 20),
+                  child:
+                      Icon(Icons.radio, color: AppColors.textMuted, size: 20),
                 ),
               ),
             ),
@@ -180,20 +193,20 @@ class _ProgramTile extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(program.title,
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppColors.textPrimary,
                               fontWeight: FontWeight.w700,
                               fontSize: 14)),
                     ),
                     if (onAir)
                       Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: AppColors.success.withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(AppRadius.pill),
                         ),
-                        child: const Text('AL AIRE',
+                        child: Text('AL AIRE',
                             style: TextStyle(
                                 color: AppColors.success,
                                 fontSize: 10,
@@ -207,7 +220,7 @@ class _ProgramTile extends StatelessWidget {
                     if ((program.timeLabel).isNotEmpty) program.timeLabel,
                     if ((program.host ?? '').isNotEmpty) 'con ${program.host}',
                   ].join(' · '),
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
               ],
             ),

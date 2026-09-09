@@ -121,7 +121,9 @@ class _AdminAbsenceScreenState extends State<AdminAbsenceScreen>
       body: Builder(
         builder: (context) {
           if (_loading) return const LoadingState();
-          if (_error != null) return ErrorState(message: _error!, onRetry: _load);
+          if (_error != null) {
+            return ErrorState(message: _error!, onRetry: _load);
+          }
           if (_items.isEmpty) {
             return const EmptyState(
               icon: Icons.fact_check_outlined,
@@ -136,7 +138,8 @@ class _AdminAbsenceScreenState extends State<AdminAbsenceScreen>
               padding: const EdgeInsets.fromLTRB(
                   AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxl),
               itemCount: _items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: AppSpacing.md),
               itemBuilder: (_, i) => _Card(
                 data: _items[i],
                 busy: _busy,
@@ -169,7 +172,8 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final j = data.item;
-    final range = j.start == j.end ? _d(j.start) : '${_d(j.start)} — ${_d(j.end)}';
+    final range =
+        j.start == j.end ? _d(j.start) : '${_d(j.start)} — ${_d(j.end)}';
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,13 +182,13 @@ class _Card extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(data.employeeName,
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w800,
                         fontSize: 15)),
               ),
               Text(j.statusLabel,
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: AppColors.textMuted,
                       fontSize: 12,
                       fontWeight: FontWeight.w700)),
@@ -192,12 +196,11 @@ class _Card extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text('Falta: $range',
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           if ((j.reason ?? '').isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(j.reason!,
-                style: const TextStyle(
-                    color: AppColors.textPrimary, fontSize: 13)),
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
           ],
           if (j.hasEvidence) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -238,7 +241,7 @@ class _Card extends StatelessWidget {
           ] else if ((j.reviewNote ?? '').isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
             Text('Motivo: ${j.reviewNote}',
-                style: const TextStyle(color: AppColors.error, fontSize: 12)),
+                style: TextStyle(color: AppColors.error, fontSize: 12)),
           ],
         ],
       ),

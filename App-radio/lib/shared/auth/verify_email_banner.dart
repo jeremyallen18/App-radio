@@ -117,7 +117,8 @@ class _VerifyEmailBannerState extends State<VerifyEmailBanner>
       alignment: Alignment.topCenter,
       child: _verified != false
           ? const SizedBox(width: double.infinity)
-          : AppFadeIn(offset: const Offset(0, -8), child: _buildBanner(context)),
+          : AppFadeIn(
+              offset: const Offset(0, -8), child: _buildBanner(context)),
     );
   }
 
@@ -132,7 +133,7 @@ class _VerifyEmailBannerState extends State<VerifyEmailBanner>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 2),
                 child: Icon(Icons.mark_email_unread_outlined,
                     size: 18, color: AppColors.warning),
@@ -142,7 +143,7 @@ class _VerifyEmailBannerState extends State<VerifyEmailBanner>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Verifica tu correo',
                       style: TextStyle(
                         color: AppColors.textPrimary,
@@ -155,17 +156,18 @@ class _VerifyEmailBannerState extends State<VerifyEmailBanner>
                       _email == null
                           ? 'Abre el enlace que te enviamos por correo para activar tu cuenta.'
                           : 'Abre el enlace enviado a $_email. Algunas acciones lo requieren.',
-                      style: const TextStyle(
-                          color: AppColors.textMuted, fontSize: 12),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                     const SizedBox(height: 4),
                     Wrap(
                       spacing: AppSpacing.sm,
                       children: [
                         TextButton(
-                          onPressed: (_sending || _cooldown > 0 || _email == null)
-                              ? null
-                              : _resend,
+                          onPressed:
+                              (_sending || _cooldown > 0 || _email == null)
+                                  ? null
+                                  : _resend,
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 0),
@@ -186,7 +188,8 @@ class _VerifyEmailBannerState extends State<VerifyEmailBanner>
                                 horizontal: 8, vertical: 0),
                             minimumSize: const Size(0, 32),
                           ),
-                          child: Text(_rechecking ? 'Comprobando…' : 'Ya verifiqué'),
+                          child: Text(
+                              _rechecking ? 'Comprobando…' : 'Ya verifiqué'),
                         ),
                       ],
                     ),

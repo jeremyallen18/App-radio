@@ -52,7 +52,8 @@ class _SiteContentAuthGateState extends State<SiteContentAuthGate> {
       }
 
       final ok = await _auth.authenticate(
-        localizedReason: 'Confirma tu identidad para editar el contenido del sitio web',
+        localizedReason:
+            'Confirma tu identidad para editar el contenido del sitio web',
         options: const AuthenticationOptions(
           biometricOnly: false,
           stickyAuth: true,
@@ -66,7 +67,8 @@ class _SiteContentAuthGateState extends State<SiteContentAuthGate> {
       });
     } on PlatformException catch (e) {
       if (!mounted) return;
-      final noLock = e.code == auth_error.notAvailable || e.code == auth_error.notEnrolled;
+      final noLock =
+          e.code == auth_error.notAvailable || e.code == auth_error.notEnrolled;
       setState(() {
         _authenticated = false;
         _checking = false;
@@ -93,28 +95,33 @@ class _SiteContentAuthGateState extends State<SiteContentAuthGate> {
                 color: AppColors.accent.withValues(alpha: 0.14),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.fingerprint, color: AppColors.accent, size: 36),
+              child: Icon(Icons.fingerprint, color: AppColors.accent, size: 36),
             ),
             const SizedBox(height: AppSpacing.lg),
-            const Text(
+            Text(
               'Verificación requerida',
-              style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 20),
+              style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              _error ?? 'Usa tu huella, rostro o el bloqueo del dispositivo para continuar.',
+              _error ??
+                  'Usa tu huella, rostro o el bloqueo del dispositivo para continuar.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
             ),
             const SizedBox(height: AppSpacing.xl),
             if (_checking)
-              const CircularProgressIndicator(color: AppColors.accent)
+              CircularProgressIndicator(color: AppColors.accent)
             else
               AppButton(label: 'Reintentar', onPressed: _authenticate),
             const SizedBox(height: AppSpacing.md),
             TextButton(
               onPressed: () => Navigator.of(context).maybePop(),
-              child: const Text('Volver', style: TextStyle(color: AppColors.textMuted)),
+              child:
+                  Text('Volver', style: TextStyle(color: AppColors.textMuted)),
             ),
           ],
         ),

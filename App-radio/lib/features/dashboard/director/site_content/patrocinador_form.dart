@@ -34,15 +34,24 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
   final _api = SiteContentApi('patrocinadores');
   final _picker = ImagePicker();
 
-  late final _name = TextEditingController(text: widget.item?['name']?.toString() ?? '');
-  late final _category = TextEditingController(text: widget.item?['category']?.toString() ?? '');
-  late final _categoryLabel = TextEditingController(text: widget.item?['category_label']?.toString() ?? '');
-  late final _icon = TextEditingController(text: widget.item?['icon']?.toString() ?? '');
-  late final _subtitle = TextEditingController(text: widget.item?['subtitle']?.toString() ?? '');
-  late final _summary = TextEditingController(text: widget.item?['summary']?.toString() ?? '');
-  late final _description = TextEditingController(text: widget.item?['description']?.toString() ?? '');
-  late final _map = TextEditingController(text: widget.item?['map']?.toString() ?? '');
-  late final _sortOrder = TextEditingController(text: widget.item?['sort_order']?.toString() ?? '0');
+  late final _name =
+      TextEditingController(text: widget.item?['name']?.toString() ?? '');
+  late final _category =
+      TextEditingController(text: widget.item?['category']?.toString() ?? '');
+  late final _categoryLabel = TextEditingController(
+      text: widget.item?['category_label']?.toString() ?? '');
+  late final _icon =
+      TextEditingController(text: widget.item?['icon']?.toString() ?? '');
+  late final _subtitle =
+      TextEditingController(text: widget.item?['subtitle']?.toString() ?? '');
+  late final _summary =
+      TextEditingController(text: widget.item?['summary']?.toString() ?? '');
+  late final _description = TextEditingController(
+      text: widget.item?['description']?.toString() ?? '');
+  late final _map =
+      TextEditingController(text: widget.item?['map']?.toString() ?? '');
+  late final _sortOrder = TextEditingController(
+      text: widget.item?['sort_order']?.toString() ?? '0');
 
   late final List<_SocialRow> _socials = _initialSocials();
 
@@ -64,7 +73,8 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
   }
 
   Future<void> _pickImage() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    final picked =
+        await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked == null) return;
     setState(() => _newImage = File(picked.path));
   }
@@ -100,8 +110,14 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
 
     setState(() => _submitting = true);
     final socialsJson = jsonEncode(_socials
-        .map((s) => {'label': s.label.text.trim(), 'icon': s.icon.text.trim(), 'url': s.url.text.trim()})
-        .where((s) => (s['label'] as String).isNotEmpty || (s['url'] as String).isNotEmpty)
+        .map((s) => {
+              'label': s.label.text.trim(),
+              'icon': s.icon.text.trim(),
+              'url': s.url.text.trim()
+            })
+        .where((s) =>
+            (s['label'] as String).isNotEmpty ||
+            (s['url'] as String).isNotEmpty)
         .toList());
 
     final fields = {
@@ -113,13 +129,15 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
       'summary': _summary.text.trim(),
       'description': _description.text,
       'map': _map.text.trim(),
-      'sort_order': _sortOrder.text.trim().isEmpty ? '0' : _sortOrder.text.trim(),
+      'sort_order':
+          _sortOrder.text.trim().isEmpty ? '0' : _sortOrder.text.trim(),
       'socials_json': socialsJson,
     };
 
     try {
       if (_isEditing) {
-        await _api.update(widget.item!['id'].toString(), fields, imageFile: _newImage);
+        await _api.update(widget.item!['id'].toString(), fields,
+            imageFile: _newImage);
       } else {
         await _api.create(fields, imageFile: _newImage);
       }
@@ -230,13 +248,18 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
           for (final social in _socials)
             SiteRepeatRow(
               controllers: [social.label, social.icon, social.url],
-              hints: const ['Etiqueta (Facebook)', 'Ícono (facebook)', 'https://...'],
+              hints: const [
+                'Etiqueta (Facebook)',
+                'Ícono (facebook)',
+                'https://...'
+              ],
               onRemove: () => setState(() => _socials.remove(social)),
             ),
           TextButton.icon(
             onPressed: () => setState(() => _socials.add(_SocialRow())),
-            icon: const Icon(Icons.add, color: AppColors.accent),
-            label: const Text('Agregar red social', style: TextStyle(color: AppColors.accent)),
+            icon: Icon(Icons.add, color: AppColors.accent),
+            label: Text('Agregar red social',
+                style: TextStyle(color: AppColors.accent)),
           ),
           const SizedBox(height: AppSpacing.md),
           SiteImagePickerField(

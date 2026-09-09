@@ -25,7 +25,8 @@ class ResourceM extends StatelessWidget {
         _ResourceSection(
           icon: Icons.folder_outlined,
           label: 'Documentos',
-          description: 'Sube y descarga archivos (PDF, Word, Excel…) del equipo.',
+          description:
+              'Sube y descarga archivos (PDF, Word, Excel…) del equipo.',
           builder: (context) => TeamDocumentsScreen(teamId),
         ),
         _ResourceSection(
@@ -114,7 +115,7 @@ class _SectionCard extends StatelessWidget {
               children: [
                 Text(
                   section.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
@@ -123,13 +124,13 @@ class _SectionCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   section.description,
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
               ],
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          const Icon(Icons.chevron_right, color: AppColors.textMuted),
+          Icon(Icons.chevron_right, color: AppColors.textMuted),
         ],
       ),
     );

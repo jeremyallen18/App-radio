@@ -51,12 +51,12 @@ class _RoleDashboardRouterState extends State<RoleDashboardRouter> {
         Widget content;
         if (snapshot.connectionState == ConnectionState.waiting) {
           content = embedded
-              ? const ColoredBox(
+              ? ColoredBox(
                   key: ValueKey('loading'),
                   color: AppColors.bgBase,
                   child: LoadingState(),
                 )
-              : const Scaffold(
+              : Scaffold(
                   key: ValueKey('loading'),
                   backgroundColor: AppColors.bgBase,
                   body: LoadingState(),

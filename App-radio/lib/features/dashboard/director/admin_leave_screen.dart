@@ -88,7 +88,8 @@ class _AdminLeaveScreenState extends State<AdminLeaveScreen>
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg, vertical: AppSpacing.sm,
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.sm,
             ),
             child: Row(
               children: [
@@ -118,7 +119,9 @@ class _AdminLeaveScreenState extends State<AdminLeaveScreen>
             child: Builder(
               builder: (context) {
                 if (_loading) return const LoadingState();
-                if (_error != null) return ErrorState(message: _error!, onRetry: _load);
+                if (_error != null) {
+                  return ErrorState(message: _error!, onRetry: _load);
+                }
                 if (_items.isEmpty) {
                   return const EmptyState(
                     icon: Icons.inbox_outlined,
@@ -130,16 +133,21 @@ class _AdminLeaveScreenState extends State<AdminLeaveScreen>
                   onRefresh: _load,
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.xxl,
+                      AppSpacing.lg,
+                      AppSpacing.sm,
+                      AppSpacing.lg,
+                      AppSpacing.xxl,
                     ),
                     itemCount: _items.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: AppSpacing.md),
                     itemBuilder: (_, i) => _AdminLeaveCard(
                       request: _items[i],
                       onReview: () async {
                         await Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => AdminLeaveReviewScreen(requestId: _items[i].id),
+                            builder: (_) =>
+                                AdminLeaveReviewScreen(requestId: _items[i].id),
                           ),
                         );
                         _load();
@@ -170,7 +178,7 @@ class _AdminLeaveCard extends StatelessWidget {
         children: [
           Text(
             r.employee?.name ?? 'Empleado',
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w800,
               fontSize: 15,
@@ -182,21 +190,23 @@ class _AdminLeaveCard extends StatelessWidget {
               Icon(r.type.icon, size: 14, color: AppColors.textPrimary),
               const SizedBox(width: 4),
               Text(r.type.label,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
             ],
           ),
           const SizedBox(height: 2),
           Text(
-            r.status == LeaveStatus.aprobado ? r.approvedRangeLabel : r.requestedRangeLabel,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+            r.status == LeaveStatus.aprobado
+                ? r.approvedRangeLabel
+                : r.requestedRangeLabel,
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 4),
           Text('Estado: ${r.status.label}',
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           if (r.hasEvidence) ...[
             const SizedBox(height: 4),
             Row(
-              children: const [
+              children: [
                 Icon(Icons.attach_file, size: 13, color: AppColors.accent),
                 SizedBox(width: 4),
                 Text('Evidencia adjunta',

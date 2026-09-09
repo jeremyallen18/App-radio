@@ -57,8 +57,10 @@ class _InternalAnnouncementFormScreenState
       _selectedAreas.addAll(e.areas.map((a) => a.id));
       _requiresConfirmation = e.requiresConfirmation;
       if (e.eventAt != null) {
-        _eventDate = DateTime(e.eventAt!.year, e.eventAt!.month, e.eventAt!.day);
-        _eventTime = TimeOfDay(hour: e.eventAt!.hour, minute: e.eventAt!.minute);
+        _eventDate =
+            DateTime(e.eventAt!.year, e.eventAt!.month, e.eventAt!.day);
+        _eventTime =
+            TimeOfDay(hour: e.eventAt!.hour, minute: e.eventAt!.minute);
       }
       if (_byAreas) _loadDepartments();
     }
@@ -170,7 +172,8 @@ class _InternalAnnouncementFormScreenState
       padding: EdgeInsets.zero,
       appBar: AppBar(
         leading: const BackButton(),
-        title: Text(widget.isEditing ? 'Editar anuncio' : 'Nuevo anuncio interno'),
+        title:
+            Text(widget.isEditing ? 'Editar anuncio' : 'Nuevo anuncio interno'),
       ),
       body: Form(
         key: _formKey,
@@ -195,16 +198,16 @@ class _InternalAnnouncementFormScreenState
               hintText: 'Contenido del anuncio',
               maxLines: 5,
               prefixIcon: const Icon(Icons.notes_outlined),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Escribe el contenido.' : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'Escribe el contenido.'
+                  : null,
             ),
             const SizedBox(height: AppSpacing.sm),
-            const Text(
+            Text(
               'Se publica de inmediato: toda la audiencia lo recibe al guardar.',
               style: TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
             const SizedBox(height: AppSpacing.xl),
-
             const SectionHeader(title: 'Alcance'),
             Wrap(
               spacing: AppSpacing.sm,
@@ -233,7 +236,7 @@ class _InternalAnnouncementFormScreenState
                   child: Center(child: CircularProgressIndicator()),
                 )
               else if (_departments.isEmpty)
-                const Text(
+                Text(
                   'No se pudieron cargar los departamentos. Revisa la conexión.',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 )
@@ -256,7 +259,6 @@ class _InternalAnnouncementFormScreenState
                 ),
             ],
             const SizedBox(height: AppSpacing.xl),
-
             const SectionHeader(title: 'Confirmación de asistencia'),
             AppCard(
               child: Column(
@@ -264,23 +266,24 @@ class _InternalAnnouncementFormScreenState
                 children: [
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text(
+                    title: Text(
                       'Pedir confirmación de asistencia',
                       style: TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    subtitle: const Text(
+                    subtitle: Text(
                       'Para reuniones: cada persona responde si asistirá o no. '
                       'Quien confirme "sí" recibe recordatorios hasta la reunión.',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                     value: _requiresConfirmation,
                     onChanged: (v) => setState(() => _requiresConfirmation = v),
                   ),
                   if (_requiresConfirmation) ...[
-                    const Divider(
+                    Divider(
                         color: AppColors.surfaceBorder, height: AppSpacing.xl),
                     _PickerRow(
                       icon: Icons.calendar_today_outlined,
@@ -291,14 +294,16 @@ class _InternalAnnouncementFormScreenState
                     _PickerRow(
                       icon: Icons.schedule,
                       label: 'Hora de la reunión',
-                      value: _eventTime != null ? _fmtTime(_eventTime!) : 'Elegir',
+                      value:
+                          _eventTime != null ? _fmtTime(_eventTime!) : 'Elegir',
                       onTap: _pickEventTime,
                     ),
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(top: AppSpacing.xs),
                       child: Text(
                         'Sin fecha/hora el anuncio pide confirmación pero no manda recordatorios.',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                        style:
+                            TextStyle(color: AppColors.textMuted, fontSize: 11),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
@@ -350,15 +355,15 @@ class _PickerRow extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
               ),
             ),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                   color: AppColors.textPrimary, fontWeight: FontWeight.w600),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.textMuted),
+            Icon(Icons.chevron_right, color: AppColors.textMuted),
           ],
         ),
       ),

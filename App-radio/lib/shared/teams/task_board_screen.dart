@@ -86,7 +86,10 @@ class TaskBoardBody extends StatefulWidget {
     this.fixedSubTeamId,
     this.fixedSubTeamName,
     this.padding = const EdgeInsets.fromLTRB(
-      AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxl,
+      AppSpacing.lg,
+      AppSpacing.lg,
+      AppSpacing.lg,
+      AppSpacing.xxl,
     ),
   });
 
@@ -244,7 +247,7 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
       title: 'Completar tarea',
       message: t.requiresEvidence
           ? '"${t.title}" requiere adjuntar una foto como evidencia. '
-            'Podrás revisarla antes de enviarla.'
+              'Podrás revisarla antes de enviarla.'
           : '¿Marcar "${t.title}" como completada?',
       confirmLabel: t.requiresEvidence ? 'Elegir foto' : 'Completar',
     );
@@ -324,11 +327,12 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
+              child: Text('Cancelar',
+                  style: TextStyle(color: AppColors.textMuted)),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Devolver', style: TextStyle(color: AppColors.error)),
+              child: Text('Devolver', style: TextStyle(color: AppColors.error)),
             ),
           ],
         ),
@@ -443,7 +447,11 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
   }
 
   Future<void> _cycleStatus(DeptTask t) async {
-    const order = [DeptTaskStatus.pendiente, DeptTaskStatus.enProgreso, DeptTaskStatus.completada];
+    const order = [
+      DeptTaskStatus.pendiente,
+      DeptTaskStatus.enProgreso,
+      DeptTaskStatus.completada
+    ];
     final next = order[(order.indexOf(t.status) + 1) % order.length];
     setState(() => _busy = true);
     try {
@@ -488,10 +496,13 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: [
-                  _stChip('Todos', _subTeamFilter == null, () => _setSubTeamFilter(null)),
-                  _stChip('De área', _subTeamFilter == 'none', () => _setSubTeamFilter('none')),
+                  _stChip('Todos', _subTeamFilter == null,
+                      () => _setSubTeamFilter(null)),
+                  _stChip('De área', _subTeamFilter == 'none',
+                      () => _setSubTeamFilter('none')),
                   for (final s in _subTeams)
-                    _stChip(s.name, _subTeamFilter == s.id, () => _setSubTeamFilter(s.id)),
+                    _stChip(s.name, _subTeamFilter == s.id,
+                        () => _setSubTeamFilter(s.id)),
                 ],
               ),
             ),
@@ -582,8 +593,9 @@ class _NewTaskButton extends StatelessWidget {
       label: const Text('Nueva'),
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.brandBlue,
-        foregroundColor: AppColors.textPrimary,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
+        foregroundColor: AppColors.onBrand,
+        padding:
+            const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
         textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
       ),
     );

@@ -94,8 +94,9 @@ class _SignUpState extends State<SignUp> {
                     controller: nameController,
                     prefixIcon: const Icon(Icons.person_outline_rounded),
                     hintText: 'Cómo te llaman en la radio',
-                    validator: (value) =>
-                        (value ?? '').trim().isEmpty ? 'Ingresa tu nombre' : null,
+                    validator: (value) => (value ?? '').trim().isEmpty
+                        ? 'Ingresa tu nombre'
+                        : null,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -140,11 +141,13 @@ class _SignUpState extends State<SignUp> {
                     prefixIcon: const Icon(Icons.lock_outline_rounded),
                     suffixIcon: PasswordVisibilityToggle(
                       obscured: _obscureConfirm,
-                      onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                      onToggle: () =>
+                          setState(() => _obscureConfirm = !_obscureConfirm),
                     ),
                     hintText: 'Repite la contraseña',
-                    validator: (value) =>
-                        value != passController.text ? 'Las contraseñas no coinciden' : null,
+                    validator: (value) => value != passController.text
+                        ? 'Las contraseñas no coinciden'
+                        : null,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
@@ -154,7 +157,7 @@ class _SignUpState extends State<SignUp> {
                   onPressed: _isLoading ? null : _signUp,
                 ),
                 const SizedBox(height: AppSpacing.md),
-                const Text(
+                Text(
                   'Al crear tu cuenta aceptas los términos y condiciones.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12),
@@ -166,7 +169,8 @@ class _SignUpState extends State<SignUp> {
           AuthFooterLink(
             prompt: '¿Ya tienes una cuenta?',
             action: 'Iniciar sesión',
-            onTap: () => Navigator.pushReplacementNamed(context, MyRoutes.loginRoutes),
+            onTap: () =>
+                Navigator.pushReplacementNamed(context, MyRoutes.loginRoutes),
           ),
           const SizedBox(height: AppSpacing.xl),
         ],

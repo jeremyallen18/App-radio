@@ -4,7 +4,8 @@ import 'package:doliv_social/design/design.dart';
 
 /// Punto de color + etiqueta para las leyendas de las gráficas de progreso.
 class ProgressLegendDot extends StatelessWidget {
-  const ProgressLegendDot({super.key, required this.color, required this.label});
+  const ProgressLegendDot(
+      {super.key, required this.color, required this.label});
 
   final Color color;
   final String label;
@@ -22,7 +23,7 @@ class ProgressLegendDot extends StatelessWidget {
         const SizedBox(width: AppSpacing.sm),
         Text(
           label,
-          style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
         ),
       ],
     );

@@ -37,10 +37,11 @@ class AuthField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: AppSpacing.xs, bottom: AppSpacing.sm),
+          padding:
+              const EdgeInsets.only(left: AppSpacing.xs, bottom: AppSpacing.sm),
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -76,11 +77,11 @@ class AuthFooterLink extends StatelessWidget {
             children: [
               TextSpan(
                 text: '$prompt ',
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 14),
               ),
               TextSpan(
                 text: action,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.accentStrong,
                   fontWeight: FontWeight.w700,
                   fontSize: 14,

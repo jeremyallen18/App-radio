@@ -84,7 +84,7 @@ class _InternalAnnouncementViewsScreenState
               children: [
                 Text(
                   widget.announcementTitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
@@ -170,7 +170,7 @@ class _ViewerTile extends StatelessWidget {
               children: [
                 Text(
                   viewer.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
@@ -179,16 +179,14 @@ class _ViewerTile extends StatelessWidget {
                 if ((viewer.departmentName ?? '').isNotEmpty)
                   Text(
                     viewer.departmentName!,
-                    style: const TextStyle(
-                        color: AppColors.textMuted, fontSize: 12),
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                   ),
                 const SizedBox(height: 4),
                 Text(
                   viewer.viewedAt != null
                       ? 'Visto el ${formatted(viewer.viewedAt!)}'
                       : 'Todavía no lo ha visto',
-                  style: const TextStyle(
-                      color: AppColors.textMuted, fontSize: 12),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
               ],
             ),

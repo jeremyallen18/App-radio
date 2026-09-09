@@ -11,13 +11,15 @@ class StatTile extends StatelessWidget {
     required this.icon,
     required this.value,
     required this.label,
-    this.accentColor = AppColors.accent,
+    this.accentColor,
   });
 
   final IconData icon;
   final String value;
   final String label;
-  final Color accentColor;
+
+  /// Si es null, usa [AppColors.accent] del modo activo.
+  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -25,11 +27,11 @@ class StatTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: accentColor, size: 22),
+          Icon(icon, color: accentColor ?? AppColors.accent, size: 22),
           const SizedBox(height: AppSpacing.sm),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w800,
               fontSize: 22,
@@ -38,7 +40,7 @@ class StatTile extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
         ],
       ),

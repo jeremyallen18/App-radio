@@ -292,7 +292,7 @@ class _ProfileState extends State<Profile> {
             ],
           ),
         ),
-        const Divider(height: 1, color: AppColors.surfaceBorder),
+        Divider(height: 1, color: AppColors.surfaceBorder),
         Row(
           children: [
             if (!_isDirector)
@@ -352,10 +352,10 @@ class _ProfileState extends State<Profile> {
                 children: [
                   _accountRow('Editar foto de perfil', Icons.edit_square,
                       _editProfilePhoto),
-                  const Divider(height: 1, color: AppColors.surfaceBorder),
+                  Divider(height: 1, color: AppColors.surfaceBorder),
                   _accountRow('Seguridad', Icons.security,
                       () => _comingSoon('Seguridad')),
-                  const Divider(height: 1, color: AppColors.surfaceBorder),
+                  Divider(height: 1, color: AppColors.surfaceBorder),
                   _accountRow(
                     'Sugerencias y comentarios',
                     Icons.feedback_outlined,
@@ -369,7 +369,7 @@ class _ProfileState extends State<Profile> {
               alignment: Alignment.centerLeft,
               child: TextButton(
                 onPressed: _confirmLogout,
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.logout, color: AppColors.error),
@@ -404,12 +404,12 @@ class _ProfileState extends State<Profile> {
                 const SizedBox(width: AppSpacing.md),
                 Text(
                   label,
-                  style: const TextStyle(
-                      fontSize: 15.0, color: AppColors.textPrimary),
+                  style:
+                      TextStyle(fontSize: 15.0, color: AppColors.textPrimary),
                 ),
               ],
             ),
-            const Icon(Icons.arrow_forward_ios_outlined,
+            Icon(Icons.arrow_forward_ios_outlined,
                 size: 16.0, color: AppColors.textMuted),
           ],
         ),
