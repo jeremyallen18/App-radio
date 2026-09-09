@@ -159,8 +159,10 @@ class _ProfileState extends State<Profile> {
     await RadioPlayer.instance.stop();
     NotificationsController.instance.clear();
     await PushService.instance.disable();
+    // Solo se elimina el token: la sesión queda cerrada. El correo y la
+    // contraseña guardados con "Recuérdame" se conservan a propósito para que
+    // Login vuelva a aparecer precargado.
     await secureStorage.deleteSecureData(key);
-    await secureStorage.deleteSecureData(rememberMeKey);
     if (!mounted) return;
     Navigator.pushReplacementNamed(context, MyRoutes.loginRoutes);
   }
