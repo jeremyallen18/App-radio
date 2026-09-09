@@ -23,7 +23,7 @@ function attendance_dispatch_due_reminders(PDO $pdo, ?string $onlyUserId = null)
     $now = time();
     $graceSec = ATT_REMINDER_GRACE_MIN * 60;
 
-    $sql = "SELECT es.entry_time, es.meal_time, es.exit_time, u.id AS emp_id, u.email
+    $sql = "SELECT u.id AS emp_id, u.email
             FROM employee_schedules es
             JOIN users u ON u.id = es.employee_id
             WHERE u.role IN ('employee','manager') AND " . SQL_USER_VERIFIED;
@@ -38,6 +38,12 @@ function attendance_dispatch_due_reminders(PDO $pdo, ?string $onlyUserId = null)
     if (!$rows) {
         return 0;
     }
+
+    // Prepara UNA sola vez el INSERT de deduplicación y reutiliza el handle.
+    $ins = $pdo->prepare(
+        'INSERT INTO attendance_reminders_sent (employee_id, work_date, kind, sent_at)
+         VALUES (?, ?, ?, NOW())'
+    );
 
     $sent = 0;
     foreach ($rows as $r) {
@@ -69,31 +75,27 @@ function attendance_dispatch_due_reminders(PDO $pdo, ?string $onlyUserId = null)
 
         $due = [];
         if (!$hasEntry) {
-            $due['entry_pre']  = ['target' => $entryTs - 10 * 60,
+            $due['entry_pre']  = ['target' => $entryTs - 10 * 60, 'grace' => ATT_REMINDER_GRACE_MIN * 60,
                 'msg' => 'Tu entrada es a las ' . substr($entryEff, 0, 5) . '. No olvides registrarla.'];
-            $due['entry_late'] = ['target' => $entryTs + 10 * 60,
+            $due['entry_late'] = ['target' => $entryTs + 10 * 60, 'grace' => ATT_REMINDER_GRACE_MIN * 60,
                 'msg' => 'Aún no registras tu entrada de hoy (hora asignada ' . substr($entryEff, 0, 5) . ').'];
         }
         if ($hasEntry && !$hasMeal && !$mealSkip && !$inMeal && $mealTs !== null) {
-            $due['meal_pre'] = ['target' => $mealTs - 15 * 60,
-                'msg' => 'Tu hora de comida empieza a las ' . substr($mealEff, 0, 5) . ' (en 15 minutos).'];
+            $due['meal_pre'] = ['target' => $mealTs - 15 * 60, 'grace' => 15 * 60,
+                'msg' => 'Tu hora de comida está por empezar (a las ' . substr($mealEff, 0, 5) . ').'];
         }
         if ($hasEntry && !$hasExit && $exitTs !== null) {
-            $due['exit_due']  = ['target' => $exitTs,
+            $due['exit_due']  = ['target' => $exitTs, 'grace' => 15 * 60,
                 'msg' => 'Ya son las ' . substr($exitEff, 0, 5) . '. No olvides registrar tu salida.'];
-            $due['exit_late'] = ['target' => $exitTs + 15 * 60,
+            $due['exit_late'] = ['target' => $exitTs + 15 * 60, 'grace' => ATT_REMINDER_GRACE_MIN * 60,
                 'msg' => 'Aún no registras tu salida de hoy.'];
         }
 
         foreach ($due as $kind => $d) {
-            if ($now < $d['target'] || $now > $d['target'] + $graceSec) {
+            if ($now < $d['target'] || $now > $d['target'] + ($d['grace'] ?? $graceSec)) {
                 continue; // aún no vence, o ya se pasó la ventana de gracia
             }
             try {
-                $ins = $pdo->prepare(
-                    'INSERT INTO attendance_reminders_sent (employee_id, work_date, kind, sent_at)
-                     VALUES (?, ?, ?, NOW())'
-                );
                 $ins->execute([$empId, $workDate, $kind]);
             } catch (PDOException $e) {
                 if ($e->getCode() === '23000') {
