@@ -11,8 +11,11 @@ final SecureStorage secureStorage = SecureStorage();
 /// Clave del token de acceso en el almacenamiento seguro.
 String key = 'accessToken';
 
-/// Marca de "mantener sesion iniciada" entre aperturas de la app. `main.dart`
-/// la revisa al arrancar: si quedo en "0", borra el token y manda a Login.
+/// Estado recordado del check "Recordar" del login ('1' / '0'). Solo sirve para
+/// que el check vuelva a aparecer marcado; el correo y la contrasena los guarda
+/// el gestor de contrasenas del sistema (Android Autofill / iCloud Llavero), no
+/// la app. NO controla la permanencia de la sesion: la sesion sobrevive a
+/// cerrar la app y solo termina con "Cerrar sesion".
 String rememberMeKey = 'rememberMeFlag';
 
 /// Marca de "el correo de esta cuenta esta verificado" ('1' / '0'). La

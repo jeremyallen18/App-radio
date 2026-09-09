@@ -19,6 +19,7 @@ class AppTextField extends StatelessWidget {
     this.readOnly = false,
     this.onTap,
     this.onChanged,
+    this.autofillHints,
   });
 
   final TextEditingController? controller;
@@ -37,11 +38,17 @@ class AppTextField extends StatelessWidget {
   final VoidCallback? onTap;
   final ValueChanged<String>? onChanged;
 
+  /// Pistas para el autocompletado del sistema (gestor de contraseñas). Cuando
+  /// se pasan, conviene envolver los campos en un `AutofillGroup`.
+  final Iterable<String>? autofillHints;
+
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
-      style: textStyle ?? const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+      style: textStyle ??
+          const TextStyle(
+              color: AppColors.textPrimary, fontWeight: FontWeight.w500),
       cursorColor: AppColors.textPrimary,
       keyboardType: textInputType,
       validator: validator,
@@ -50,6 +57,7 @@ class AppTextField extends StatelessWidget {
       readOnly: readOnly,
       onTap: onTap,
       onChanged: onChanged,
+      autofillHints: autofillHints,
       decoration: InputDecoration(
         hintText: hintText,
         prefixIcon: prefixIcon,

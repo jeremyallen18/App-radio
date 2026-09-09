@@ -83,16 +83,11 @@ void main() async {
   // que cuando el usuario llegue a tocar el botón de radio ya esté listo.
   RadioPlayer.instance;
   final dynamic storedValue = await secureStorage.readSecureData(key);
-  // Si el usuario dejó "Recuérdame" apagado, la sesión no debe sobrevivir a
-  // un reinicio de la app aunque el token siga guardado: se descarta aquí y
-  // se manda a Login. Una bandera ausente (instalaciones previas a este
-  // cambio) se trata como "recordar" para no cerrar sesión a nadie de golpe.
-  final dynamic rememberMe = await secureStorage.readSecureData(rememberMeKey);
-  final bool hasSession = storedValue != null && rememberMe != '0';
-  if (storedValue != null && !hasSession) {
-    await secureStorage.deleteSecureData(key);
-    await secureStorage.deleteSecureData(rememberMeKey);
-  }
+  // La sesión persiste mientras exista el token: sobrevive a cerrar o matar la
+  // app y solo termina cuando el usuario pulsa "Cerrar sesión" (o el backend
+  // rechaza el token). El check "Recuérdame" ya no interviene aquí; solo
+  // decide si el formulario de login aparece con las credenciales precargadas.
+  final bool hasSession = storedValue != null;
   if (hasSession && supportsPush) {
     unawaited(PushService.instance.init());
   }
@@ -132,7 +127,7 @@ class MyApp extends StatelessWidget {
       },
       initialRoute: '/',
       routes: {
-        '/': (context) => hasSession ? const BottomNavBar() : const SignUp(),
+        '/': (context) => hasSession ? const BottomNavBar() : const Login(),
         MyRoutes.signUpRoutes: (context) => const SignUp(),
         MyRoutes.loginRoutes: (context) => const Login(),
         MyRoutes.dashbMemRoutes: (context) => const DashbMem(),
