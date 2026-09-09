@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:doliv_social/models/attendance.dart';
 import 'package:doliv_social/features/dashboard/director/admin_schedule_screen.dart';
+import 'package:doliv_social/shared/attendance/attendance_time_cards.dart';
 
 void main() {
   group('EmployeeSchedule.lateToleranceMinutes', () {
@@ -102,6 +103,46 @@ void main() {
       await tester.tap(find.text('GUARDAR CAMBIOS'));
       await tester.pump();
       expect(find.text(rangeError), findsNothing);
+    });
+  });
+
+  group('leyenda de disponibilidad', () {
+    AttendanceDay dayWith(String next) => AttendanceDay.fromJson({
+          'state': next == 'entrada' ? 'sin_entrada' : 'en_jornada',
+          'nextAction': next,
+          'schedule': {
+            'entryTime': '09:00',
+            'exitTime': '17:00',
+            'mealTime': '14:00',
+            'mealMaxMinutes': 60,
+            'lateToleranceMinutes': 15,
+          },
+        });
+
+    testWidgets('entrada: muestra "desde las 08:30"', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: AttendancePrimaryAction(
+            day: dayWith('entrada'),
+            submitting: false,
+            onPerform: (_) {},
+          ),
+        ),
+      ));
+      expect(find.textContaining('08:30'), findsOneWidget);
+    });
+
+    testWidgets('inicio de comida: muestra "desde las 14:00"', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: AttendancePrimaryAction(
+            day: dayWith('inicio_comida'),
+            submitting: false,
+            onPerform: (_) {},
+          ),
+        ),
+      ));
+      expect(find.textContaining('14:00'), findsOneWidget);
     });
   });
 }
