@@ -179,6 +179,7 @@ class AttendanceApi {
     required String exitTime,
     required String mealTime,
     required int mealMaxMinutes,
+    required int lateToleranceMinutes,
   }) async {
     final res = await _post(
       Uri.parse('$kBaseUrl/admin/schedules/$employeeId'),
@@ -187,6 +188,7 @@ class AttendanceApi {
         'exitTime': exitTime,
         'mealTime': mealTime,
         'mealMaxMinutes': mealMaxMinutes.toString(),
+        'lateToleranceMinutes': lateToleranceMinutes.toString(),
       },
     );
     return EmployeeSchedule.fromJson(
@@ -203,6 +205,7 @@ class AttendanceApi {
     required String exitTime,
     required String mealTime,
     required int mealMaxMinutes,
+    required int lateToleranceMinutes,
   }) async {
     final res = await _post(
       Uri.parse('$kBaseUrl/admin/schedules/bulk'),
@@ -212,6 +215,7 @@ class AttendanceApi {
         'exitTime': exitTime,
         'mealTime': mealTime,
         'mealMaxMinutes': mealMaxMinutes.toString(),
+        'lateToleranceMinutes': lateToleranceMinutes.toString(),
       },
     );
     final d = jsonDecode(res.body) as Map<String, dynamic>;

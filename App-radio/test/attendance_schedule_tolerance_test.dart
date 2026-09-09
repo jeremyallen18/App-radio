@@ -1,5 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:doliv_social/models/attendance.dart';
+import 'package:doliv_social/features/dashboard/director/admin_schedule_screen.dart';
 
 void main() {
   group('EmployeeSchedule.lateToleranceMinutes', () {
@@ -30,5 +32,76 @@ void main() {
     expect(d.toleranceMinutes, isNull);
     final d2 = AttendanceDay.fromJson({'state': 'en_jornada', 'toleranceMinutes': 15});
     expect(d2.toleranceMinutes, 15);
+  });
+
+  group('editor de horario — campo de tolerancia', () {
+    EmployeeScheduleRow rowWithTolerance(int tol) => EmployeeScheduleRow.fromJson({
+          'employeeId': 'e1',
+          'name': 'Ana Pérez',
+          'email': 'ana@example.com',
+          'position': 'Analista',
+          'schedule': {
+            'entryTime': '09:00',
+            'exitTime': '17:00',
+            'mealTime': '14:00',
+            'mealMaxMinutes': 60,
+            'lateToleranceMinutes': tol,
+          },
+        });
+
+    Future<void> pumpEditor(WidgetTester tester, EmployeeScheduleRow row) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: ScheduleEditor(row: row),
+            ),
+          ),
+        ),
+      );
+    }
+
+    const rangeError = 'La tolerancia de retardo debe estar entre 0 y 60 minutos.';
+
+    testWidgets('precarga el valor guardado en el campo', (tester) async {
+      await pumpEditor(tester, rowWithTolerance(20));
+      expect(find.widgetWithText(TextField, '20'), findsOneWidget);
+    });
+
+    testWidgets('rechaza -1 con el mensaje de rango en español', (tester) async {
+      await pumpEditor(tester, rowWithTolerance(20));
+      await tester.enterText(
+          find.widgetWithText(TextField, '20'), '-1');
+      await tester.tap(find.text('GUARDAR CAMBIOS'));
+      await tester.pump();
+      expect(find.text(rangeError), findsOneWidget);
+    });
+
+    testWidgets('rechaza 61 con el mensaje de rango en español', (tester) async {
+      await pumpEditor(tester, rowWithTolerance(20));
+      await tester.enterText(
+          find.widgetWithText(TextField, '20'), '61');
+      await tester.tap(find.text('GUARDAR CAMBIOS'));
+      await tester.pump();
+      expect(find.text(rangeError), findsOneWidget);
+    });
+
+    testWidgets('acepta 0 sin mostrar el error de rango', (tester) async {
+      await pumpEditor(tester, rowWithTolerance(20));
+      await tester.enterText(
+          find.widgetWithText(TextField, '20'), '0');
+      await tester.tap(find.text('GUARDAR CAMBIOS'));
+      await tester.pump();
+      expect(find.text(rangeError), findsNothing);
+    });
+
+    testWidgets('acepta 60 sin mostrar el error de rango', (tester) async {
+      await pumpEditor(tester, rowWithTolerance(20));
+      await tester.enterText(
+          find.widgetWithText(TextField, '20'), '60');
+      await tester.tap(find.text('GUARDAR CAMBIOS'));
+      await tester.pump();
+      expect(find.text(rangeError), findsNothing);
+    });
   });
 }

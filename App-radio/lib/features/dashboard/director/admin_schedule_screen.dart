@@ -61,7 +61,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surface,
-      builder: (_) => _ScheduleEditor(bulkIds: _selected.toList()),
+      builder: (_) => ScheduleEditor(bulkIds: _selected.toList()),
     );
     if (result == true && mounted) {
       _toggleSelectMode();
@@ -96,7 +96,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surface,
-      builder: (_) => _ScheduleEditor(row: row),
+      builder: (_) => ScheduleEditor(row: row),
     );
     if (saved == true) _load();
   }
@@ -258,6 +258,10 @@ class _ScheduleRowCard extends StatelessWidget {
                         icon: Icons.timer_outlined,
                         label: '${s.mealMaxMinutes} min',
                       ),
+                      _MetaChip(
+                        icon: Icons.hourglass_bottom,
+                        label: '±${s.lateToleranceMinutes} min',
+                      ),
                     ],
                   ),
               ],
@@ -308,21 +312,23 @@ class _MetaChip extends StatelessWidget {
 
 /// Hoja de edición de horario. Con [row] edita a una persona; con [bulkIds]
 /// asigna el MISMO horario a todos esos ids en una operación.
-class _ScheduleEditor extends StatefulWidget {
-  const _ScheduleEditor({this.row, this.bulkIds})
+@visibleForTesting
+class ScheduleEditor extends StatefulWidget {
+  const ScheduleEditor({super.key, this.row, this.bulkIds})
       : assert(row != null || bulkIds != null);
   final EmployeeScheduleRow? row;
   final List<String>? bulkIds;
 
   @override
-  State<_ScheduleEditor> createState() => _ScheduleEditorState();
+  State<ScheduleEditor> createState() => _ScheduleEditorState();
 }
 
-class _ScheduleEditorState extends State<_ScheduleEditor> {
+class _ScheduleEditorState extends State<ScheduleEditor> {
   late String _entry;
   late String _exit;
   late String _meal;
   late TextEditingController _limit;
+  late TextEditingController _tolerance;
   bool _saving = false;
   String? _error;
 
@@ -336,11 +342,14 @@ class _ScheduleEditorState extends State<_ScheduleEditor> {
     _exit = s?.exitTime ?? '17:00';
     _meal = s?.mealTime ?? '14:00';
     _limit = TextEditingController(text: (s?.mealMaxMinutes ?? 60).toString());
+    _tolerance = TextEditingController(
+        text: (s?.lateToleranceMinutes ?? 15).toString());
   }
 
   @override
   void dispose() {
     _limit.dispose();
+    _tolerance.dispose();
     super.dispose();
   }
 
@@ -367,6 +376,12 @@ class _ScheduleEditorState extends State<_ScheduleEditor> {
       setState(() => _error = 'El límite de comida debe estar entre 1 y 240 minutos.');
       return;
     }
+    final tol = int.tryParse(_tolerance.text.trim());
+    if (tol == null || tol < 0 || tol > 60) {
+      setState(() => _error =
+          'La tolerancia de retardo debe estar entre 0 y 60 minutos.');
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
@@ -380,6 +395,7 @@ class _ScheduleEditorState extends State<_ScheduleEditor> {
           exitTime: _exit,
           mealTime: _meal,
           mealMaxMinutes: limit,
+          lateToleranceMinutes: tol,
         );
         message = r.message;
       } else {
@@ -389,6 +405,7 @@ class _ScheduleEditorState extends State<_ScheduleEditor> {
           exitTime: _exit,
           mealTime: _meal,
           mealMaxMinutes: limit,
+          lateToleranceMinutes: tol,
         );
       }
       if (!mounted) return;
@@ -438,6 +455,13 @@ class _ScheduleEditorState extends State<_ScheduleEditor> {
             hintText: 'Límite de comida (minutos)',
             textInputType: TextInputType.number,
             prefixIcon: const Icon(Icons.timer_outlined),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppTextField(
+            controller: _tolerance,
+            hintText: 'Tolerancia de retardo (minutos)',
+            textInputType: TextInputType.number,
+            prefixIcon: const Icon(Icons.hourglass_bottom),
           ),
           if (_error != null) ...[
             const SizedBox(height: AppSpacing.sm),
