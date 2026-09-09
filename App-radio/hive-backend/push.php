@@ -141,6 +141,8 @@ function push_title_for_type(string $type): string {
             return 'Recordatorio de anuncio';
         case 'attendance_correction':
             return 'Asistencia';
+        case 'attendance_reminder':
+            return 'Recordatorio de asistencia';
         case 'absence_justification':
             return 'Ausencia';
         case 'absence_approved':
