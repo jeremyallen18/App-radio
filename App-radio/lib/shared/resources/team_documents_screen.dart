@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
 
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/team_document.dart';
@@ -30,6 +31,7 @@ class _TeamDocumentsScreenState extends State<TeamDocumentsScreen> {
   String? _error;
   bool _uploading = false;
   String? _busyId; // id del documento que se está descargando/eliminando
+  String? _openingId; // id del documento que se está abriendo en el visor
 
   @override
   void initState() {
@@ -88,6 +90,24 @@ class _TeamDocumentsScreenState extends State<TeamDocumentsScreen> {
       _snack('No se pudo leer el archivo elegido.');
     } finally {
       if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Future<void> _open(TeamDocument doc) async {
+    setState(() => _openingId = doc.id);
+    try {
+      final opened = await DocumentService.fetchToTemp(doc);
+      final result = await OpenFilex.open(opened.path);
+      if (result.type != ResultType.done && mounted) {
+        _snack('No se pudo abrir el documento. Instala una app compatible '
+            'con .${doc.extension} o descárgalo.');
+      }
+    } on DocumentException catch (e) {
+      _snack(e.message);
+    } catch (_) {
+      _snack('Ocurrió un error al abrir el documento.');
+    } finally {
+      if (mounted) setState(() => _openingId = null);
     }
   }
 
@@ -180,6 +200,8 @@ class _TeamDocumentsScreenState extends State<TeamDocumentsScreen> {
         itemBuilder: (context, index) => _DocumentCard(
           doc: _documents[index],
           busy: _busyId == _documents[index].id,
+          opening: _openingId == _documents[index].id,
+          onOpen: () => _open(_documents[index]),
           onDownload: () => _download(_documents[index]),
           onDelete: () => _delete(_documents[index]),
         ),
@@ -192,12 +214,16 @@ class _DocumentCard extends StatelessWidget {
   const _DocumentCard({
     required this.doc,
     required this.busy,
+    required this.opening,
+    required this.onOpen,
     required this.onDownload,
     required this.onDelete,
   });
 
   final TeamDocument doc;
   final bool busy;
+  final bool opening;
+  final VoidCallback onOpen;
   final VoidCallback onDownload;
   final VoidCallback onDelete;
 
@@ -211,6 +237,9 @@ class _DocumentCard extends StatelessWidget {
     ].join(' · ');
 
     return AppCard(
+      // Tocar la tarjeta (fuera de los botones) abre el documento con el
+      // visor nativo del sistema.
+      onTap: (busy || opening) ? null : onOpen,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -259,6 +288,22 @@ class _DocumentCard extends StatelessWidget {
               ),
             )
           else ...[
+            opening
+                ? const Padding(
+                    padding: EdgeInsets.all(10),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : IconButton(
+                    tooltip: 'Ver',
+                    onPressed: onOpen,
+                    icon: const Icon(Icons.visibility_rounded, size: 20),
+                    color: AppColors.accent,
+                    visualDensity: VisualDensity.compact,
+                  ),
             IconButton(
               tooltip: 'Descargar',
               onPressed: onDownload,
