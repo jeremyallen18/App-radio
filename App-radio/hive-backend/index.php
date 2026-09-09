@@ -6,6 +6,7 @@ require __DIR__ . '/events.php';
 require __DIR__ . '/attendance.php';
 require __DIR__ . '/attendance_admin.php';
 require __DIR__ . '/attendance_reports.php';
+require __DIR__ . '/attendance_reminders.php';
 require __DIR__ . '/leave_requests.php';
 require __DIR__ . '/absences.php';
 require __DIR__ . '/dept_tasks.php';
