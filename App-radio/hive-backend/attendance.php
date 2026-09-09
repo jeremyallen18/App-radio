@@ -207,6 +207,32 @@ function attendance_snapshot_schedule(PDO $pdo, string $employeeId, string $work
     ];
 }
 
+// Cuando el director cambia HOY el horario de un trabajador, ese cambio debe
+// aplicarse también al día en curso (p. ej. autorizar salida temprana). El
+// snapshot de hoy ya está congelado con los valores viejos, así que aquí se
+// sincroniza con `employee_schedules`.
+//
+// Se actualizan salida, comida, límite de comida y tolerancia de retardo.
+// NO se toca `entry_time`: puede tener congelada la hora de un evento con
+// ubicación que cubrió la entrada de esta mañana, y reescribirla volvería a
+// juzgar la llegada ya registrada.
+//
+// Solo afecta al snapshot de HOY (los días pasados siguen inmutables) y solo
+// si existe: si el trabajador aún no ha fichado entrada, su fichaje lo creará
+// después con los valores nuevos.
+function attendance_apply_schedule_change_to_today(PDO $pdo, string $employeeId): void {
+    $stmt = $pdo->prepare(
+        'UPDATE attendance_schedule_snapshots s
+           JOIN employee_schedules e ON e.employee_id = s.employee_id
+            SET s.exit_time              = e.exit_time,
+                s.meal_time              = e.meal_time,
+                s.meal_max_minutes       = e.meal_max_minutes,
+                s.late_tolerance_minutes = e.late_tolerance_minutes
+          WHERE s.employee_id = ? AND s.work_date = ?'
+    );
+    $stmt->execute([$employeeId, attendance_workday()]);
+}
+
 // Hora efectiva ('HH:MM:SS') de un campo del horario para $workDate, o null si
 // el trabajador no tiene horario ni override. Prioridad:
 //   1) snapshot del día (histórico congelado), si existe
