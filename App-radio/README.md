@@ -314,6 +314,13 @@ Vive en [`hive-backend/`](hive-backend/), dentro de este repo. Localmente, Apach
 
 > ⚠️ PHP está configurado en `Europe/Berlin` mientras MySQL corre en la hora del sistema: nunca compares un `time()` de PHP contra un timestamp generado por MySQL — haz las comparaciones de fecha dentro del SQL.
 
+### Asistencia: ventanas de fichaje y recordatorios
+
+- El horario del empleado (`employee_schedules`) incluye una **tolerancia de retardo** (`late_tolerance_minutes`, 0–60, por defecto 15) que configura el director; el retardo solo se marca cuando la entrada la supera.
+- La **entrada** solo se acepta desde 30 min antes de la hora asignada (`409 TOO_EARLY` antes de esa ventana); **iniciar la comida** y **registrar la salida**, solo a partir de su hora (`409 MEAL_TOO_EARLY` / `409 EXIT_TOO_EARLY`).
+- Sin horario asignado el trabajador no puede registrar entrada (`409 NO_SCHEDULE`).
+- Cron nuevo **cada 5 minutos** `cron_attendance_reminders.php`: recordatorios push de entrada, comida (15 min antes) y salida vía FCM (`notify_user`). Si no se da de alta, los avisos igual llegan al abrir "Mi asistencia" (respaldo perezoso en `GET /attendance/today`).
+
 ## Esquema de base de datos (`hive_db`)
 
 Cargar con:
