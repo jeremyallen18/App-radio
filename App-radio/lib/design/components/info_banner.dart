@@ -11,33 +11,35 @@ class InfoBanner extends StatelessWidget {
     super.key,
     required this.icon,
     required this.message,
-    this.color = AppColors.accent,
+    this.color,
   });
 
   final IconData icon;
   final String message;
 
-  /// Color del ícono y base del tinte de fondo/borde.
-  final Color color;
+  /// Color del ícono y base del tinte de fondo/borde. Si es null, usa
+  /// [AppColors.accent] del modo activo.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final c = color ?? AppColors.accent;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
+        color: c.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: color.withValues(alpha: 0.32)),
+        border: Border.all(color: c.withValues(alpha: 0.32)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 18),
+          Icon(icon, color: c, size: 18),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 12.5,
                 height: 1.4,

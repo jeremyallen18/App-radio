@@ -37,73 +37,73 @@ class _OfflineViewState extends State<OfflineView>
       color: AppColors.bgBase,
       child: SafeArea(
         child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.xl),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _Dial(controller: _controller),
-                          const SizedBox(height: AppSpacing.xl),
-                          const _SignalChip(),
-                          const SizedBox(height: AppSpacing.md),
-                          ShaderMask(
-                            shaderCallback: (bounds) => const LinearGradient(
-                              colors: [AppColors.accentStrong, AppColors.accent],
-                            ).createShader(bounds),
-                            child: const Text(
-                              'Sin conexión',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 40,
-                                fontWeight: FontWeight.w800,
-                                height: 1,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          const Text(
-                            '¡Se nos cortó la transmisión!',
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _Dial(controller: _controller),
+                        const SizedBox(height: AppSpacing.xl),
+                        const _SignalChip(),
+                        const SizedBox(height: AppSpacing.md),
+                        ShaderMask(
+                          shaderCallback: (bounds) => LinearGradient(
+                            colors: [AppColors.accentStrong, AppColors.accent],
+                          ).createShader(bounds),
+                          child: const Text(
+                            'Sin conexión',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              fontSize: 40,
+                              fontWeight: FontWeight.w800,
+                              height: 1,
                             ),
                           ),
-                          const SizedBox(height: AppSpacing.md),
-                          const Text(
-                            'Radiodoliv no encuentra tu internet por ningún dial. '
-                            'Revisa el wifi o los datos móviles e inténtalo de nuevo.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 14,
-                              height: 1.5,
-                            ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          '¡Se nos cortó la transmisión!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
                           ),
-                          const SizedBox(height: AppSpacing.xl),
-                          _StaticBars(controller: _controller),
-                          const SizedBox(height: AppSpacing.xl),
-                          const _QuoteCard(),
-                          const SizedBox(height: AppSpacing.xl),
-                          AppButton(
-                            label: 'Reintentar sintonía',
-                            loading: widget.retrying,
-                            onPressed: widget.onRetry,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        Text(
+                          'Radiodoliv no encuentra tu internet por ningún dial. '
+                          'Revisa el wifi o los datos móviles e inténtalo de nuevo.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 14,
+                            height: 1.5,
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: AppSpacing.xl),
+                        _StaticBars(controller: _controller),
+                        const SizedBox(height: AppSpacing.xl),
+                        const _QuoteCard(),
+                        const SizedBox(height: AppSpacing.xl),
+                        AppButton(
+                          label: 'Reintentar sintonía',
+                          loading: widget.retrying,
+                          onPressed: widget.onRetry,
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              );
-            },
+              ),
+            );
+          },
         ),
       ),
     );
@@ -127,7 +127,7 @@ class _SignalChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.pill),
         border: Border.all(color: AppColors.surfaceBorder),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           _PulseDot(),
@@ -189,7 +189,7 @@ class _QuoteCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: AppColors.surfaceBorder),
       ),
-      child: const Column(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
@@ -273,7 +273,7 @@ class _Dial extends StatelessWidget {
               ),
             ),
           ),
-          const Icon(Icons.wifi_off_rounded, color: AppColors.textPrimary, size: 34),
+          Icon(Icons.wifi_off_rounded, color: AppColors.textPrimary, size: 34),
         ],
       ),
     );

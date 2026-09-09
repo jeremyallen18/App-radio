@@ -137,7 +137,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   }
 
   Future<void> _changePassword() async {
-    final result = await showDialog<({String current, String next, String confirm})>(
+    final result =
+        await showDialog<({String current, String next, String confirm})>(
       context: context,
       builder: (_) => const _PasswordChangeDialog(),
     );
@@ -168,8 +169,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar',
-                style: TextStyle(color: AppColors.textMuted)),
+            child:
+                Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
           ),
           TextButton(
             onPressed: () {
@@ -227,18 +228,18 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
               if (pending != null) ...[
                 const _RowDivider(),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.md, AppSpacing.sm, AppSpacing.sm, AppSpacing.sm),
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.md,
+                      AppSpacing.sm, AppSpacing.sm, AppSpacing.sm),
                   child: Row(
                     children: [
-                      const Icon(Icons.hourglass_bottom,
+                      Icon(Icons.hourglass_bottom,
                           size: 18, color: AppColors.warning),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Text(
                           'Pendiente de confirmar: $pending',
-                          style: const TextStyle(
-                              color: AppColors.warning, fontSize: 12),
+                          style:
+                              TextStyle(color: AppColors.warning, fontSize: 12),
                         ),
                       ),
                       TextButton(
@@ -276,7 +277,7 @@ class _GroupLabel extends StatelessWidget {
         padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm),
         child: Text(
           text.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.accentStrong,
             fontSize: 11,
             fontWeight: FontWeight.w700,
@@ -300,7 +301,7 @@ class _RowDivider extends StatelessWidget {
   const _RowDivider();
   @override
   Widget build(BuildContext context) =>
-      const Divider(height: 1, color: AppColors.surfaceBorder);
+      Divider(height: 1, color: AppColors.surfaceBorder);
 }
 
 class _OptionRow extends StatelessWidget {
@@ -331,20 +332,19 @@ class _OptionRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 15, color: AppColors.textPrimary)),
                   const SizedBox(height: 2),
                   Text(
                     value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textMuted),
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios_outlined,
+            Icon(Icons.arrow_forward_ios_outlined,
                 size: 16, color: AppColors.textMuted),
           ],
         ),
@@ -392,7 +392,7 @@ class _EmailChangeDialogState extends State<_EmailChangeDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
+          Text(
             'Te enviaremos un enlace al correo nuevo. El cambio se aplica '
             'cuando lo abras.',
             style: TextStyle(color: AppColors.textMuted, fontSize: 12),
@@ -412,15 +412,14 @@ class _EmailChangeDialogState extends State<_EmailChangeDialog> {
           if (_error != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(_error!,
-                style: const TextStyle(color: AppColors.error, fontSize: 12)),
+                style: TextStyle(color: AppColors.error, fontSize: 12)),
           ],
         ],
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar',
-              style: TextStyle(color: AppColors.textMuted)),
+          child: Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
         ),
         TextButton(onPressed: _submit, child: const Text('Enviar enlace')),
       ],
@@ -455,7 +454,8 @@ class _PasswordChangeDialogState extends State<_PasswordChangeDialog> {
       return;
     }
     if (_next.text.length < 6) {
-      setState(() => _error = 'La nueva contraseña necesita al menos 6 caracteres.');
+      setState(
+          () => _error = 'La nueva contraseña necesita al menos 6 caracteres.');
       return;
     }
     if (_next.text != _confirm.text) {
@@ -495,15 +495,14 @@ class _PasswordChangeDialogState extends State<_PasswordChangeDialog> {
           if (_error != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(_error!,
-                style: const TextStyle(color: AppColors.error, fontSize: 12)),
+                style: TextStyle(color: AppColors.error, fontSize: 12)),
           ],
         ],
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar',
-              style: TextStyle(color: AppColors.textMuted)),
+          child: Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
         ),
         TextButton(onPressed: _submit, child: const Text('Cambiar')),
       ],

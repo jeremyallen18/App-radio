@@ -4,14 +4,16 @@ import 'package:latlong2/latlong.dart';
 
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/core/location/attendance_location.dart';
-import 'package:doliv_social/services/attendance_service.dart' show AttendanceException;
+import 'package:doliv_social/services/attendance_service.dart'
+    show AttendanceException;
 
 /// Selector de ubicación sobre un mapa (OpenStreetMap). Se toca el mapa para
 /// fijar el punto; el botón "Usar mi ubicación" centra el mapa en el GPS.
 /// Devuelve `({double lat, double lng})` con `Navigator.pop`, o `null` si se
 /// cancela.
 class LocationPickerMap extends StatefulWidget {
-  const LocationPickerMap({super.key, this.initialLatitude, this.initialLongitude});
+  const LocationPickerMap(
+      {super.key, this.initialLatitude, this.initialLongitude});
 
   final double? initialLatitude;
   final double? initialLongitude;
@@ -26,9 +28,10 @@ class _LocationPickerMapState extends State<LocationPickerMap> {
   // Centro por defecto: Radio Doliv (Cuernavaca, MX) si no llega nada.
   static const LatLng _fallback = LatLng(18.9186, -99.2342);
 
-  late LatLng _picked = (widget.initialLatitude != null && widget.initialLongitude != null)
-      ? LatLng(widget.initialLatitude!, widget.initialLongitude!)
-      : _fallback;
+  late LatLng _picked =
+      (widget.initialLatitude != null && widget.initialLongitude != null)
+          ? LatLng(widget.initialLatitude!, widget.initialLongitude!)
+          : _fallback;
 
   bool _locating = false;
 
@@ -87,7 +90,8 @@ class _LocationPickerMapState extends State<LocationPickerMap> {
                     width: 44,
                     height: 44,
                     alignment: Alignment.topCenter,
-                    child: const Icon(Icons.location_on, color: AppColors.accent, size: 44),
+                    child: Icon(Icons.location_on,
+                        color: AppColors.accent, size: 44),
                   ),
                 ],
               ),
@@ -103,13 +107,15 @@ class _LocationPickerMapState extends State<LocationPickerMap> {
                 AppCard(
                   child: Row(
                     children: [
-                      const Icon(Icons.place_outlined, color: AppColors.accent, size: 18),
+                      Icon(Icons.place_outlined,
+                          color: AppColors.accent, size: 18),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
                           'Lat ${_picked.latitude.toStringAsFixed(6)},  '
                           'Lng ${_picked.longitude.toStringAsFixed(6)}',
-                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
+                          style: TextStyle(
+                              color: AppColors.textPrimary, fontSize: 12),
                         ),
                       ),
                     ],

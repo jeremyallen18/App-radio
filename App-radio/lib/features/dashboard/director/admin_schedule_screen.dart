@@ -127,7 +127,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
               onPressed: _selectAllOrNone,
               child: Text(
                 _selected.length == _rows.length ? 'Ninguno' : 'Todos',
-                style: const TextStyle(color: AppColors.accentStrong),
+                style: TextStyle(color: AppColors.accentStrong),
               ),
             ),
         ],
@@ -155,7 +155,8 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                 AppSpacing.xxl,
               ),
               itemCount: _rows.length + 1,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: AppSpacing.md),
               itemBuilder: (_, i) {
                 if (i == 0) {
                   return Text(
@@ -164,7 +165,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                         : _selectMode
                             ? 'Elige a los empleados y asigna el mismo horario a todos.'
                             : 'Toca un empleado para editar su horario, o usa la lista para asignar a varios.',
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                   );
                 }
                 final row = _rows[i - 1];
@@ -231,7 +232,7 @@ class _ScheduleRowCard extends StatelessWidget {
               children: [
                 Text(
                   row.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
@@ -253,7 +254,8 @@ class _ScheduleRowCard extends StatelessWidget {
                     children: [
                       _MetaChip(icon: Icons.login, label: s.entryTime),
                       _MetaChip(icon: Icons.logout, label: s.exitTime),
-                      _MetaChip(icon: Icons.restaurant_outlined, label: s.mealTime),
+                      _MetaChip(
+                          icon: Icons.restaurant_outlined, label: s.mealTime),
                       _MetaChip(
                         icon: Icons.timer_outlined,
                         label: '${s.mealMaxMinutes} min',
@@ -268,7 +270,7 @@ class _ScheduleRowCard extends StatelessWidget {
             ),
           ),
           if (onTap != null && !selectMode)
-            const Icon(Icons.edit_outlined, color: AppColors.accent, size: 18),
+            Icon(Icons.edit_outlined, color: AppColors.accent, size: 18),
         ],
       ),
     );
@@ -285,7 +287,8 @@ class _MetaChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 5),
+      padding:
+          const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 5),
       decoration: BoxDecoration(
         color: AppColors.bgBase,
         borderRadius: BorderRadius.circular(AppRadius.chip),
@@ -298,7 +301,7 @@ class _MetaChip extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -342,8 +345,8 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
     _exit = s?.exitTime ?? '17:00';
     _meal = s?.mealTime ?? '14:00';
     _limit = TextEditingController(text: (s?.mealMaxMinutes ?? 60).toString());
-    _tolerance = TextEditingController(
-        text: (s?.lateToleranceMinutes ?? 15).toString());
+    _tolerance =
+        TextEditingController(text: (s?.lateToleranceMinutes ?? 15).toString());
   }
 
   @override
@@ -367,19 +370,21 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
       ),
     );
     if (picked == null) return;
-    onPicked('${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}');
+    onPicked(
+        '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}');
   }
 
   Future<void> _save() async {
     final limit = int.tryParse(_limit.text.trim());
     if (limit == null || limit < 1 || limit > 240) {
-      setState(() => _error = 'El límite de comida debe estar entre 1 y 240 minutos.');
+      setState(() =>
+          _error = 'El límite de comida debe estar entre 1 y 240 minutos.');
       return;
     }
     final tol = int.tryParse(_tolerance.text.trim());
     if (tol == null || tol < 0 || tol > 60) {
-      setState(() => _error =
-          'La tolerancia de retardo debe estar entre 0 y 60 minutos.');
+      setState(() =>
+          _error = 'La tolerancia de retardo debe estar entre 0 y 60 minutos.');
       return;
     }
     setState(() {
@@ -439,15 +444,17 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
             _isBulk
                 ? 'Asignar horario a ${widget.bulkIds!.length} empleados'
                 : 'Horario de ${widget.row!.name}',
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w800,
               fontSize: 17,
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          _timeTile('Horario de entrada', _entry, (v) => setState(() => _entry = v)),
-          _timeTile('Horario de salida', _exit, (v) => setState(() => _exit = v)),
+          _timeTile(
+              'Horario de entrada', _entry, (v) => setState(() => _entry = v)),
+          _timeTile(
+              'Horario de salida', _exit, (v) => setState(() => _exit = v)),
           _timeTile('Hora de comida', _meal, (v) => setState(() => _meal = v)),
           const SizedBox(height: AppSpacing.md),
           AppTextField(
@@ -465,7 +472,8 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
           ),
           if (_error != null) ...[
             const SizedBox(height: AppSpacing.sm),
-            Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
+            Text(_error!,
+                style: TextStyle(color: AppColors.error, fontSize: 12)),
           ],
           const SizedBox(height: AppSpacing.lg),
           AppButton(
@@ -476,7 +484,8 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
           const SizedBox(height: AppSpacing.sm),
           Center(
             child: TextButton(
-              onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+              onPressed:
+                  _saving ? null : () => Navigator.of(context).pop(false),
               child: const Text('Cancelar'),
             ),
           ),
@@ -488,7 +497,8 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
   Widget _timeTile(String label, String value, ValueChanged<String> onPicked) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      title: Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+      title: Text(label,
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       trailing: OutlinedButton.icon(
         onPressed: () => _pickTime(value, onPicked),
         icon: const Icon(Icons.schedule, size: 16),

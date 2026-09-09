@@ -25,13 +25,16 @@ class EvidenceConfirmSheet extends StatelessWidget {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Revisa la evidencia',
               style: TextStyle(
                 color: AppColors.textPrimary,
@@ -42,7 +45,7 @@ class EvidenceConfirmSheet extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               'Se adjuntará a "$taskTitle" al confirmar. Todavía no se ha subido.',
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
             const SizedBox(height: AppSpacing.md),
             ClipRRect(
@@ -56,7 +59,7 @@ class EvidenceConfirmSheet extends StatelessWidget {
                   height: 240,
                   alignment: Alignment.center,
                   color: AppColors.bgBase,
-                  child: const Text(
+                  child: Text(
                     'No se pudo previsualizar la imagen.',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                   ),
@@ -78,7 +81,7 @@ class EvidenceConfirmSheet extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             TextButton(
               onPressed: () => Navigator.pop(context, EvidenceChoice.cancel),
-              child: const Text('Cancelar',
+              child: Text('Cancelar',
                   style: TextStyle(color: AppColors.textMuted)),
             ),
           ],

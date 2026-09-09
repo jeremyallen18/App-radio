@@ -124,7 +124,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       _snack('Este equipo aún no tiene empleados que asignar.');
       return;
     }
-    final u = await pickPerson(context, title: 'Asignar a', people: widget.members);
+    final u =
+        await pickPerson(context, title: 'Asignar a', people: widget.members);
     if (u != null) setState(() => _assignee = u);
   }
 
@@ -237,7 +238,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       appBar: AppBar(automaticallyImplyLeading: false, title: Text(title)),
       padding: EdgeInsets.zero,
       bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.lg),
+        minimum: const EdgeInsets.fromLTRB(
+            AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -245,10 +247,13 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                child: Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
+                child: Text(_error!,
+                    style: TextStyle(color: AppColors.error, fontSize: 12)),
               ),
             AppButton(
-              label: widget.isEdit ? 'Guardar cambios' : (widget.isSubtask ? 'Crear subtarea' : 'Crear tarea'),
+              label: widget.isEdit
+                  ? 'Guardar cambios'
+                  : (widget.isSubtask ? 'Crear subtarea' : 'Crear tarea'),
               loading: _saving,
               onPressed: _saving ? null : _save,
             ),
@@ -256,19 +261,22 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xl),
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xl),
         children: [
           if (widget.isSubtask && !widget.isEdit)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(bottom: AppSpacing.md),
               child: Row(
                 children: [
-                  Icon(Icons.subdirectory_arrow_right_rounded, size: 16, color: AppColors.textMuted),
+                  Icon(Icons.subdirectory_arrow_right_rounded,
+                      size: 16, color: AppColors.textMuted),
                   SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       'Quedará dentro de la tarea principal seleccionada.',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                   ),
                 ],
@@ -278,10 +286,14 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
             title: 'Qué',
             children: [
               _Label('Título'),
-              AppTextField(controller: _title, hintText: 'Ej. Cobertura de elecciones'),
+              AppTextField(
+                  controller: _title, hintText: 'Ej. Cobertura de elecciones'),
               const SizedBox(height: AppSpacing.md),
               _Label('Descripción', hint: 'opcional'),
-              AppTextField(controller: _description, hintText: 'Qué hay que hacer y qué entregar', maxLines: 4),
+              AppTextField(
+                  controller: _description,
+                  hintText: 'Qué hay que hacer y qué entregar',
+                  maxLines: 4),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -301,7 +313,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 _AssigneeTile(
                   assignee: _assignee,
                   onTap: _pickAssignee,
-                  onClear: _assignee == null ? null : () => setState(() => _assignee = null),
+                  onClear: _assignee == null
+                      ? null
+                      : () => setState(() => _assignee = null),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 6, left: 4),
@@ -309,7 +323,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     _assignee == null
                         ? 'Sin responsable, solo un manager podrá marcarla como completada.'
                         : 'Solo ${_assignee!.name} podrá marcarla como completada.',
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                   ),
                 ),
               ],
@@ -320,11 +334,11 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                   padding: const EdgeInsets.only(left: 4),
                   child: Row(
                     children: [
-                      const Icon(Icons.workspaces_outline,
+                      Icon(Icons.workspaces_outline,
                           size: 16, color: AppColors.textMuted),
                       const SizedBox(width: 6),
                       Text(widget.fixedSubTeamName!,
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppColors.textPrimary,
                               fontWeight: FontWeight.w600)),
                     ],
@@ -359,14 +373,27 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.sm,
                 children: [
-                  AppFilterChip(label: 'Sin fecha', selected: _due == null, onTap: () => setState(() => _due = null)),
-                  AppFilterChip(label: 'Hoy', selected: _sameDay(_due, today), onTap: () => setState(() => _due = today)),
-                  AppFilterChip(label: 'Mañana', selected: _sameDay(_due, tomorrow), onTap: () => setState(() => _due = tomorrow)),
                   AppFilterChip(
-                    label: _due != null && !_sameDay(_due, today) && !_sameDay(_due, tomorrow)
+                      label: 'Sin fecha',
+                      selected: _due == null,
+                      onTap: () => setState(() => _due = null)),
+                  AppFilterChip(
+                      label: 'Hoy',
+                      selected: _sameDay(_due, today),
+                      onTap: () => setState(() => _due = today)),
+                  AppFilterChip(
+                      label: 'Mañana',
+                      selected: _sameDay(_due, tomorrow),
+                      onTap: () => setState(() => _due = tomorrow)),
+                  AppFilterChip(
+                    label: _due != null &&
+                            !_sameDay(_due, today) &&
+                            !_sameDay(_due, tomorrow)
                         ? _fmt(_due!)
                         : 'Elegir…',
-                    selected: _due != null && !_sameDay(_due, today) && !_sameDay(_due, tomorrow),
+                    selected: _due != null &&
+                        !_sameDay(_due, today) &&
+                        !_sameDay(_due, tomorrow),
                     onTap: _pickDue,
                   ),
                 ],
@@ -381,12 +408,16 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 contentPadding: EdgeInsets.zero,
                 value: _requiresEvidence,
                 onChanged: (v) => setState(() => _requiresEvidence = v),
-                secondary: const Icon(Icons.photo_camera_outlined, color: AppColors.accent),
-                title: const Text(
+                secondary:
+                    Icon(Icons.photo_camera_outlined, color: AppColors.accent),
+                title: Text(
                   'Pedir evidencia al completar',
-                  style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14),
+                  style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14),
                 ),
-                subtitle: const Text(
+                subtitle: Text(
                   'Habrá que adjuntar una foto para marcarla como completada.',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                 ),
@@ -422,17 +453,20 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                         onTap: () => setState(() => _recurrenceUntil = null),
                       ),
                       AppFilterChip(
-                        label: _recurrenceUntil == null ? 'Elegir…' : _fmt(_recurrenceUntil!),
+                        label: _recurrenceUntil == null
+                            ? 'Elegir…'
+                            : _fmt(_recurrenceUntil!),
                         selected: _recurrenceUntil != null,
                         onTap: _pickRecurrenceUntil,
                       ),
                     ],
                   ),
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(top: 6, left: 4),
                     child: Text(
                       'Al cerrarse cada ocurrencia se crea la siguiente automáticamente.',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 11),
                     ),
                   ),
                 ],
@@ -460,7 +494,7 @@ class _Panel extends StatelessWidget {
           children: [
             Text(
               title.toUpperCase(),
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.accentStrong,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -487,10 +521,15 @@ class _Label extends StatelessWidget {
       padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm),
       child: Row(
         children: [
-          Text(text, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+          Text(text,
+              style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600)),
           if (hint != null) ...[
             const SizedBox(width: 6),
-            Text(hint!, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            Text(hint!,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           ],
         ],
       ),
@@ -526,9 +565,11 @@ class _DepartmentPicker extends StatelessWidget {
           ? 'Todavía no hay departamentos. Créalos desde "Equipos y departamentos".'
           : 'La tarea le llegará al manager del departamento, que la repartirá con su equipo.';
     } else if ((selected.managerEmail ?? '').isEmpty) {
-      note = '${selected.name} aún no tiene manager: asigna uno antes de crear la tarea.';
+      note =
+          '${selected.name} aún no tiene manager: asigna uno antes de crear la tarea.';
     } else {
-      note = 'Le llegará a ${selected.managerEmail} (manager de ${selected.name}) para que la reparta con su equipo.';
+      note =
+          'Le llegará a ${selected.managerEmail} (manager de ${selected.name}) para que la reparta con su equipo.';
     }
     final noteColor = selected != null && (selected.managerEmail ?? '').isEmpty
         ? AppColors.warning
@@ -542,11 +583,14 @@ class _DepartmentPicker extends StatelessWidget {
             padding: const EdgeInsets.only(left: 4),
             child: Row(
               children: [
-                const Icon(Icons.groups_2_outlined, size: 16, color: AppColors.textMuted),
+                Icon(Icons.groups_2_outlined,
+                    size: 16, color: AppColors.textMuted),
                 const SizedBox(width: 6),
                 Text(
                   selected?.name ?? 'Departamento',
-                  style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -574,7 +618,8 @@ class _DepartmentPicker extends StatelessWidget {
 }
 
 class _AssigneeTile extends StatelessWidget {
-  const _AssigneeTile({required this.assignee, required this.onTap, this.onClear});
+  const _AssigneeTile(
+      {required this.assignee, required this.onTap, this.onClear});
   final UserProfile? assignee;
   final VoidCallback onTap;
   final VoidCallback? onClear;
@@ -589,27 +634,37 @@ class _AssigneeTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.field),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md, vertical: AppSpacing.sm),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.field),
-            border: Border.all(color: a == null ? AppColors.surfaceBorder : AppColors.accent.withValues(alpha: 0.5)),
+            border: Border.all(
+                color: a == null
+                    ? AppColors.surfaceBorder
+                    : AppColors.accent.withValues(alpha: 0.5)),
           ),
           child: Row(
             children: [
               if (a == null)
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 16,
                   backgroundColor: AppColors.surfaceBorder,
-                  child: Icon(Icons.person_add_alt_1_outlined, size: 16, color: AppColors.textMuted),
+                  child: Icon(Icons.person_add_alt_1_outlined,
+                      size: 16, color: AppColors.textMuted),
                 )
               else
-                IdentityAvatar(id: a.email, label: a.name, radius: 16, photoUrl: a.photoUrl),
+                IdentityAvatar(
+                    id: a.email,
+                    label: a.name,
+                    radius: 16,
+                    photoUrl: a.photoUrl),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Text(
                   a?.name ?? 'Elegir a alguien del equipo',
                   style: TextStyle(
-                    color: a == null ? AppColors.textMuted : AppColors.textPrimary,
+                    color:
+                        a == null ? AppColors.textMuted : AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -622,7 +677,7 @@ class _AssigneeTile extends StatelessWidget {
                   visualDensity: VisualDensity.compact,
                 )
               else
-                const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
             ],
           ),
         ),

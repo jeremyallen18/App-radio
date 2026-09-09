@@ -66,14 +66,14 @@ class TaskCard extends StatelessWidget {
 
   Widget _buildTrailing() {
     if (done) {
-      return const Padding(
+      return Padding(
         key: ValueKey('done'),
         padding: EdgeInsets.only(top: 2),
         child: Icon(Icons.check_circle, color: AppColors.success, size: 26),
       );
     }
     if (busy) {
-      return const SizedBox(
+      return SizedBox(
         key: ValueKey('busy'),
         width: 26,
         height: 26,
@@ -86,7 +86,7 @@ class TaskCard extends StatelessWidget {
         key: const ValueKey('todo'),
         tooltip: 'Completar tarea',
         onPressed: onComplete,
-        icon: const Icon(Icons.radio_button_unchecked,
+        icon: Icon(Icons.radio_button_unchecked,
             color: AppColors.accent, size: 26),
       );
     }
@@ -139,8 +139,8 @@ class TaskCard extends StatelessWidget {
                 if (context_.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text(context_,
-                      style: const TextStyle(
-                          color: AppColors.textMuted, fontSize: 12)),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ],
                 if (deadlineText.isNotEmpty || urgency != null) ...[
                   const SizedBox(height: 8),
@@ -153,11 +153,11 @@ class TaskCard extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.event,
+                            Icon(Icons.event,
                                 size: 14, color: AppColors.textMuted),
                             const SizedBox(width: 4),
                             Text(deadlineText,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     color: AppColors.textMuted, fontSize: 12)),
                           ],
                         ),

@@ -166,11 +166,11 @@ class _ColleagueDirectoryScreenState extends State<ColleagueDirectoryScreen> {
               controller: _searchController,
               hintText: 'Buscar por nombre, puesto, correo o n.º de control',
               onChanged: _onQueryChanged,
-              prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+              prefixIcon: Icon(Icons.search, color: AppColors.textMuted),
               suffixIcon: _searchController.text.isEmpty
                   ? null
                   : IconButton(
-                      icon: const Icon(Icons.close, color: AppColors.textMuted),
+                      icon: Icon(Icons.close, color: AppColors.textMuted),
                       tooltip: 'Limpiar búsqueda',
                       onPressed: () {
                         _searchController.clear();
@@ -265,7 +265,7 @@ class _ColleagueDirectoryScreenState extends State<ColleagueDirectoryScreen> {
           Expanded(
             child: Text(
               count,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
           ),
           // Mientras se reconsulta, un indicador discreto aquí en vez de

@@ -15,7 +15,8 @@ class CorrectionRequestScreen extends StatefulWidget {
   final DateTime? initialDate;
 
   @override
-  State<CorrectionRequestScreen> createState() => _CorrectionRequestScreenState();
+  State<CorrectionRequestScreen> createState() =>
+      _CorrectionRequestScreenState();
 }
 
 class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
@@ -119,12 +120,13 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       appBar: AppBar(
-          leading: const BackButton(), title: const Text('Solicitar corrección')),
+          leading: const BackButton(),
+          title: const Text('Solicitar corrección')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
             AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxl),
         children: [
-          const Text(
+          Text(
             'Pide corregir un fichaje que olvidaste o que quedó con la hora '
             'equivocada. Tu manager lo revisa antes de aplicarse.',
             style: TextStyle(color: AppColors.textMuted, fontSize: 12),
@@ -132,12 +134,14 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
           const SizedBox(height: AppSpacing.lg),
           _row(Icons.event_outlined, 'Día', _dateText, _pickDate),
           const SizedBox(height: AppSpacing.md),
-          const Text('Fichaje', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          Text('Fichaje',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
           const SizedBox(height: AppSpacing.sm),
           DropdownButtonFormField<CorrectionKind>(
             initialValue: _kind,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.punch_clock_outlined, color: AppColors.accent),
+            decoration: InputDecoration(
+              prefixIcon:
+                  Icon(Icons.punch_clock_outlined, color: AppColors.accent),
               border: OutlineInputBorder(),
               isDense: true,
             ),
@@ -150,7 +154,8 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
           const SizedBox(height: AppSpacing.md),
           _row(Icons.schedule, 'Hora correcta', _timeText, _pickTime),
           const SizedBox(height: AppSpacing.md),
-          const Text('Motivo', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          Text('Motivo',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
           const SizedBox(height: AppSpacing.sm),
           AppTextField(
               controller: _reason,
@@ -158,7 +163,8 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
               maxLines: 3),
           if (_error != null) ...[
             const SizedBox(height: AppSpacing.md),
-            Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
+            Text(_error!,
+                style: TextStyle(color: AppColors.error, fontSize: 12)),
           ],
           const SizedBox(height: AppSpacing.lg),
           AppButton(
@@ -174,7 +180,7 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
                 padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
                 child: LoadingState())
           else if (_mine.isEmpty)
-            const Text('Todavía no has pedido correcciones.',
+            Text('Todavía no has pedido correcciones.',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 13))
           else
             for (final c in _mine) ...[
@@ -190,10 +196,12 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon, color: AppColors.accent),
-      title: Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+      title: Text(label,
+          style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
       subtitle: Text(value,
-          style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
+          style: TextStyle(
+              color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+      trailing: Icon(Icons.chevron_right, color: AppColors.textMuted),
       onTap: onTap,
     );
   }
@@ -218,9 +226,12 @@ class _MyCorrectionTile extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('${c.kindLabel} · ${c.workDateLabel} · ${c.requestedTime}',
-                    style: const TextStyle(
-                        color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 13)),
+                child: Text(
+                    '${c.kindLabel} · ${c.workDateLabel} · ${c.requestedTime}',
+                    style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13)),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -229,12 +240,16 @@ class _MyCorrectionTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Text(c.status.label,
-                    style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700)),
+                    style: TextStyle(
+                        color: color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700)),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          Text(c.reason, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          Text(c.reason,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           if ((c.reviewNote ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),
             Text('Nota del manager: ${c.reviewNote}',

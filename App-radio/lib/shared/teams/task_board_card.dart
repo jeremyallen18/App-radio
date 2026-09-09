@@ -110,7 +110,7 @@ class TaskBoardCard extends StatelessWidget {
                           task.description!,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppColors.textMuted, fontSize: 12),
                         ),
                       ],
@@ -156,7 +156,7 @@ class TaskBoardCard extends StatelessWidget {
                     enabled: !busy,
                     tooltip: 'Más acciones',
                     padding: EdgeInsets.zero,
-                    icon: const Icon(Icons.more_vert_rounded,
+                    icon: Icon(Icons.more_vert_rounded,
                         color: AppColors.textMuted, size: 20),
                     onSelected: (v) {
                       switch (v) {
@@ -183,7 +183,7 @@ class TaskBoardCard extends StatelessWidget {
                                 leading: Icon(
                                     Icons.subdirectory_arrow_right_rounded),
                                 title: Text('Agregar subtarea'))),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                           value: 'del',
                           child: ListTile(
                               dense: true,
@@ -247,7 +247,7 @@ class _Checkbox extends StatelessWidget {
                 transitionBuilder: (child, anim) =>
                     ScaleTransition(scale: anim, child: child),
                 child: done
-                    ? const Icon(Icons.check_rounded,
+                    ? Icon(Icons.check_rounded,
                         size: 16, color: AppColors.bgBase)
                     : const SizedBox.shrink(),
               ),
@@ -276,12 +276,12 @@ class _RejectNote extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.undo_rounded, size: 14, color: AppColors.error),
+          Icon(Icons.undo_rounded, size: 14, color: AppColors.error),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               'Devuelta: $note',
-              style: const TextStyle(color: AppColors.error, fontSize: 12),
+              style: TextStyle(color: AppColors.error, fontSize: 12),
             ),
           ),
         ],

@@ -43,7 +43,8 @@ Future<String?> showLeaveReasonSheet(
 }
 
 class _LeaveApprovalSheet extends StatefulWidget {
-  const _LeaveApprovalSheet({required this.initialStart, required this.initialEnd});
+  const _LeaveApprovalSheet(
+      {required this.initialStart, required this.initialEnd});
   final DateTime initialStart;
   final DateTime initialEnd;
 
@@ -68,10 +69,13 @@ class _LeaveApprovalSheetState extends State<_LeaveApprovalSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Fechas autorizadas',
-              style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 17)),
+          Text('Fechas autorizadas',
+              style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 17)),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Puedes autorizar un periodo distinto al solicitado.',
             style: TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
@@ -167,9 +171,13 @@ class _LeaveReasonSheetState extends State<_LeaveReasonSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(widget.title,
-              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 17)),
+              style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 17)),
           const SizedBox(height: AppSpacing.md),
-          AppTextField(controller: _controller, hintText: widget.hint, maxLines: 3),
+          AppTextField(
+              controller: _controller, hintText: widget.hint, maxLines: 3),
           const SizedBox(height: AppSpacing.lg),
           AppButton(
             label: widget.confirmLabel,
@@ -193,7 +201,8 @@ class _LeaveReasonSheetState extends State<_LeaveReasonSheet> {
 }
 
 class _SheetDateRow extends StatelessWidget {
-  const _SheetDateRow({required this.label, required this.value, required this.onPick});
+  const _SheetDateRow(
+      {required this.label, required this.value, required this.onPick});
   final String label;
   final DateTime value;
   final VoidCallback onPick;
@@ -202,7 +211,8 @@ class _SheetDateRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      title: Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+      title: Text(label,
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       trailing: OutlinedButton.icon(
         onPressed: onPick,
         icon: const Icon(Icons.event, size: 16),

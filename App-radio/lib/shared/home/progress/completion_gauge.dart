@@ -33,7 +33,8 @@ class CompletionGauge extends StatelessWidget {
       aspectRatio: 1.9,
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: reduceMotion ? 1 : 0, end: 1),
-        duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 900),
+        duration:
+            reduceMotion ? Duration.zero : const Duration(milliseconds: 900),
         curve: Curves.easeOutCubic,
         builder: (context, t, _) {
           return CustomPaint(
@@ -50,7 +51,7 @@ class CompletionGauge extends StatelessWidget {
                 children: [
                   Text(
                     '${(pct * t).round()}%',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 40,
                       fontWeight: FontWeight.w800,
@@ -61,7 +62,7 @@ class CompletionGauge extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     caption,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textMuted,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,

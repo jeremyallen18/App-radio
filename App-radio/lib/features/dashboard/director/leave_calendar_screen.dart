@@ -23,8 +23,18 @@ class _LeaveCalendarScreenState extends State<LeaveCalendarScreen> {
   DateTime? _selectedDay = DateTime.now();
 
   static const _monthNames = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
   ];
 
   List<DepartmentInfo> _departments = const [];
@@ -108,8 +118,9 @@ class _LeaveCalendarScreenState extends State<LeaveCalendarScreen> {
           if (_departments.isNotEmpty)
             DropdownButtonFormField<String?>(
               initialValue: _departmentId,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.groups_2_outlined, color: AppColors.accent),
+              decoration: InputDecoration(
+                prefixIcon:
+                    Icon(Icons.groups_2_outlined, color: AppColors.accent),
                 border: OutlineInputBorder(),
                 isDense: true,
               ),
@@ -137,7 +148,7 @@ class _LeaveCalendarScreenState extends State<LeaveCalendarScreen> {
               headerStyle: HeaderStyle(
                 titleCentered: true,
                 formatButtonVisible: false,
-                titleTextStyle: const TextStyle(
+                titleTextStyle: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -161,7 +172,7 @@ class _LeaveCalendarScreenState extends State<LeaveCalendarScreen> {
                 _focusedDay = foc;
                 _load();
               },
-              calendarStyle: const CalendarStyle(
+              calendarStyle: CalendarStyle(
                 markersMaxCount: 4,
                 markerDecoration: BoxDecoration(
                   color: AppColors.accent,
@@ -249,14 +260,14 @@ class _AbsenceTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(item.employeeName ?? 'Empleado',
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w700,
                         fontSize: 14)),
                 Text(
                   '${item.typeLabel} · ${item.rangeLabel}'
                   '${item.departmentName != null ? ' · ${item.departmentName}' : ''}',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
               ],
             ),
@@ -268,7 +279,7 @@ class _AbsenceTile extends StatelessWidget {
                 color: AppColors.textMuted.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(AppRadius.pill),
               ),
-              child: const Text('Pendiente',
+              child: Text('Pendiente',
                   style: TextStyle(
                       color: AppColors.textMuted,
                       fontSize: 11,

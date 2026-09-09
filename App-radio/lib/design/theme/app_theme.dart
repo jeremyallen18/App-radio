@@ -4,33 +4,50 @@ import 'package:doliv_social/design/tokens/colors.dart';
 import 'package:doliv_social/design/tokens/spacing.dart';
 import 'package:doliv_social/design/tokens/typography.dart';
 
-/// Tema único de la app. Toda pantalla nueva debería verse correcta
-/// heredando de aquí, sin declarar un solo color propio.
+/// Tema de la app. Toda pantalla nueva debería verse correcta heredando de
+/// aquí, sin declarar un solo color propio.
+///
+/// [dark] y [light] se construyen con [_buildTheme] a partir de la paleta
+/// congelada correspondiente ([AppColors.darkPalette] / [AppColors.lightPalette]),
+/// para que ambos `ThemeData` existan siempre y `MaterialApp` pueda elegir el
+/// correcto vía `themeMode` sin depender del estado global de [AppColors].
 class AppTheme {
   AppTheme._();
 
-  static ThemeData get dark {
-    final colorScheme = ColorScheme.dark(
-      brightness: Brightness.dark,
+  static ThemeData get dark =>
+      _buildTheme(AppColors.darkPalette, Brightness.dark);
+
+  static ThemeData get light =>
+      _buildTheme(AppColors.lightPalette, Brightness.light);
+
+  static ThemeData _buildTheme(AppPalette p, Brightness brightness) {
+    final textTheme = AppTypography.textTheme(p.textPrimary, p.textMuted);
+
+    final colorScheme = ColorScheme(
+      brightness: brightness,
       primary: AppColors.brandBlue,
-      onPrimary: AppColors.textPrimary,
-      secondary: AppColors.accent,
-      onSecondary: AppColors.bgBase,
-      surface: AppColors.surface,
-      onSurface: AppColors.textPrimary,
-      error: AppColors.error,
-      onError: AppColors.textPrimary,
-      outline: AppColors.surfaceBorder,
+      // `primary` (brandBlue) y `error` son fondos que NO cambian con el
+      // modo, así que lo que va encima (onPrimary/onError) debe quedar fijo
+      // en blanco: p.textPrimary sí cambia y en claro es casi negro,
+      // invisible contra el azul/rojo.
+      onPrimary: AppColors.onBrand,
+      secondary: p.accent,
+      onSecondary: brightness == Brightness.dark ? p.bgBase : Colors.white,
+      surface: p.surface,
+      onSurface: p.textPrimary,
+      error: p.error,
+      onError: AppColors.onBrand,
+      outline: p.surfaceBorder,
     );
 
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      brightness: brightness,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.bgBase,
+      scaffoldBackgroundColor: p.bgBase,
       fontFamily: AppTypography.fontFamily,
-      textTheme: AppTypography.dark,
-      splashColor: AppColors.accent.withValues(alpha: 0.12),
+      textTheme: textTheme,
+      splashColor: p.accent.withValues(alpha: 0.12),
       highlightColor: Colors.transparent,
 
       // Transición de página común (fade + desplazamiento corto).
@@ -43,13 +60,13 @@ class AppTheme {
       ),
 
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.bgBase,
-        foregroundColor: AppColors.textPrimary,
+        backgroundColor: p.bgBase,
+        foregroundColor: p.textPrimary,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: AppTypography.dark.titleLarge,
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        titleTextStyle: textTheme.titleLarge,
+        iconTheme: IconThemeData(color: p.textPrimary),
       ),
 
       inputDecorationTheme: InputDecorationTheme(
@@ -58,36 +75,38 @@ class AppTheme {
           vertical: AppSpacing.lg,
         ),
         filled: true,
-        fillColor: AppColors.surface,
-        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+        fillColor: p.surface,
+        hintStyle: TextStyle(color: p.textMuted, fontSize: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.field),
-          borderSide: const BorderSide(color: AppColors.surfaceBorder),
+          borderSide: BorderSide(color: p.surfaceBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.field),
-          borderSide: const BorderSide(color: AppColors.surfaceBorder),
+          borderSide: BorderSide(color: p.surfaceBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.field),
-          borderSide: const BorderSide(color: AppColors.accentStrong, width: 2),
+          borderSide: BorderSide(color: p.accentStrong, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.field),
-          borderSide: const BorderSide(color: AppColors.error),
+          borderSide: BorderSide(color: p.error),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.field),
-          borderSide: const BorderSide(color: AppColors.error, width: 2),
+          borderSide: BorderSide(color: p.error, width: 2),
         ),
       ),
 
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.brandBlue,
-          foregroundColor: AppColors.textPrimary,
-          disabledBackgroundColor: AppColors.surface,
-          disabledForegroundColor: AppColors.textMuted,
+          // Fondo del botón siempre azul (brandBlue no cambia con el modo):
+          // el texto/ícono debe quedar fijo en blanco, no en p.textPrimary.
+          foregroundColor: AppColors.onBrand,
+          disabledBackgroundColor: p.surface,
+          disabledForegroundColor: p.textMuted,
           // Ancho finito a propósito: `Size.fromHeight` fija un ancho MÍNIMO
           // infinito, que revienta (BoxConstraints "NOT NORMALIZED") en
           // cualquier botón que además reciba un `maximumSize` explícito
@@ -101,60 +120,64 @@ class AppTheme {
       ),
 
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: AppColors.accent),
+        style: TextButton.styleFrom(foregroundColor: p.accent),
       ),
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.accent,
-          side: const BorderSide(color: AppColors.accent),
+          foregroundColor: p.accent,
+          side: BorderSide(color: p.accent),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.pill),
           ),
         ),
       ),
 
-      iconTheme: const IconThemeData(color: AppColors.textMuted),
+      iconTheme: IconThemeData(color: p.textMuted),
 
-      dividerTheme: const DividerThemeData(
-        color: AppColors.surfaceBorder,
+      dividerTheme: DividerThemeData(
+        color: p.surfaceBorder,
         thickness: 1,
       ),
 
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: AppColors.surface,
-        contentTextStyle: const TextStyle(color: AppColors.textPrimary),
+        backgroundColor: p.surface,
+        contentTextStyle: TextStyle(color: p.textPrimary),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.chip),
-          side: const BorderSide(color: AppColors.surfaceBorder),
+          side: BorderSide(color: p.surfaceBorder),
         ),
       ),
 
       dialogTheme: DialogThemeData(
-        backgroundColor: AppColors.surface,
-        titleTextStyle: AppTypography.dark.titleLarge,
-        contentTextStyle: AppTypography.dark.bodyMedium,
+        backgroundColor: p.surface,
+        titleTextStyle: textTheme.titleLarge,
+        contentTextStyle: textTheme.bodyMedium,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.card),
         ),
       ),
 
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AppColors.surface,
+        backgroundColor: p.surface,
         indicatorColor: AppColors.brandBlue,
+        // El "pill" detrás del ítem seleccionado siempre es brandBlue (fijo),
+        // así que su ícono/etiqueta deben quedar fijos en blanco
+        // (AppColors.onBrand): en modo claro p.textPrimary es casi negro y se
+        // pierde contra el azul del indicador.
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(
             fontSize: 12,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            color: selected ? AppColors.textPrimary : AppColors.textMuted,
+            color: selected ? AppColors.onBrand : p.textMuted,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: selected ? AppColors.textPrimary : AppColors.textMuted,
+            color: selected ? AppColors.onBrand : p.textMuted,
           );
         }),
       ),
@@ -163,7 +186,7 @@ class AppTheme {
         trackColor: WidgetStateProperty.resolveWith((states) {
           return states.contains(WidgetState.selected)
               ? AppColors.brandBlue
-              : AppColors.surfaceBorder;
+              : p.surfaceBorder;
         }),
       ),
 
@@ -173,11 +196,11 @@ class AppTheme {
               ? AppColors.brandBlue
               : Colors.transparent;
         }),
-        side: const BorderSide(color: AppColors.surfaceBorder),
+        side: BorderSide(color: p.surfaceBorder),
       ),
 
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: AppColors.accent,
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: p.accent,
       ),
     );
   }

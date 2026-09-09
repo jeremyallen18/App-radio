@@ -34,16 +34,20 @@ class ComponentGalleryScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xxl),
-
           const SectionHeader(title: 'Tipografía'),
-          Text('Título grande (displaySmall)', style: Theme.of(context).textTheme.displaySmall),
-          Text('Título medio (headlineMedium)', style: Theme.of(context).textTheme.headlineMedium),
-          Text('Título de sección (titleLarge)', style: Theme.of(context).textTheme.titleLarge),
-          Text('Cuerpo principal (bodyLarge)', style: Theme.of(context).textTheme.bodyLarge),
-          Text('Cuerpo secundario (bodyMedium)', style: Theme.of(context).textTheme.bodyMedium),
-          Text('Etiqueta (labelSmall)', style: Theme.of(context).textTheme.labelSmall),
+          Text('Título grande (displaySmall)',
+              style: Theme.of(context).textTheme.displaySmall),
+          Text('Título medio (headlineMedium)',
+              style: Theme.of(context).textTheme.headlineMedium),
+          Text('Título de sección (titleLarge)',
+              style: Theme.of(context).textTheme.titleLarge),
+          Text('Cuerpo principal (bodyLarge)',
+              style: Theme.of(context).textTheme.bodyLarge),
+          Text('Cuerpo secundario (bodyMedium)',
+              style: Theme.of(context).textTheme.bodyMedium),
+          Text('Etiqueta (labelSmall)',
+              style: Theme.of(context).textTheme.labelSmall),
           const SizedBox(height: AppSpacing.xxl),
-
           const SectionHeader(title: 'Botones'),
           AppButton(label: 'Botón primario', onPressed: () {}),
           const SizedBox(height: AppSpacing.md),
@@ -59,16 +63,15 @@ class ComponentGalleryScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xxl),
-
           const SectionHeader(title: 'Campo de texto'),
           const AppTextField(hintText: 'Correo electrónico'),
           const SizedBox(height: AppSpacing.xxl),
-
           const SectionHeader(title: 'Tarjeta y métrica'),
           Row(
             children: [
               const Expanded(
-                child: StatTile(icon: Icons.task_alt, value: '12', label: 'Tareas activas'),
+                child: StatTile(
+                    icon: Icons.task_alt, value: '12', label: 'Tareas activas'),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -82,7 +85,6 @@ class ComponentGalleryScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xxl),
-
           const SectionHeader(title: 'Insignias'),
           const Wrap(
             spacing: AppSpacing.sm,
@@ -95,7 +97,6 @@ class ComponentGalleryScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xxl),
-
           const SectionHeader(title: 'Perfil y personas'),
           const ProfileHeader(
             name: 'Ana Villalobos',
@@ -115,21 +116,26 @@ class ComponentGalleryScreen extends StatelessWidget {
             badge: AppBadge(label: 'Responsable del área'),
           ),
           const SizedBox(height: AppSpacing.xxl),
-
           const SectionHeader(title: 'Chips de filtro'),
           Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
             children: [
-              AppFilterChip(label: 'Mi área: Cabina', count: 6, selected: true, onTap: () {}),
-              AppFilterChip(label: 'Toda la empresa', selected: false, onTap: () {}),
-              AppFilterChip(label: 'Ventas', count: 3, selected: false, onTap: () {}),
+              AppFilterChip(
+                  label: 'Mi área: Cabina',
+                  count: 6,
+                  selected: true,
+                  onTap: () {}),
+              AppFilterChip(
+                  label: 'Toda la empresa', selected: false, onTap: () {}),
+              AppFilterChip(
+                  label: 'Ventas', count: 3, selected: false, onTap: () {}),
             ],
           ),
           const SizedBox(height: AppSpacing.xxl),
-
           const SectionHeader(title: 'Estados'),
-          const SizedBox(height: 140, child: LoadingState(message: 'Cargando…')),
+          const SizedBox(
+              height: 140, child: LoadingState(message: 'Cargando…')),
           const SizedBox(
             height: 180,
             child: EmptyState(
@@ -168,7 +174,7 @@ class ComponentGalleryScreen extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             name,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 10),
             textAlign: TextAlign.center,
           ),
         ],

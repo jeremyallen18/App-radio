@@ -57,7 +57,7 @@ class _Row extends StatelessWidget {
                           counts.departmentName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
@@ -68,7 +68,8 @@ class _Row extends StatelessWidget {
                         hasTasks
                             ? '${counts.done}/${counts.total}'
                             : 'Sin tareas',
-                        style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                        style:
+                            TextStyle(color: AppColors.textMuted, fontSize: 11),
                       ),
                     ],
                   ),
@@ -91,7 +92,7 @@ class _Row extends StatelessWidget {
                 ),
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 18),
+            Icon(Icons.chevron_right, color: AppColors.textMuted, size: 18),
           ],
         ),
       ),
@@ -122,14 +123,24 @@ class _StackBar extends StatelessWidget {
         child: Row(
           children: [
             if (counts.done > 0)
-              Expanded(flex: counts.done, child: const SizedBox.expand(child: ColoredBox(color: AppColors.success))),
+              Expanded(
+                  flex: counts.done,
+                  child: SizedBox.expand(
+                      child: ColoredBox(color: AppColors.success))),
             if (counts.inProgress > 0) ...[
               if (counts.done > 0) const SizedBox(width: 2),
-              Expanded(flex: counts.inProgress, child: const SizedBox.expand(child: ColoredBox(color: AppColors.accent))),
+              Expanded(
+                  flex: counts.inProgress,
+                  child: SizedBox.expand(
+                      child: ColoredBox(color: AppColors.accent))),
             ],
             if (counts.notStarted > 0) ...[
-              if (counts.done > 0 || counts.inProgress > 0) const SizedBox(width: 2),
-              Expanded(flex: counts.notStarted, child: const SizedBox.expand(child: ColoredBox(color: AppColors.warning))),
+              if (counts.done > 0 || counts.inProgress > 0)
+                const SizedBox(width: 2),
+              Expanded(
+                  flex: counts.notStarted,
+                  child: SizedBox.expand(
+                      child: ColoredBox(color: AppColors.warning))),
             ],
           ],
         ),

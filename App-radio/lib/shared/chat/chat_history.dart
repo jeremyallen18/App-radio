@@ -116,7 +116,7 @@ class _ChatScreenfetchState extends State<ChatScreenfetch> {
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
         itemCount: _conversations.length,
         separatorBuilder: (_, __) =>
-            const Divider(height: 1, color: AppColors.surfaceBorder),
+            Divider(height: 1, color: AppColors.surfaceBorder),
         itemBuilder: (context, index) {
           final c = _conversations[index];
           final int unread = (c['unread'] as num?)?.toInt() ?? 0;

@@ -77,8 +77,13 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
     final list = fixed == null
         ? _results
         : _results
-            .where((u) => u.name.toLowerCase().contains(_search.text.trim().toLowerCase()) ||
-                u.email.toLowerCase().contains(_search.text.trim().toLowerCase()))
+            .where((u) =>
+                u.name
+                    .toLowerCase()
+                    .contains(_search.text.trim().toLowerCase()) ||
+                u.email
+                    .toLowerCase()
+                    .contains(_search.text.trim().toLowerCase()))
             .toList();
 
     return Padding(
@@ -93,7 +98,10 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(widget.title,
-              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 17)),
+              style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 17)),
           const SizedBox(height: AppSpacing.md),
           AppTextField(
             controller: _search,
@@ -113,21 +121,27 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
             child: Builder(
               builder: (context) {
                 if (_loading) return const LoadingState();
-                if (_error != null) return ErrorState(message: _error!, onRetry: _load);
+                if (_error != null) {
+                  return ErrorState(message: _error!, onRetry: _load);
+                }
                 if (list.isEmpty) {
-                  return const EmptyState(title: 'Nadie coincide con la búsqueda');
+                  return const EmptyState(
+                      title: 'Nadie coincide con la búsqueda');
                 }
                 return ListView.separated(
                   itemCount: list.length,
-                  separatorBuilder: (_, __) => const Divider(color: AppColors.surfaceBorder, height: 1),
+                  separatorBuilder: (_, __) =>
+                      Divider(color: AppColors.surfaceBorder, height: 1),
                   itemBuilder: (_, i) {
                     final u = list[i];
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: IdentityAvatar(id: u.name),
-                      title: Text(u.name, style: const TextStyle(color: AppColors.textPrimary)),
+                      title: Text(u.name,
+                          style: TextStyle(color: AppColors.textPrimary)),
                       subtitle: Text('${u.email}  ·  ${u.role.label}',
-                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                          style: TextStyle(
+                              color: AppColors.textMuted, fontSize: 12)),
                       onTap: () => Navigator.pop(context, u),
                     );
                   },

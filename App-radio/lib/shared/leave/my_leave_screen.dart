@@ -86,7 +86,9 @@ class _MyLeaveScreenState extends State<MyLeaveScreen>
       body: Builder(
         builder: (context) {
           if (_loading) return const LoadingState();
-          if (_error != null) return ErrorState(message: _error!, onRetry: _load);
+          if (_error != null) {
+            return ErrorState(message: _error!, onRetry: _load);
+          }
           if (_items.isEmpty) {
             return const EmptyState(
               icon: Icons.beach_access_outlined,
@@ -99,16 +101,21 @@ class _MyLeaveScreenState extends State<MyLeaveScreen>
             onRefresh: _load,
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 96,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                96,
               ),
               itemCount: _items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: AppSpacing.md),
               itemBuilder: (_, i) => _LeaveCard(
                 request: _items[i],
                 onTap: () async {
                   await Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => LeaveDetailScreen(requestId: _items[i].id),
+                      builder: (_) =>
+                          LeaveDetailScreen(requestId: _items[i].id),
                     ),
                   );
                   _load();
@@ -136,7 +143,8 @@ class _LeaveCard extends StatelessWidget {
       LeaveStatus.rechazado => AppColors.error,
       LeaveStatus.cancelado => AppColors.textMuted,
     };
-    final range = r.approvedStart != null ? r.approvedRangeLabel : r.requestedRangeLabel;
+    final range =
+        r.approvedStart != null ? r.approvedRangeLabel : r.requestedRangeLabel;
     return AppCard(
       onTap: onTap,
       child: Row(
@@ -149,20 +157,22 @@ class _LeaveCard extends StatelessWidget {
               children: [
                 Text(
                   r.type.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(range, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                Text(range,
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
               ],
             ),
           ),
           Text(
             'Estado: ${r.status.label}',
-            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
+            style: TextStyle(
+                color: color, fontSize: 12, fontWeight: FontWeight.w700),
           ),
         ],
       ),

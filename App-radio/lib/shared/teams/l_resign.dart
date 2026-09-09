@@ -51,7 +51,9 @@ class _ResignState extends State<Resign> {
         Navigator.pushReplacementNamed(context, MyRoutes.bottomNavBar);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("No se pudo eliminar el miembro (${response.statusCode})")),
+          SnackBar(
+              content: Text(
+                  "No se pudo eliminar el miembro (${response.statusCode})")),
         );
       }
     } catch (_) {
@@ -89,7 +91,9 @@ class _ResignState extends State<Resign> {
         Navigator.pushReplacementNamed(context, MyRoutes.bottomNavBar);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("No se pudo asignar el nuevo líder (${response.statusCode})")),
+          SnackBar(
+              content: Text(
+                  "No se pudo asignar el nuevo líder (${response.statusCode})")),
         );
       }
     } catch (_) {
@@ -123,7 +127,8 @@ class _ResignState extends State<Resign> {
                 children: [
                   AppTextField(
                     controller: memberEmailController,
-                    prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textMuted),
+                    prefixIcon:
+                        Icon(Icons.email_outlined, color: AppColors.textMuted),
                     hintText: "Correo del miembro a eliminar",
                     textInputType: TextInputType.emailAddress,
                     validator: _requiredEmail,
@@ -132,7 +137,8 @@ class _ResignState extends State<Resign> {
                   AppButton(
                     label: _removing ? 'Eliminando…' : 'Eliminar miembro',
                     loading: _removing,
-                    onPressed: _removing ? null : () => removeApi(widget.teamId),
+                    onPressed:
+                        _removing ? null : () => removeApi(widget.teamId),
                   ),
                 ],
               ),
@@ -146,14 +152,15 @@ class _ResignState extends State<Resign> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
+                  Text(
                     'La persona que indiques pasará a ser la líder de este equipo.',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppTextField(
                     controller: newLeaderEmailController,
-                    prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textMuted),
+                    prefixIcon:
+                        Icon(Icons.email_outlined, color: AppColors.textMuted),
                     hintText: "Correo del nuevo líder",
                     textInputType: TextInputType.emailAddress,
                     validator: _requiredEmail,
@@ -162,7 +169,8 @@ class _ResignState extends State<Resign> {
                   AppButton(
                     label: _assigning ? 'Asignando…' : 'Asignar como líder',
                     loading: _assigning,
-                    onPressed: _assigning ? null : () => resignApi(widget.teamId),
+                    onPressed:
+                        _assigning ? null : () => resignApi(widget.teamId),
                   ),
                 ],
               ),

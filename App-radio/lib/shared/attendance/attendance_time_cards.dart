@@ -18,7 +18,7 @@ class MealTimerCard extends StatelessWidget {
     return AppCard(
       child: Column(
         children: [
-          const Text(
+          Text(
             'HORA DE COMIDA',
             style: TextStyle(
               color: AppColors.warning,
@@ -29,7 +29,7 @@ class MealTimerCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Text(
             attendanceClock(elapsed),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w800,
               fontSize: 40,
@@ -71,13 +71,13 @@ class MealExceededBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.warning_amber_rounded, color: AppColors.error),
+          Icon(Icons.warning_amber_rounded, color: AppColors.error),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Hora de comida excedida',
                   style: TextStyle(
                     color: AppColors.textPrimary,
@@ -89,7 +89,7 @@ class MealExceededBanner extends StatelessWidget {
                   'Duración: ${day.mealMinutesLabel ?? '—'}   ·   '
                   'Límite: ${attendanceMinutesLabel(day.mealLimitMinutes ?? 0)}   ·   '
                   'Exceso: ${attendanceMinutesLabel(day.mealExcessMinutes)}',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
               ],
             ),
@@ -116,14 +116,14 @@ class AttendanceTimesCard extends StatelessWidget {
       child: Column(
         children: [
           _row('Entrada', day.entrada ?? '—'),
-          const Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
+          Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
           _row('Hora de comida', comida,
               subtitle: day.mealMinutesLabel != null
                   ? 'Duración: ${day.mealMinutesLabel}'
                   : null),
-          const Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
+          Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
           _row('Salida', day.salida ?? '—'),
-          const Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
+          Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
           _row(
             'Tiempo trabajado',
             day.workedLabel ?? '—',
@@ -137,14 +137,15 @@ class AttendanceTimesCard extends StatelessWidget {
     );
   }
 
-  Widget _row(String label, String value, {String? subtitle, bool emphasize = false}) {
+  Widget _row(String label, String value,
+      {String? subtitle, bool emphasize = false}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
         ),
         Column(
@@ -161,7 +162,7 @@ class AttendanceTimesCard extends StatelessWidget {
             if (subtitle != null)
               Text(
                 subtitle,
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
               ),
           ],
         ),
@@ -179,7 +180,7 @@ class AttendanceScheduleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = day.schedule;
     if (s == null) {
-      return const AppCard(
+      return AppCard(
         child: Row(
           children: [
             Icon(Icons.info_outline, color: AppColors.textMuted, size: 18),
@@ -246,7 +247,7 @@ class AttendancePrimaryAction extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.pill),
           border: Border.all(color: AppColors.surfaceBorder),
         ),
-        child: const Text(
+        child: Text(
           'JORNADA TERMINADA',
           style: TextStyle(
             color: AppColors.textMuted,
@@ -282,7 +283,7 @@ class AttendancePrimaryAction extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text(
             hint,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 11),
             textAlign: TextAlign.center,
           ),
         ],
@@ -294,7 +295,7 @@ class AttendancePrimaryAction extends StatelessWidget {
                 : () => onPerform(AttendanceAction.saltarComida),
             child: const Text('Hoy no tomaré hora de comida'),
           ),
-          const Text(
+          Text(
             'No registra tu salida. Tu jornada sigue abierta.',
             style: TextStyle(color: AppColors.textMuted, fontSize: 11),
             textAlign: TextAlign.center,
@@ -303,7 +304,6 @@ class AttendancePrimaryAction extends StatelessWidget {
       ],
     );
   }
-
 }
 
 /// Hora ("HH:MM") a partir de la cual el backend acepta el próximo fichaje:

@@ -47,12 +47,16 @@ class _MyAppBarState extends State<MyAppBar> {
         bottom: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, 0,
+            AppSpacing.lg,
+            AppSpacing.xs,
+            AppSpacing.lg,
+            0,
           ),
           child: GlassPanel(
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm, vertical: 5,
+                horizontal: AppSpacing.sm,
+                vertical: 5,
               ),
               child: Row(
                 children: [
@@ -158,14 +162,14 @@ class _RoleChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.person_outline_rounded, size: 15, color: AppColors.accent),
+          Icon(Icons.person_outline_rounded, size: 15, color: AppColors.accent),
           const SizedBox(width: 5),
           Flexible(
             child: Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.accent,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
@@ -224,11 +228,12 @@ class _NotificationsBell extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.surface, width: 1.5),
                   ),
-                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                  constraints:
+                      const BoxConstraints(minWidth: 16, minHeight: 16),
                   child: Text(
                     unread > 99 ? '99+' : '$unread',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 9,
                       fontWeight: FontWeight.w700,

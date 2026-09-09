@@ -29,7 +29,8 @@ class SiteContentListScreen extends StatefulWidget {
   /// Construye la pantalla de formulario. `item == null` significa "crear
   /// nuevo"; si no, el mapa trae el registro a editar. Debe hacer `pop(true)`
   /// al guardar con éxito para que la lista se refresque.
-  final Widget Function(BuildContext context, Map<String, dynamic>? item) formBuilder;
+  final Widget Function(BuildContext context, Map<String, dynamic>? item)
+      formBuilder;
 
   @override
   State<SiteContentListScreen> createState() => _SiteContentListScreenState();
@@ -90,7 +91,8 @@ class _SiteContentListScreenState extends State<SiteContentListScreen> {
 
   Future<void> _openForm({Map<String, dynamic>? item}) async {
     final saved = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (context) => widget.formBuilder(context, item)),
+      MaterialPageRoute(
+          builder: (context) => widget.formBuilder(context, item)),
     );
     if (saved == true) _load();
   }
@@ -108,7 +110,7 @@ class _SiteContentListScreenState extends State<SiteContentListScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Eliminar', style: TextStyle(color: AppColors.error)),
+            child: Text('Eliminar', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -135,7 +137,7 @@ class _SiteContentListScreenState extends State<SiteContentListScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(),
         backgroundColor: AppColors.brandBlue,
-        child: const Icon(Icons.add, color: AppColors.textPrimary),
+        child: Icon(Icons.add, color: AppColors.textPrimary),
       ),
       body: RefreshIndicator(
         color: AppColors.accent,
@@ -166,11 +168,11 @@ class _SiteContentListScreenState extends State<SiteContentListScreen> {
                   child: AppTextField(
                     controller: _searchController,
                     hintText: 'Buscar en ${widget.title.toLowerCase()}…',
-                    prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+                    prefixIcon: Icon(Icons.search, color: AppColors.textMuted),
                     suffixIcon: _query.isEmpty
                         ? null
                         : IconButton(
-                            icon: const Icon(Icons.close, color: AppColors.textMuted),
+                            icon: Icon(Icons.close, color: AppColors.textMuted),
                             onPressed: _searchController.clear,
                           ),
                   ),
@@ -180,7 +182,8 @@ class _SiteContentListScreenState extends State<SiteContentListScreen> {
                       ? EmptyState(
                           icon: Icons.search_off,
                           title: 'Sin resultados',
-                          message: 'Nada coincide con "${_searchController.text}".',
+                          message:
+                              'Nada coincide con "${_searchController.text}".',
                         )
                       : ListView.separated(
                           padding: const EdgeInsets.fromLTRB(
@@ -190,7 +193,8 @@ class _SiteContentListScreenState extends State<SiteContentListScreen> {
                             AppSpacing.xxxl,
                           ),
                           itemCount: filtered.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: AppSpacing.sm),
                           itemBuilder: (context, index) {
                             final item = filtered[index];
                             final imageUrl = widget.itemImage != null
@@ -203,35 +207,39 @@ class _SiteContentListScreenState extends State<SiteContentListScreen> {
                                 children: [
                                   if (imageUrl != null) ...[
                                     ClipRRect(
-                                      borderRadius: BorderRadius.circular(AppRadius.chip),
+                                      borderRadius:
+                                          BorderRadius.circular(AppRadius.chip),
                                       child: Image.network(
                                         imageUrl,
                                         width: 48,
                                         height: 48,
                                         fit: BoxFit.cover,
                                         errorBuilder: (_, __, ___) =>
-                                            const SizedBox(width: 48, height: 48),
+                                            const SizedBox(
+                                                width: 48, height: 48),
                                       ),
                                     ),
                                     const SizedBox(width: AppSpacing.md),
                                   ],
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           widget.itemTitle(item),
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             color: AppColors.textPrimary,
                                             fontWeight: FontWeight.w700,
                                             fontSize: 15,
                                           ),
                                         ),
-                                        if (subtitle != null && subtitle.isNotEmpty) ...[
+                                        if (subtitle != null &&
+                                            subtitle.isNotEmpty) ...[
                                           const SizedBox(height: 2),
                                           Text(
                                             subtitle,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               color: AppColors.textMuted,
                                               fontSize: 12,
                                             ),
@@ -243,7 +251,8 @@ class _SiteContentListScreenState extends State<SiteContentListScreen> {
                                     ),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                                    icon: Icon(Icons.delete_outline,
+                                        color: AppColors.error),
                                     onPressed: () => _confirmDelete(item),
                                   ),
                                 ],

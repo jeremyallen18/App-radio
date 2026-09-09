@@ -44,7 +44,9 @@ class _MresignState extends State<Mresign> {
         Navigator.pushReplacementNamed(context, MyRoutes.bottomNavBar);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("No se pudo enviar la renuncia (${response.statusCode})")),
+          SnackBar(
+              content: Text(
+                  "No se pudo enviar la renuncia (${response.statusCode})")),
         );
       }
     } catch (_) {
@@ -73,24 +75,28 @@ class _MresignState extends State<Mresign> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: AppSpacing.lg),
-            const Text(
+            Text(
               'Se le enviará un correo a tu líder de equipo con el mensaje que escribas.',
               style: TextStyle(color: AppColors.textMuted, fontSize: 13),
             ),
             const SizedBox(height: AppSpacing.xl),
             AppTextField(
               controller: messageController,
-              prefixIcon: const Icon(Icons.edit_note_outlined, color: AppColors.textMuted),
+              prefixIcon:
+                  Icon(Icons.edit_note_outlined, color: AppColors.textMuted),
               hintText: "Mensaje para el líder",
               maxLines: 5,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? "Escribe un mensaje para el líder" : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? "Escribe un mensaje para el líder"
+                  : null,
             ),
             const SizedBox(height: AppSpacing.xl),
             AppButton(
               label: _submitting ? 'Enviando…' : 'Enviar renuncia',
               loading: _submitting,
-              onPressed: _submitting ? null : () => resignApi(widget.teamId, widget.emailId),
+              onPressed: _submitting
+                  ? null
+                  : () => resignApi(widget.teamId, widget.emailId),
             ),
           ],
         ),

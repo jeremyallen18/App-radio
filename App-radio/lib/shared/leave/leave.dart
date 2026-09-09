@@ -25,18 +25,18 @@ class _ApplyLeaveState extends State<ApplyLeave> {
 
   Future<String?> applyLeaveAPI(
       String startDate, String endDate, String reason) async {
-
     String storeLeaveId;
     dynamic storedValue = await secureStorage.readSecureData(key);
-    final String apiUrl =
-        '$kBaseUrl/leave/applyLeave/${widget.teamid}';
+    final String apiUrl = '$kBaseUrl/leave/applyLeave/${widget.teamid}';
 
-    var body = jsonEncode({"leaves": [
-      {
-        "startDate": startDate,
-        "endDate": endDate,
-        "reason": reason,
-      }]
+    var body = jsonEncode({
+      "leaves": [
+        {
+          "startDate": startDate,
+          "endDate": endDate,
+          "reason": reason,
+        }
+      ]
     });
 
     var headers = <String, String>{
@@ -71,7 +71,6 @@ class _ApplyLeaveState extends State<ApplyLeave> {
           ),
         );
         return jsonDecode(response.body)['error'];
-
       }
     } catch (e) {
       debugPrint('Error: $e');
@@ -86,13 +85,12 @@ class _ApplyLeaveState extends State<ApplyLeave> {
 
   Future<void> fetchLeaveResult(String storeLeaveId) async {
     dynamic storedValue = await secureStorage.readSecureData(key);
-    final String apiUrl =
-        '$kBaseUrl/leave/leaveResult/$storeLeaveId';
+    final String apiUrl = '$kBaseUrl/leave/leaveResult/$storeLeaveId';
 
     var headers = <String, String>{
       'Content-Type': 'application/json',
       'Authorization': storedValue,
-      'leaveId' : storeLeaveId,
+      'leaveId': storeLeaveId,
     };
     http.post(Uri.parse(apiUrl), headers: headers);
   }
@@ -126,14 +124,15 @@ class _ApplyLeaveState extends State<ApplyLeave> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: AppSpacing.lg),
-            const Text(
+            Text(
               'Indica la fecha de inicio, la fecha de fin y el motivo de tu permiso.',
               style: TextStyle(color: AppColors.textMuted, fontSize: 13),
             ),
             const SizedBox(height: AppSpacing.xl),
             AppTextField(
               controller: startDateController,
-              prefixIcon: const Icon(Icons.calendar_month_outlined, color: AppColors.textMuted),
+              prefixIcon: Icon(Icons.calendar_month_outlined,
+                  color: AppColors.textMuted),
               hintText: 'Fecha de inicio',
               readOnly: true,
               onTap: () => _pickDate(startDateController),
@@ -147,7 +146,8 @@ class _ApplyLeaveState extends State<ApplyLeave> {
             const SizedBox(height: AppSpacing.lg),
             AppTextField(
               controller: endDateController,
-              prefixIcon: const Icon(Icons.calendar_month_outlined, color: AppColors.textMuted),
+              prefixIcon: Icon(Icons.calendar_month_outlined,
+                  color: AppColors.textMuted),
               hintText: 'Fecha de fin',
               readOnly: true,
               onTap: () => _pickDate(endDateController),
@@ -161,7 +161,8 @@ class _ApplyLeaveState extends State<ApplyLeave> {
             const SizedBox(height: AppSpacing.lg),
             AppTextField(
               controller: reasonController,
-              prefixIcon: const Icon(Icons.description_outlined, color: AppColors.textMuted),
+              prefixIcon:
+                  Icon(Icons.description_outlined, color: AppColors.textMuted),
               hintText: 'Motivo del permiso',
               maxLines: 3,
               validator: (value) {

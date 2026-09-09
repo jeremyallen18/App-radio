@@ -69,7 +69,8 @@ class _AnnouncementsBoardState extends State<AnnouncementsBoard> {
     final ok = await showAppConfirmDialog(
       context,
       title: 'Eliminar anuncio',
-      message: '¿Eliminar "${a.title}"? Se perderá su historial de visualizaciones.',
+      message:
+          '¿Eliminar "${a.title}"? Se perderá su historial de visualizaciones.',
       confirmLabel: 'Eliminar',
       danger: true,
     );
@@ -96,7 +97,8 @@ class _AnnouncementsBoardState extends State<AnnouncementsBoard> {
     );
   }
 
-  Future<void> _confirm(InternalAnnouncement a, {required bool attending}) async {
+  Future<void> _confirm(InternalAnnouncement a,
+      {required bool attending}) async {
     setState(() => _busyId = a.id);
     try {
       final updated =
@@ -104,7 +106,8 @@ class _AnnouncementsBoardState extends State<AnnouncementsBoard> {
       if (!mounted) return;
       setState(() {
         _items = [
-          for (final x in _items) if (x.id == a.id) updated else x,
+          for (final x in _items)
+            if (x.id == a.id) updated else x,
         ];
       });
     } on InternalAnnouncementException catch (e) {
@@ -228,7 +231,7 @@ class _AnnouncementCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   a.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
@@ -237,16 +240,13 @@ class _AnnouncementCard extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               AppBadge(label: st.label, variant: st.variant),
-              if (canManage)
-                _busyOrMenu(context)
-              else
-                const SizedBox.shrink(),
+              if (canManage) _busyOrMenu(context) else const SizedBox.shrink(),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
             a.body,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
           ),
           const SizedBox(height: AppSpacing.md),
 
@@ -264,7 +264,8 @@ class _AnnouncementCard extends StatelessWidget {
               if ((a.locationLabel ?? '').isNotEmpty)
                 _meta(Icons.place_outlined, a.locationLabel!),
               if (a.createdAt != null)
-                _meta(Icons.schedule_outlined, 'Publicado ${_dt(a.createdAt!)}'),
+                _meta(
+                    Icons.schedule_outlined, 'Publicado ${_dt(a.createdAt!)}'),
             ],
           ),
 
@@ -291,8 +292,8 @@ class _AnnouncementCard extends StatelessWidget {
 
           // ---- vista del resto: confirmar asistencia ----
           if (!canManage && a.requiresConfirmation) ...[
-            const Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
-            const Text(
+            Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
+            Text(
               '¿Asistirás?',
               style: TextStyle(
                 color: AppColors.textPrimary,
@@ -337,14 +338,14 @@ class _AnnouncementCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
-                  const Icon(Icons.notifications_active_outlined,
+                  Icon(Icons.notifications_active_outlined,
                       size: 13, color: AppColors.textMuted),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       'Recibirás un recordatorio cada día hasta la reunión.',
-                      style: const TextStyle(
-                          color: AppColors.textMuted, fontSize: 11),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 11),
                     ),
                   ),
                 ],
@@ -392,7 +393,7 @@ class _AnnouncementCard extends StatelessWidget {
           Icon(icon, size: 13, color: AppColors.textMuted),
           const SizedBox(width: 4),
           Text(text,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
         ],
       );
 }

@@ -39,18 +39,20 @@ class _DocumentationPageState extends State<DocumentationPage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 0),
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
+                Text(
                   'Estas notas se guardan solo en este dispositivo, no se comparten con el equipo.',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 AppTextField(
                   controller: updateController,
-                  prefixIcon: const Icon(Icons.edit_note_outlined, color: AppColors.textMuted),
+                  prefixIcon: Icon(Icons.edit_note_outlined,
+                      color: AppColors.textMuted),
                   hintText: 'Escribe tu progreso',
                   maxLines: 3,
                 ),
@@ -70,11 +72,14 @@ class _DocumentationPageState extends State<DocumentationPage> {
                 ? const EmptyState(
                     icon: Icons.description_outlined,
                     title: 'Todavía no tienes notas',
-                    message: 'Escribe tu progreso arriba y guárdalo para verlo aquí.',
+                    message:
+                        'Escribe tu progreso arriba y guárdalo para verlo aquí.',
                   )
                 : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.xl),
-                    separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.sm),
+                    padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.xl),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: AppSpacing.sm),
                     reverse: true,
                     itemCount: updates.length,
                     itemBuilder: (context, index) {
@@ -86,12 +91,14 @@ class _DocumentationPageState extends State<DocumentationPage> {
                           children: [
                             Text(
                               update.text,
-                              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                              style: TextStyle(
+                                  color: AppColors.textPrimary, fontSize: 14),
                             ),
                             const SizedBox(height: 6),
                             Text(
                               update.formattedDateTime,
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                              style: TextStyle(
+                                  color: AppColors.textMuted, fontSize: 11),
                             ),
                           ],
                         ),

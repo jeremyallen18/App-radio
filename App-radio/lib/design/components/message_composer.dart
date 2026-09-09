@@ -38,7 +38,8 @@ class MessageComposer extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -59,7 +60,8 @@ class MessageComposer extends StatelessWidget {
             Expanded(
               child: Container(
                 constraints: const BoxConstraints(maxHeight: 120),
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg, vertical: 10),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -71,14 +73,15 @@ class MessageComposer extends StatelessWidget {
                   minLines: 1,
                   maxLines: 4,
                   textCapitalization: TextCapitalization.sentences,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
                   cursorColor: AppColors.textPrimary,
                   onSubmitted: (_) => onSend(),
                   decoration: InputDecoration(
                     isCollapsed: true,
                     border: InputBorder.none,
                     hintText: hintText,
-                    hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                    hintStyle:
+                        TextStyle(color: AppColors.textMuted, fontSize: 14),
                   ),
                 ),
               ),
@@ -90,9 +93,10 @@ class MessageComposer extends StatelessWidget {
               child: InkWell(
                 customBorder: const CircleBorder(),
                 onTap: onSend,
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.all(12),
-                  child: Icon(Icons.send_rounded, color: AppColors.textPrimary, size: 20),
+                  child: Icon(Icons.send_rounded,
+                      color: AppColors.textPrimary, size: 20),
                 ),
               ),
             ),

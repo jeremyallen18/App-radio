@@ -133,7 +133,7 @@ class _DiscState extends State<_Disc> with SingleTickerProviderStateMixin {
     final bool playing = widget.playing;
     final Widget glyph;
     if (widget.loading) {
-      glyph = const SizedBox(
+      glyph = SizedBox(
         key: ValueKey('loading'),
         width: 14,
         height: 14,
@@ -211,7 +211,7 @@ class _LiveDot extends StatelessWidget {
                   child: Transform.scale(
                     scale: 1 + t * 2.2,
                     child: Container(
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: AppColors.success,
                         shape: BoxShape.circle,
                       ),
@@ -266,7 +266,7 @@ class _Label extends StatelessWidget {
         text,
         if (onExpand != null) ...[
           const SizedBox(width: 1),
-          const Icon(Icons.keyboard_arrow_down_rounded,
+          Icon(Icons.keyboard_arrow_down_rounded,
               size: 16, color: AppColors.textMuted),
         ],
       ],

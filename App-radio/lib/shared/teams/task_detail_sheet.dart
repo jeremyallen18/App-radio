@@ -137,32 +137,42 @@ class _TaskDetailSheetState extends State<TaskDetailSheet> {
                         children: [
                           _TaskHeader(task: t),
                           const SizedBox(height: AppSpacing.md),
-                          _FactsGrid(task: t, onOpenEvidence: t.hasEvidence ? _openEvidence : null),
-                          if (t.wasRejected && (t.reviewNote ?? '').isNotEmpty) ...[
+                          _FactsGrid(
+                              task: t,
+                              onOpenEvidence:
+                                  t.hasEvidence ? _openEvidence : null),
+                          if (t.wasRejected &&
+                              (t.reviewNote ?? '').isNotEmpty) ...[
                             const SizedBox(height: AppSpacing.md),
-                            _ReturnedNote(note: t.reviewNote!, by: t.reviewedBy?.name),
+                            _ReturnedNote(
+                                note: t.reviewNote!, by: t.reviewedBy?.name),
                           ],
                           const SizedBox(height: AppSpacing.xl),
                           SectionHeader(
                             title: 'Comentarios',
                             action: _comments.isEmpty
                                 ? null
-                                : Text('${_comments.length}', style: const TextStyle(color: AppColors.textMuted)),
+                                : Text('${_comments.length}',
+                                    style:
+                                        TextStyle(color: AppColors.textMuted)),
                           ),
                           if (_comments.isEmpty)
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: AppSpacing.md),
                               child: Text(
                                 widget.canComment
                                     ? 'Aún no hay comentarios. Escribe el primero abajo.'
                                     : 'Todavía no hay comentarios.',
-                                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                                style: TextStyle(
+                                    color: AppColors.textMuted, fontSize: 13),
                               ),
                             )
                           else
                             for (final c in _comments)
                               Padding(
-                                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                                padding: const EdgeInsets.only(
+                                    bottom: AppSpacing.sm),
                                 child: ChatBubble(
                                   username: c.author?.name ?? 'Alguien',
                                   message: c.body,
@@ -221,17 +231,24 @@ class _TaskHeader extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                         fontSize: 20,
                         height: 1.2,
-                        decoration: task.isDone ? TextDecoration.lineThrough : null,
+                        decoration:
+                            task.isDone ? TextDecoration.lineThrough : null,
                         decorationColor: AppColors.textMuted,
                       ),
                     ),
                     if ((task.description ?? '').isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.sm),
-                      Text(task.description!, style: const TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.4)),
+                      Text(task.description!,
+                          style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 13,
+                              height: 1.4)),
                     ],
                     if (task.subtaskCount > 0) ...[
                       const SizedBox(height: AppSpacing.md),
-                      SubtaskProgress(done: task.subtaskDoneCount, total: task.subtaskCount),
+                      SubtaskProgress(
+                          done: task.subtaskDoneCount,
+                          total: task.subtaskCount),
                     ],
                   ],
                 ),
@@ -279,10 +296,14 @@ class _FactsGrid extends StatelessWidget {
         },
       ),
       if (t.isRecurring)
-        _Fact(icon: Icons.repeat_rounded, label: 'Repetición', value: t.recurrence.label),
+        _Fact(
+            icon: Icons.repeat_rounded,
+            label: 'Repetición',
+            value: t.recurrence.label),
       if (t.requiresEvidence || t.hasEvidence)
         _Fact(
-          icon: t.hasEvidence ? Icons.photo_outlined : Icons.attach_file_rounded,
+          icon:
+              t.hasEvidence ? Icons.photo_outlined : Icons.attach_file_rounded,
           label: 'Evidencia',
           value: t.hasEvidence ? 'Ver foto' : 'Requerida al completar',
           valueColor: t.hasEvidence ? AppColors.accentStrong : null,
@@ -297,7 +318,10 @@ class _FactsGrid extends StatelessWidget {
           valueColor: t.completedLate ? AppColors.error : null,
         ),
       if (t.createdBy != null)
-        _Fact(icon: Icons.edit_calendar_outlined, label: 'Creada por', value: t.createdBy!.name),
+        _Fact(
+            icon: Icons.edit_calendar_outlined,
+            label: 'Creada por',
+            value: t.createdBy!.name),
     ];
 
     return LayoutBuilder(
@@ -349,7 +373,7 @@ class _Fact extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                 ),
               ),
             ],
@@ -361,7 +385,8 @@ class _Fact extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: valueColor ?? (muted ? AppColors.textMuted : AppColors.textPrimary),
+                  color: valueColor ??
+                      (muted ? AppColors.textMuted : AppColors.textPrimary),
                   fontSize: 14,
                   fontWeight: muted ? FontWeight.w500 : FontWeight.w700,
                 ),
@@ -389,7 +414,7 @@ class _ReturnedNote extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.undo_rounded, size: 18, color: AppColors.error),
+          Icon(Icons.undo_rounded, size: 18, color: AppColors.error),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
@@ -397,10 +422,15 @@ class _ReturnedNote extends StatelessWidget {
               children: [
                 Text(
                   by == null ? 'Devuelta para corregir' : 'Devuelta por $by',
-                  style: const TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                      color: AppColors.error,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 2),
-                Text(note, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+                Text(note,
+                    style:
+                        TextStyle(color: AppColors.textPrimary, fontSize: 13)),
               ],
             ),
           ),

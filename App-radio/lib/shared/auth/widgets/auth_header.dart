@@ -73,7 +73,7 @@ class AuthHeader extends StatelessWidget {
           Text(
             _eyebrow.toUpperCase(),
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.accentStrong,
               fontSize: 11,
               fontWeight: FontWeight.w700,
