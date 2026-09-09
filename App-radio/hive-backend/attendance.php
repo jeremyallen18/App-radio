@@ -686,6 +686,11 @@ function attendanceToday(PDO $pdo) {
 
     $workDate = attendance_workday();
     $events = attendance_events_for($pdo, $user['id'], $workDate);
+
+    // Respaldo: al abrir "Mi asistencia" se vacían los recordatorios vencidos
+    // de este trabajador aunque el cron no esté configurado.
+    attendance_dispatch_due_reminders($pdo, $user['id']);
+
     json_response([
         'success'  => true,
         'day'      => attendance_day_summary($pdo, $user, $workDate, $events),
