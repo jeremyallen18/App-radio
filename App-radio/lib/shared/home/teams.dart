@@ -60,22 +60,29 @@ class _TeamPageState extends State<TeamPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            // Los empleados no crean equipos, solo se unen a uno existente.
-            child: QuickActionChip(
-              icon: Icons.group_add_outlined,
-              label: 'Unirse a un equipo',
-              onTap: () => Navigator.pushNamed(context, MyRoutes.jointeamRoutes),
+    return AppScaffold(
+      padding: EdgeInsets.zero,
+      appBar: AppBar(
+        leading: const BackButton(),
+        title: const Text('Mis equipos'),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              // Los empleados no crean equipos, solo se unen a uno existente.
+              child: QuickActionChip(
+                icon: Icons.group_add_outlined,
+                label: 'Unirse a un equipo',
+                onTap: () => Navigator.pushNamed(context, MyRoutes.jointeamRoutes),
+              ),
             ),
           ),
-        ),
-        Expanded(child: _buildBody()),
-      ],
+          Expanded(child: _buildBody()),
+        ],
+      ),
     );
   }
 

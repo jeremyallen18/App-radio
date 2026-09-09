@@ -247,37 +247,55 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SectionHeader(title: 'Totales del mes'),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: AppSpacing.sm,
-            crossAxisSpacing: AppSpacing.sm,
-            childAspectRatio: 1.8,
-            children: [
-              StatTile(
-                icon: Icons.event_available_outlined,
-                value: '${t.workedDays}',
-                label: 'Días trabajados',
-              ),
-              StatTile(
-                icon: Icons.schedule_outlined,
-                value: t.totalLabel,
-                label: 'Horas trabajadas',
-              ),
-              StatTile(
-                icon: Icons.running_with_errors_outlined,
-                value: '${t.lateCount}',
-                label: 'Tardanzas',
-                accentColor: AppColors.warning,
-              ),
-              StatTile(
-                icon: Icons.event_busy_outlined,
-                value: '${t.absentDays}',
-                label: 'Faltas',
-                accentColor: AppColors.error,
-              ),
-            ],
+          // Dos filas de `Expanded(StatTile)` en vez de un `GridView.count` con
+          // `childAspectRatio` fijo: así la altura la marca el contenido y las
+          // tarjetas nunca desbordan (mismo patrón que el resto de la app).
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: StatTile(
+                    icon: Icons.event_available_outlined,
+                    value: '${t.workedDays}',
+                    label: 'Días trabajados',
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: StatTile(
+                    icon: Icons.schedule_outlined,
+                    value: t.totalLabel,
+                    label: 'Horas trabajadas',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: StatTile(
+                    icon: Icons.running_with_errors_outlined,
+                    value: '${t.lateCount}',
+                    label: 'Tardanzas',
+                    accentColor: AppColors.warning,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: StatTile(
+                    icon: Icons.event_busy_outlined,
+                    value: '${t.absentDays}',
+                    label: 'Faltas',
+                    accentColor: AppColors.error,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       );

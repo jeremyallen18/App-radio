@@ -314,6 +314,39 @@ class SiteImagePickerField extends StatelessWidget {
   final String title;
   final String aspectHint;
 
+  /// Contenido de la miniatura (56×56): la imagen nueva elegida, la ya
+  /// guardada, o un placeholder. Tanto `Image.file` como `Image.network`
+  /// llevan `errorBuilder` para que un archivo borrado o una URL 404 caigan
+  /// en el mismo placeholder en vez de un `ErrorWidget` a tamaño natural.
+  Widget _thumb() {
+    if (newImage != null) {
+      return Image.file(
+        newImage!,
+        width: 56,
+        height: 56,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _thumbPlaceholder(),
+      );
+    }
+    if (existingImageUrl != null) {
+      return Image.network(
+        existingImageUrl!,
+        width: 56,
+        height: 56,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _thumbPlaceholder(),
+      );
+    }
+    return _thumbPlaceholder();
+  }
+
+  Widget _thumbPlaceholder() => Container(
+        width: 56,
+        height: 56,
+        color: AppColors.bgBase,
+        child: const Icon(Icons.image_outlined, color: AppColors.textMuted),
+      );
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
@@ -325,18 +358,17 @@ class SiteImagePickerField extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.chip),
-                child: newImage != null
-                    ? Image.file(newImage!, width: 56, height: 56, fit: BoxFit.cover)
-                    : existingImageUrl != null
-                        ? Image.network(existingImageUrl!, width: 56, height: 56, fit: BoxFit.cover)
-                        : Container(
-                            width: 56,
-                            height: 56,
-                            color: AppColors.bgBase,
-                            child: const Icon(Icons.image_outlined, color: AppColors.textMuted),
-                          ),
+              // Miniatura SIEMPRE de 56×56: `ClipRRect` recorta el pixel pero
+              // no acota el layout, así que el `SizedBox` es lo que impide que
+              // un `ErrorWidget` (imagen 404 sin `errorBuilder`) reviente la
+              // fila. Ver overflow de 747 px en site_content_widgets.dart:326.
+              SizedBox(
+                width: 56,
+                height: 56,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
+                  child: _thumb(),
+                ),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
