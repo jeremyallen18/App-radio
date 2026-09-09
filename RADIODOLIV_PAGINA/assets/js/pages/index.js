@@ -261,45 +261,182 @@ if (announceTrack && announceDots) {
     pageSignal.addEventListener("abort", () => { if (announceTimer) clearInterval(announceTimer); }, { once: true });
 }
 
-/* Comentarios en vivo: sin backend todavia, asi que el formulario solo
-   antepone el mensaje del propio oyente a la lista (con su hora local)
-   y sube el contador de "en linea" para que se sienta como una
-   conversacion activa. Se pierde al recargar -- ver index.php para el
-   markup y los comentarios de muestra. */
+/* Comentarios en vivo: respaldados por inc/api/live-comments.php
+   (tabla radio_live_comments). El servidor pinta el estado inicial en
+   index.php; aqui se hace polling incremental (GET ?since=<ultimo id>) y
+   se publican comentarios nuevos por POST. La caja "se reinicia cada
+   hora": la respuesta trae "bucket" (la hora en punto vigente) y cuando
+   cambia se vacia la lista. Si el endpoint no responde (BD sin migrar en
+   el server, red caida) el polling se detiene solo y el envio muestra el
+   error -- la portada nunca se rompe por esto. */
 const liveCommentsForm = document.getElementById("liveCommentsForm");
 const liveCommentsInput = document.getElementById("liveCommentsInput");
+const liveCommentsName = document.getElementById("liveCommentsName");
 const liveCommentsList = document.getElementById("liveCommentsList");
 const liveCommentsCount = document.getElementById("liveCommentsCount");
+const liveCommentsError = document.getElementById("liveCommentsError");
 
 if (liveCommentsForm && liveCommentsInput && liveCommentsList) {
-    liveCommentsForm.addEventListener("submit", (event) => {
-        event.preventDefault();
-        const text = liveCommentsInput.value.trim();
-        if (!text) return;
+    const API = (window.SITE_BASE || "") + "inc/api/live-comments.php";
+    const POLL_MS = 8000;
+    const NAME_KEY = "radiodoliv_live_name";
+    const CLIENT_KEY = "radiodoliv_live_client";
 
+    let clientId = "";
+    try {
+        clientId = localStorage.getItem(CLIENT_KEY) || "";
+        if (!clientId) {
+            clientId = (crypto.randomUUID && crypto.randomUUID()) ||
+                (Date.now().toString(36) + Math.random().toString(36).slice(2));
+            localStorage.setItem(CLIENT_KEY, clientId);
+        }
+    } catch (_) { /* modo privado: seguimos sin persistir */ }
+
+    try {
+        const savedName = localStorage.getItem(NAME_KEY);
+        if (savedName && liveCommentsName && !liveCommentsName.value) {
+            liveCommentsName.value = savedName;
+        }
+    } catch (_) { /* ignore */ }
+
+    let bucket = liveCommentsList.dataset.bucket || "";
+    let lastId = 0;
+    liveCommentsList.querySelectorAll("[data-comment-id]").forEach((li) => {
+        lastId = Math.max(lastId, parseInt(li.dataset.commentId, 10) || 0);
+    });
+    let pollFailures = 0;
+    let sending = false;
+    let pollTimer = null;
+
+    const initials = (name) => {
+        const parts = String(name).trim().split(/\s+/).filter(Boolean);
+        if (!parts.length) return "?";
+        const first = parts[0][0] || "";
+        const last = parts.length > 1 ? (parts[parts.length - 1][0] || "") : "";
+        return (first + last).toUpperCase();
+    };
+
+    const showError = (msg) => {
+        if (!liveCommentsError) return;
+        liveCommentsError.textContent = msg;
+        liveCommentsError.hidden = !msg;
+    };
+
+    const renderComment = (c) => {
+        if (!c || !c.id || liveCommentsList.querySelector(`[data-comment-id="${c.id}"]`)) {
+            return;
+        }
         const item = document.createElement("li");
         item.className = "home-comment";
+        item.dataset.commentId = String(c.id);
         item.innerHTML = `
-            <span class="home-comment-avatar">TÚ</span>
+            <span class="home-comment-avatar"></span>
             <span class="home-comment-body">
                 <span class="home-comment-top">
-                    <strong class="home-comment-name">Tú</strong>
-                    <span class="home-comment-time">${new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}</span>
+                    <strong class="home-comment-name"></strong>
+                    <span class="home-comment-time"></span>
                 </span>
                 <span class="home-comment-text"></span>
             </span>
         `;
-        item.querySelector(".home-comment-text").textContent = text;
+        item.querySelector(".home-comment-avatar").textContent = initials(c.name);
+        item.querySelector(".home-comment-name").textContent = c.name;
+        item.querySelector(".home-comment-time").textContent = c.time || "";
+        item.querySelector(".home-comment-text").textContent = c.body;
         liveCommentsList.appendChild(item);
-        liveCommentsList.scrollTop = liveCommentsList.scrollHeight;
+        lastId = Math.max(lastId, c.id);
+    };
 
-        if (liveCommentsCount) {
-            liveCommentsCount.textContent = String(parseInt(liveCommentsCount.textContent, 10) + 1);
+    const syncCount = (n) => {
+        if (liveCommentsCount && Number.isFinite(n)) {
+            liveCommentsCount.textContent = String(n);
         }
+    };
 
-        liveCommentsInput.value = "";
-        liveCommentsInput.focus();
+    const applyBucket = (serverBucket) => {
+        if (serverBucket && serverBucket !== bucket) {
+            bucket = serverBucket;
+            liveCommentsList.dataset.bucket = serverBucket;
+            liveCommentsList.innerHTML = "";
+            lastId = 0;
+        }
+    };
+
+    const poll = async () => {
+        try {
+            const res = await fetch(`${API}?since=${lastId}`, { headers: { Accept: "application/json" } });
+            if (!res.ok) throw new Error("http " + res.status);
+            const data = await res.json();
+            if (!data || data.success !== true) throw new Error("bad payload");
+            pollFailures = 0;
+            applyBucket(data.bucket);
+            const atBottom = liveCommentsList.scrollTop + liveCommentsList.clientHeight >= liveCommentsList.scrollHeight - 24;
+            (data.comments || []).forEach(renderComment);
+            syncCount(data.count);
+            if (atBottom) liveCommentsList.scrollTop = liveCommentsList.scrollHeight;
+        } catch (_) {
+            pollFailures += 1;
+            if (pollFailures >= 3) stopPolling();
+        }
+    };
+
+    // El router SPA reinyecta este script; guardamos el timer en window para
+    // que nunca queden dos pollers vivos a la vez sobre la misma pagina.
+    const stopPolling = () => {
+        if (window.__radioLiveCommentsPoll) {
+            clearInterval(window.__radioLiveCommentsPoll);
+            window.__radioLiveCommentsPoll = null;
+        }
+        pollTimer = null;
+    };
+    const startPolling = () => {
+        stopPolling();
+        pollFailures = 0;
+        pollTimer = window.__radioLiveCommentsPoll = setInterval(poll, POLL_MS);
+    };
+
+    liveCommentsForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (sending) return;
+        const body = liveCommentsInput.value.trim();
+        const name = (liveCommentsName && liveCommentsName.value.trim()) || "";
+        if (!body) return;
+        showError("");
+
+        sending = true;
+        const sendBtn = liveCommentsForm.querySelector(".home-comments-send");
+        if (sendBtn) sendBtn.disabled = true;
+
+        try {
+            const res = await fetch(API, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Accept: "application/json" },
+                body: JSON.stringify({ name, body, client_id: clientId }),
+            });
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data || data.success !== true) {
+                showError((data && data.error) || "No se pudo enviar tu comentario. Intenta de nuevo.");
+            } else {
+                applyBucket(data.bucket);
+                renderComment(data.comment);
+                liveCommentsList.scrollTop = liveCommentsList.scrollHeight;
+                syncCount((parseInt(liveCommentsCount && liveCommentsCount.textContent, 10) || 0) + 1);
+                liveCommentsInput.value = "";
+                try { if (name) localStorage.setItem(NAME_KEY, name); } catch (_) { /* ignore */ }
+                liveCommentsInput.focus();
+                if (!window.__radioLiveCommentsPoll) startPolling();
+            }
+        } catch (_) {
+            showError("Sin conexión. Revisa tu internet e intenta de nuevo.");
+        } finally {
+            sending = false;
+            if (sendBtn) sendBtn.disabled = false;
+        }
     });
+
+    poll();
+    startPolling();
+    pageSignal.addEventListener("abort", stopPolling, { once: true });
 }
 
 /* Sugerencia de scroll: tarjeta fija sobre el boton del chatbot que

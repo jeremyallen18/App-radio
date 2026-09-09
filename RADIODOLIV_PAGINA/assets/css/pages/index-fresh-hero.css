@@ -377,10 +377,25 @@
 
 .home-comments-form {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
     gap: var(--space-3);
     padding: var(--space-5) var(--space-6);
     border-top: 1px solid var(--ps-hairline-dark);
+}
+
+/* Fila del comentario: campo + botón enviar, uno al lado del otro. El campo
+   "Tu nombre" va aparte, arriba, ocupando todo el ancho. */
+.home-comments-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.home-comments-error {
+    margin: 0;
+    color: var(--ps-danger, #ff6b6b);
+    font-size: 0.8125rem;
 }
 
 .home-comments-input {
