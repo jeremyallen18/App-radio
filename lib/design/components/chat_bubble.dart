@@ -17,6 +17,13 @@ import '../tokens/spacing.dart';
 /// dibuja el indicador correspondiente junto a la hora: reloj mientras se
 /// envía, ✓ enviado, ✓✓ entregado, ✓✓ azul leído, o un ícono de error
 /// (con [onRetry]) si el envío falló.
+///
+/// Si se pasa [replyTo] (con las claves 'name' y 'message'), se dibuja
+/// arriba del texto una pequeña cita del mensaje original, al estilo
+/// WhatsApp, para dejar claro a qué mensaje se está respondiendo.
+///
+/// Si se pasa [onReply], se puede mantener presionada la burbuja para
+/// elegir "responder" a ese mensaje puntual.
 class ChatBubble extends StatelessWidget {
   const ChatBubble({
     super.key,
@@ -28,6 +35,8 @@ class ChatBubble extends StatelessWidget {
     this.time,
     this.status,
     this.onRetry,
+    this.replyTo,
+    this.onReply,
   });
 
   final String username;
@@ -55,6 +64,14 @@ class ChatBubble extends StatelessWidget {
   /// para reintentar el envío de ese mensaje.
   final VoidCallback? onRetry;
 
+  /// Mensaje original al que responde este, si corresponde. Debe traer
+  /// las claves 'name' (autor del mensaje citado) y 'message' (su texto).
+  final Map<String, String>? replyTo;
+
+  /// Se llama al mantener presionada la burbuja, para elegir responder a
+  /// este mensaje. Si es null, la burbuja no reacciona a la presión larga.
+  final VoidCallback? onReply;
+
   @override
   Widget build(BuildContext context) {
     final name = (displayName != null && displayName!.trim().isNotEmpty)
@@ -70,8 +87,17 @@ class ChatBubble extends StatelessWidget {
 
     final showFooter = (time != null && time!.isNotEmpty) || (isMe && status != null);
 
+    // Ancho máximo relativo a la pantalla (estilo WhatsApp: ~78% del ancho
+    // disponible), con un piso y un techo para que no se vea ni demasiado
+    // angosta en pantallas chicas ni ridículamente ancha en tablets. El
+    // ancho mínimo lo sigue definiendo el propio contenido (Column con
+    // mainAxisSize.min más abajo), así que un "Hola" ocupa poco y un
+    // mensaje largo ocupa hasta este máximo antes de saltar de línea.
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final maxBubbleWidth = (screenWidth * 0.78).clamp(220.0, 420.0);
+
     final bubble = Container(
-      constraints: const BoxConstraints(maxWidth: 280),
+      constraints: BoxConstraints(maxWidth: maxBubbleWidth),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       decoration: BoxDecoration(
         color: isMe ? null : AppColors.surface,
@@ -102,9 +128,52 @@ class ChatBubble extends StatelessWidget {
                 ),
               ),
             ),
+          if (replyTo != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: isMe ? Colors.white.withValues(alpha: 0.15) : AppColors.bgBase,
+                borderRadius: BorderRadius.circular(8),
+                border: Border(
+                  left: BorderSide(color: isMe ? AppColors.onBrand : AppColors.accent, width: 3),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    replyTo!['name'] ?? '',
+                    style: TextStyle(
+                      color: isMe ? AppColors.onBrand : AppColors.accent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    replyTo!['message'] ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: isMe ? AppColors.onBrandMuted : AppColors.textMuted,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Text(
             message,
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 14, height: 1.3),
+            // La burbuja propia ("isMe") siempre tiene fondo azul
+            // (buttonGradient), sin importar el modo: el texto debe quedar
+            // fijo en blanco ahí; solo la burbuja ajena (fondo de superficie,
+            // que sí cambia con el modo) usa el color dinámico.
+            style: TextStyle(
+              color: isMe ? AppColors.onBrand : AppColors.textPrimary,
+              fontSize: 14,
+              height: 1.3,
+            ),
           ),
           if (showFooter)
             Padding(
@@ -123,18 +192,23 @@ class ChatBubble extends StatelessWidget {
       ),
     );
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3, horizontal: AppSpacing.lg),
-      child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isMe) ...[
-            IdentityAvatar(id: username, radius: 14, photoUrl: photoUrl),
-            const SizedBox(width: AppSpacing.sm),
+    return GestureDetector(
+      // Presión larga para elegir "responder" a este mensaje puntual,
+      // igual que en WhatsApp/Slack. Si no se pasó [onReply], no hace nada.
+      onLongPress: onReply,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3, horizontal: AppSpacing.lg),
+        child: Row(
+          mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (!isMe) ...[
+              IdentityAvatar(id: username, radius: 14, photoUrl: photoUrl),
+              const SizedBox(width: AppSpacing.sm),
+            ],
+            Flexible(child: bubble),
           ],
-          Flexible(child: bubble),
-        ],
+        ),
       ),
     );
   }
@@ -156,9 +230,10 @@ class _MessageFooter extends StatelessWidget {
   final MessageStatus? status;
   final VoidCallback? onRetry;
 
-  Color _timeColor() => isMe
-      ? AppColors.textPrimary.withValues(alpha: 0.75)
-      : AppColors.textMuted;
+  // Igual que el texto del mensaje: la burbuja "isMe" siempre es azul, así
+  // que la hora sobre ella queda fija en blanco (con menor opacidad para
+  // diferenciarla), no en el color dinámico que se oscurece en modo claro.
+  Color _timeColor() => isMe ? AppColors.onBrandMuted : AppColors.textMuted;
 
   @override
   Widget build(BuildContext context) {
@@ -207,10 +282,14 @@ class _StatusIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     switch (status) {
+      // Este ícono solo se dibuja en mensajes propios (isMe), es decir
+      // siempre sobre la burbuja azul fija: por eso usa onBrand* en vez de
+      // textMuted/accentStrong (que se oscurecen en modo claro y se pierden
+      // contra el azul).
       case MessageStatus.sending:
         return Tooltip(
           message: 'Enviando…',
-          child: Icon(Icons.schedule, size: 12, color: AppColors.textMuted),
+          child: Icon(Icons.schedule, size: 12, color: AppColors.onBrandMuted),
         );
       case MessageStatus.retrying:
         return Tooltip(
@@ -224,17 +303,17 @@ class _StatusIcon extends StatelessWidget {
       case MessageStatus.sent:
         return Tooltip(
           message: 'Enviado',
-          child: Icon(Icons.done, size: 14, color: AppColors.textMuted),
+          child: Icon(Icons.done, size: 14, color: AppColors.onBrandMuted),
         );
       case MessageStatus.delivered:
         return Tooltip(
           message: 'Entregado',
-          child: Icon(Icons.done_all, size: 14, color: AppColors.textMuted),
+          child: Icon(Icons.done_all, size: 14, color: AppColors.onBrandMuted),
         );
       case MessageStatus.read:
         return Tooltip(
           message: 'Leído',
-          child: Icon(Icons.done_all, size: 14, color: AppColors.accentStrong),
+          child: Icon(Icons.done_all, size: 14, color: AppColors.onBrandAccent),
         );
     }
   }

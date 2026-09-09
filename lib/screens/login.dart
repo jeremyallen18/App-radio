@@ -53,7 +53,6 @@ class _LoginState extends State<Login> {
       await Navigator.pushNamed(context, MyRoutes.BottomNavBar);
 
     } else {
-      print('Failed to join the team. Status Code: ${response.statusCode}');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Correo o contraseña incorrectos")),
       );

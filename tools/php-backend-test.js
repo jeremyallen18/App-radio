@@ -334,6 +334,72 @@ async function req(method, p, { token, json, form } = {}) {
     check('el equipo refleja el nuevo lider',
       sh2.body?.teams?.find((t) => t._id === teamId)?.leaderEmail === emails.member,
       `leaderEmail=${sh2.body?.teams?.find((t) => t._id === teamId)?.leaderEmail}`);
+    check('tras leaderResign el equipo tiene un solo admin (member)',
+      JSON.stringify(sh2.body?.teams?.find((t) => t._id === teamId)?.admins) === JSON.stringify([emails.member]),
+      `admins=${JSON.stringify(sh2.body?.teams?.find((t) => t._id === teamId)?.admins)}`);
+
+    console.log('\n-- ADMINS MULTIPLES --');
+    // En este punto: "member" es el único admin (quedó así tras leaderResign);
+    // "leader" volvió a ser miembro normal. Se prueba que un equipo puede
+    // tener más de un admin, todos con los mismos privilegios.
+    const getAdmins = (body) => body?.teams?.find((t) => t._id === teamId)?.admins ?? [];
+
+    check('SEGURIDAD: extraño no puede agregar admins -> 403',
+      (await req('POST', `/team/addAdmin/${teamId}`, { token: tok.outsider, form: { memberEmail: emails.leader } })).status === 403,
+      'no dio 403');
+    check('SEGURIDAD: un miembro normal (no admin) no puede agregar admins -> 403',
+      (await req('POST', `/team/addAdmin/${teamId}`, { token: tok.leader, form: { memberEmail: emails.leader } })).status === 403,
+      'no dio 403');
+    check('SEGURIDAD: addAdmin exige que la persona ya sea miembro del equipo -> 400',
+      (await req('POST', `/team/addAdmin/${teamId}`, { token: tok.member, form: { memberEmail: emails.outsider } })).status === 400,
+      'no dio 400');
+
+    const addA = await req('POST', `/team/addAdmin/${teamId}`, { token: tok.member, form: { memberEmail: emails.leader } });
+    check('el admin actual asciende a otro miembro a admin', addA.status === 200, `status=${addA.status} "${addA.text.slice(0, 90)}"`);
+
+    const addAgain = await req('POST', `/team/addAdmin/${teamId}`, { token: tok.member, form: { memberEmail: emails.leader } });
+    check('volver a ascender a alguien que ya es admin no falla (idempotente)', addAgain.status === 200, `status=${addAgain.status}`);
+
+    const shAdmins = await req('GET', '/team/showTeams', { token: tok.member });
+    check('el equipo ahora tiene dos admins',
+      getAdmins(shAdmins.body).length === 2 &&
+        getAdmins(shAdmins.body).includes(emails.member) &&
+        getAdmins(shAdmins.body).includes(emails.leader),
+      `admins=${JSON.stringify(getAdmins(shAdmins.body))}`);
+
+    const nfAdmin = await req('GET', '/notifications', { token: tok.leader });
+    check('la persona ascendida recibe notificacion admin_added',
+      nfAdmin.body?.notifications?.some((n) => n.type === 'admin_added'), `${nfAdmin.text.slice(0, 250)}`);
+
+    // Con dos admins, cualquiera de los dos puede hacer las mismas acciones,
+    // incluyendo quitarse el rol a si mismo (mientras no quede el equipo sin
+    // ningun admin).
+    const selfDemote = await req('POST', `/team/removeAdmin/${teamId}`, { token: tok.leader, form: { memberEmail: emails.leader } });
+    check('un admin puede quitarse el rol a si mismo si no es el unico', selfDemote.status === 200, `status=${selfDemote.status}`);
+
+    const nfDemoted = await req('GET', '/notifications', { token: tok.leader });
+    check('quien pierde el rol recibe notificacion admin_removed',
+      nfDemoted.body?.notifications?.some((n) => n.type === 'admin_removed'), `${nfDemoted.text.slice(0, 250)}`);
+
+    check('SEGURIDAD: no se puede quitar el rol al unico admin que queda -> 400',
+      (await req('POST', `/team/removeAdmin/${teamId}`, { token: tok.member, form: { memberEmail: emails.member } })).status === 400,
+      'no dio 400');
+    check('SEGURIDAD: removeAdmin sobre alguien que no es admin -> 400',
+      (await req('POST', `/team/removeAdmin/${teamId}`, { token: tok.member, form: { memberEmail: emails.leader } })).status === 400,
+      'no dio 400');
+    check('SEGURIDAD: extraño no puede quitar admins -> 403',
+      (await req('POST', `/team/removeAdmin/${teamId}`, { token: tok.outsider, form: { memberEmail: emails.member } })).status === 403,
+      'no dio 403');
+
+    // Un admin no se puede sacar del grupo directamente por deleteMember;
+    // primero hay que quitarle el rol.
+    await req('POST', `/team/addAdmin/${teamId}`, { token: tok.member, form: { memberEmail: emails.leader } });
+    check('SEGURIDAD: no se puede sacar del grupo a alguien que es admin -> 400',
+      (await req('POST', `/team/deleteMember/${teamId}`, { token: tok.member, form: { memberEmail: emails.leader } })).status === 400,
+      'no dio 400');
+    // Se deja al equipo con un solo admin ("member") para el resto de las
+    // pruebas (borrar el equipo), igual que quedaba antes de este bloque.
+    await req('POST', `/team/removeAdmin/${teamId}`, { token: tok.member, form: { memberEmail: emails.leader } });
 
     console.log('\n-- ELIMINAR EQUIPO --');
     // tras el leaderResign el líder es "member"; "leader" quedó como miembro normal

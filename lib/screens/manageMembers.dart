@@ -19,8 +19,10 @@ class ManageMembers extends StatefulWidget {
     required this.currentUserEmail,
     required List<String> admins,
     required List<String> members,
+    Map<String, String>? memberNames,
   })  : admins = List<String>.from(admins),
-        members = List<String>.from(members);
+        members = List<String>.from(members),
+        memberNames = Map<String, String>.from(memberNames ?? const {});
 
   final String teamId;
   final String teamName;
@@ -30,6 +32,10 @@ class ManageMembers extends StatefulWidget {
   final String currentUserEmail;
   final List<String> admins;
   final List<String> members;
+  // Nombre de perfil por correo (en minúsculas), para mostrar a cada
+  // miembro por su nombre en vez de su correo. Viene de teamDetail.dart,
+  // que a su vez lo arma con `memberNames` del backend.
+  final Map<String, String> memberNames;
 
   @override
   State<ManageMembers> createState() => _ManageMembersState();
@@ -74,6 +80,15 @@ class _ManageMembersState extends State<ManageMembers> {
 
   bool _isAdmin(String email) =>
       _admins.any((a) => a.toLowerCase() == email.toLowerCase());
+
+  // Nombre de perfil a mostrar para un correo: usa widget.memberNames si lo
+  // tiene (viene del backend) y, si no, cae de vuelta a la parte del correo
+  // antes de la @ (igual que antes de tener nombres de perfil).
+  String _displayName(String email) {
+    final resolved = widget.memberNames[email.toLowerCase()];
+    if (resolved != null && resolved.trim().isNotEmpty) return resolved.trim();
+    return email.contains('@') ? email.substring(0, email.indexOf('@')) : email;
+  }
 
   bool _isSelf(String email) =>
       email.toLowerCase() == widget.currentUserEmail.toLowerCase();
@@ -545,9 +560,12 @@ class _ManageMembersState extends State<ManageMembers> {
                             ),
                             child: ListTile(
                               leading: Icon(Icons.shield, color: AppColors.accent),
+                              // Los admins se muestran con su nombre en negrita y en
+                              // el color de acento, para que resalten más que un
+                              // miembro normal (ver el título sin admin más abajo).
                               title: Text(
-                                email,
-                                style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                                _displayName(email),
+                                style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w800),
                               ),
                               trailing: Wrap(
                                 spacing: 4,
@@ -602,7 +620,7 @@ class _ManageMembersState extends State<ManageMembers> {
                             activeColor: AppColors.error,
                             checkColor: AppColors.textPrimary,
                             title: Text(
-                              email,
+                              _displayName(email),
                               style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
                             ),
                             secondary: IconButton(

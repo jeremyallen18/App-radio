@@ -40,10 +40,15 @@ class _addTaskState extends State<addTask> {
 
   Future<void> _pickDeadline() async {
     final now = DateTime.now();
+    // El admin solo puede asignar tareas desde hoy en adelante, nunca con
+    // fecha límite en el pasado. `today` se normaliza sin horas/minutos para
+    // que "hoy" siga siendo una opción válida sin importar la hora actual
+    // (antes se permitía elegir incluso el día anterior).
+    final today = DateTime(now.year, now.month, now.day);
     final picked = await showDatePicker(
       context: context,
-      initialDate: now,
-      firstDate: now.subtract(const Duration(days: 1)),
+      initialDate: today,
+      firstDate: today,
       lastDate: DateTime(now.year + 5),
     );
     if (picked == null) return;

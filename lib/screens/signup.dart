@@ -15,14 +15,7 @@ class _SignUpState extends State<SignUp> {
     var request = http.Request('GET', Uri.parse('$kBaseUrl/googleOAuth'));
 
 
-    http.StreamedResponse response = await request.send();
-
-    if (response.statusCode == 200) {
-      print(await response.stream.bytesToString());
-    }
-    else {
-      print(response.reasonPhrase);
-    }
+    await request.send();
   }
 
   Future <void> SignApi() async {
@@ -38,14 +31,9 @@ class _SignUpState extends State<SignUp> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(response.body),),);
     if (response.statusCode == 200) {
-      print('API Response: ${response.body}');
       await Navigator.pushNamed(context, MyRoutes.LoginRoutes);
-
-    } else {
-      print('Failed to join the team. Status Code: ${response.statusCode}');
-      print('Error Message: ${response.body}');
     }
-    }
+  }
   final _formKey = GlobalKey<FormState>();
   TextEditingController emailController =TextEditingController();
   TextEditingController nameController =TextEditingController();

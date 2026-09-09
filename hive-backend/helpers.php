@@ -118,21 +118,48 @@ function is_team_member(PDO $pdo, string $teamId, string $email): bool {
     return (bool) $stmt->fetch();
 }
 
-function is_team_leader(PDO $pdo, string $teamId, string $email): bool {
-    $stmt = $pdo->prepare('SELECT 1 FROM teams WHERE id = ? AND leader_email = ? LIMIT 1');
-    $stmt->execute([$teamId, $email]);
-    return (bool) $stmt->fetch();
-}
-
 function require_team_member(PDO $pdo, string $teamId, array $user): void {
     if (!is_team_member($pdo, $teamId, $user['email'])) {
         error_response('You do not belong to this team', 403);
     }
 }
 
-function require_team_leader(PDO $pdo, string $teamId, array $user): void {
-    if (!is_team_leader($pdo, $teamId, $user['email'])) {
-        error_response('Only the team leader can perform this action', 403);
+// ---- team admins (multi-admin) ------------------------------------------
+// Un equipo puede tener más de un admin, todos con los mismos permisos:
+// agregar/sacar miembros, gestionar tareas, borrar el equipo, y poner o
+// quitar a otros admins. La lista vive en team_admins; teams.leader_email
+// se conserva solo como respaldo de compatibilidad (ver comentario en
+// schema.sql) para equipos que, por algún motivo, no tengan ninguna fila
+// todavía en team_admins.
+
+function team_admin_emails(PDO $pdo, string $teamId): array {
+    $stmt = $pdo->prepare('SELECT email FROM team_admins WHERE team_id = ? ORDER BY id ASC');
+    $stmt->execute([$teamId]);
+    $admins = array_column($stmt->fetchAll(), 'email');
+    if (!empty($admins)) {
+        return $admins;
+    }
+    $stmt = $pdo->prepare('SELECT leader_email FROM teams WHERE id = ?');
+    $stmt->execute([$teamId]);
+    $leaderEmail = $stmt->fetchColumn();
+    return $leaderEmail ? [$leaderEmail] : [];
+}
+
+function is_team_admin(PDO $pdo, string $teamId, string $email): bool {
+    foreach (team_admin_emails($pdo, $teamId) as $admin) {
+        if (strcasecmp($admin, $email) === 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Corta la petición con 403 si el usuario autenticado no es admin del
+// equipo. Reemplaza al viejo require_team_leader(): cualquier admin (no
+// solo un único "líder") puede realizar estas acciones.
+function require_team_admin(PDO $pdo, string $teamId, array $user): void {
+    if (!is_team_admin($pdo, $teamId, $user['email'])) {
+        error_response('Only a team admin can perform this action', 403);
     }
 }
 

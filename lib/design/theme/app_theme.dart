@@ -23,13 +23,17 @@ class AppTheme {
     final colorScheme = ColorScheme(
       brightness: brightness,
       primary: AppColors.brandBlue,
-      onPrimary: p.textPrimary,
+      // `primary` (brandBlue) y `error` son fondos que NO cambian con el
+      // modo, así que lo que va encima (onPrimary/onError) debe quedar fijo
+      // en blanco en vez de p.textPrimary: ese sí cambia con el modo y en
+      // claro es casi negro, invisible contra el azul/rojo.
+      onPrimary: AppColors.onBrand,
       secondary: p.accent,
       onSecondary: brightness == Brightness.dark ? p.bgBase : Colors.white,
       surface: p.surface,
       onSurface: p.textPrimary,
       error: p.error,
-      onError: p.textPrimary,
+      onError: AppColors.onBrand,
       outline: p.surfaceBorder,
     );
 
@@ -86,7 +90,9 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.brandBlue,
-          foregroundColor: p.textPrimary,
+          // Fondo del botón siempre azul (brandBlue no cambia con el modo):
+          // el texto/ícono debe quedar fijo en blanco, no en p.textPrimary.
+          foregroundColor: AppColors.onBrand,
           disabledBackgroundColor: p.surface,
           disabledForegroundColor: p.textMuted,
           // Ancho finito a propósito: `Size.fromHeight` fija un ancho MÍNIMO
@@ -144,18 +150,22 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: p.surface,
         indicatorColor: AppColors.brandBlue,
+        // El "pill" detrás del ítem seleccionado siempre es brandBlue
+        // (fijo), así que su ícono/etiqueta deben quedar fijos en blanco
+        // (AppColors.onBrand) en vez de p.textPrimary: en modo claro ese
+        // color es casi negro y se pierde contra el azul del indicador.
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(
             fontSize: 12,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            color: selected ? p.textPrimary : p.textMuted,
+            color: selected ? AppColors.onBrand : p.textMuted,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: selected ? p.textPrimary : p.textMuted,
+            color: selected ? AppColors.onBrand : p.textMuted,
           );
         }),
       ),

@@ -50,13 +50,17 @@ class AppButton extends StatelessWidget {
                       height: 22,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5,
-                        color: AppColors.textPrimary,
+                        // Fondo del botón siempre azul (buttonGradient), sin
+                        // importar el modo: el color de encima debe quedar
+                        // fijo en blanco en vez de AppColors.textPrimary
+                        // (que en modo claro es casi negro y se pierde).
+                        color: AppColors.onBrand,
                       ),
                     )
                   : Text(
                       label,
                       style: TextStyle(
-                        color: AppColors.textPrimary,
+                        color: AppColors.onBrand,
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
                       ),

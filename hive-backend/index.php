@@ -37,6 +37,16 @@ $routes = [
     ['POST', '#^/team/deleteMember/([^/]+)/?$#',              'deleteMember'],
     ['POST', '#^/team/resign/([^/]+)/?$#',                    'resignFromTeam'],
     ['POST', '#^/team/deleteTeam/([^/]+)/?$#',                'deleteTeam'],
+    // Múltiples admins por equipo: cualquier admin puede ascender a otro
+    // miembro (addAdmin) o quitarle el rol a otro admin (removeAdmin);
+    // este último rechaza la operación si esa persona es el único admin
+    // que le queda al equipo. Ver ADMINS_MULTIPLES.md.
+    ['POST', '#^/team/addAdmin/([^/]+)/?$#',                  'addAdmin'],
+    ['POST', '#^/team/removeAdmin/([^/]+)/?$#',               'removeAdmin'],
+    // Endpoint legado de "un solo líder" (transferencia total). La app ya
+    // no lo usa (reemplazado por addAdmin/removeAdmin), pero se conserva
+    // por compatibilidad; sigue exigiendo ser admin y ahora reemplaza por
+    // completo la lista de admins del equipo por el nuevo líder.
     ['POST', '#^/team/leaderResign/([^/]+)/?$#',              'leaderResign'],
     ['GET',  '#^/chat/getAllChats/([^/]+)/?$#',               'getAllChats'],
     ['POST', '#^/chat/sendMessage/([^/]+)/?$#',               'sendChatMessage'],
@@ -65,6 +75,11 @@ $routes = [
     ['POST', '#^/document/addDocument/?$#',                   'addDocument'],
     ['GET',  '#^/document/download/([^/]+)/?$#',              'downloadDocument'],
     ['DELETE', '#^/document/([^/]+)/?$#',                     'deleteDocument'],
+    // Eliminar una imagen del apartado "Imágenes" (botón "-" del selector
+    // 📷). Cualquier miembro del equipo puede borrar, igual que ya pasa con
+    // los documentos (deleteDocument) — no se restringe a admins ni a quien
+    // la subió.
+    ['DELETE', '#^/image/([^/]+)/?$#',                        'deleteImage'],
     ['POST', '#^/text/addText/([^/]+)/?$#',                   'addText'],
     ['GET',  '#^/text/showText/([^/]+)/?$#',                  'showText'],
     ['POST', '#^/leave/applyLeave/([^/]+)/?$#',                'applyLeave'],
@@ -301,13 +316,20 @@ function build_team_payload(PDO $pdo, array $team, ?string $viewerEmail = null):
         ];
     }
 
-    $isLeader = $viewerEmail !== null && strcasecmp($viewerEmail, $team['leader_email']) === 0;
+    // Lista de admins del equipo (reemplaza al viejo "líder único"): todos
+    // tienen los mismos permisos. team_admin_emails() cae de vuelta a
+    // leader_email si, por algún motivo, el equipo no tiene ninguna fila
+    // en team_admins todavía (ver comentario en esa función).
+    $admins = team_admin_emails($pdo, $team['id']);
+    $isAdmin = $viewerEmail !== null &&
+        in_array(strtolower($viewerEmail), array_map('strtolower', $admins), true);
 
-    // Se busca el nombre del líder para mostrarlo en teamDetail.dart en vez
-    // del correo (o de la parte antes de la @); si la cuenta ya no existe
-    // se cae de vuelta a null y el front-end usa el correo como respaldo.
+    // leaderEmail/leaderName se conservan en la respuesta por compatibilidad
+    // con clientes viejos y se derivan del primer admin de la lista (antes
+    // era literalmente el único líder posible).
+    $leaderEmail = $admins[0] ?? $team['leader_email'];
     $stmt = $pdo->prepare('SELECT name FROM users WHERE email = ?');
-    $stmt->execute([$team['leader_email']]);
+    $stmt->execute([$leaderEmail]);
     $leaderName = $stmt->fetchColumn() ?: null;
 
     $out = [];
@@ -315,9 +337,9 @@ function build_team_payload(PDO $pdo, array $team, ?string $viewerEmail = null):
         $stmt = $pdo->prepare('SELECT email FROM domain_members WHERE domain_id = ? ORDER BY id ASC');
         $stmt->execute([$d['id']]);
         $domainTasks = $tasksByDomain[$d['name']] ?? [];
-        // Solo el líder del equipo y la persona asignada pueden ver una
+        // Solo un admin del equipo y la persona asignada pueden ver una
         // tarea; cualquier otro miembro no la ve en absoluto.
-        if ($viewerEmail !== null && !$isLeader) {
+        if ($viewerEmail !== null && !$isAdmin) {
             $domainTasks = array_values(array_filter(
                 $domainTasks,
                 fn($t) => strcasecmp((string) $t['assignedTo'], $viewerEmail) === 0
@@ -338,14 +360,34 @@ function build_team_payload(PDO $pdo, array $team, ?string $viewerEmail = null):
     $stmt->execute([$team['id']]);
     $teamMembers = array_column($stmt->fetchAll(), 'email');
 
+    // Nombre de perfil de cada miembro del equipo (por correo), para que la
+    // app muestre a la gente por su nombre en vez de su correo tanto en las
+    // áreas (teamDetail.dart) como en "Gestionar equipo" (manageMembers.dart).
+    // Si alguna cuenta ya no existe, simplemente no aparece en el mapa y el
+    // front-end cae de vuelta al correo.
+    $memberNames = [];
+    if (!empty($teamMembers)) {
+        $placeholders = implode(',', array_fill(0, count($teamMembers), '?'));
+        $stmt = $pdo->prepare("SELECT email, name FROM users WHERE email IN ($placeholders)");
+        $stmt->execute($teamMembers);
+        foreach ($stmt->fetchAll() as $row) {
+            $memberNames[$row['email']] = $row['name'];
+        }
+    }
+
     return [
         '_id'         => $team['id'],
         'teamName'    => $team['team_name'],
         'teamCode'    => $team['team_code'],
-        'leaderEmail' => $team['leader_email'],
+        // Lista completa de admins (puede tener más de uno). 'leaderEmail'/
+        // 'leaderName' se conservan para compatibilidad con builds viejos
+        // de la app y equivalen a admins[0].
+        'admins'      => $admins,
+        'leaderEmail' => $leaderEmail,
         'leaderName'  => $leaderName,
         'domains'     => $out,
         'teamMembers' => $teamMembers,
+        'memberNames' => $memberNames,
     ];
 }
 
@@ -370,6 +412,11 @@ function createTeam(PDO $pdo) {
     $stmt->execute([$teamId, $teamName, $teamCode, $user['email']]);
 
     $stmt = $pdo->prepare('INSERT INTO team_members (team_id, email) VALUES (?, ?)');
+    $stmt->execute([$teamId, $user['email']]);
+
+    // Quien crea el equipo es su primer admin. Un equipo puede terminar
+    // teniendo más de uno (ver addAdmin()), pero siempre arranca con este.
+    $stmt = $pdo->prepare('INSERT INTO team_admins (team_id, email) VALUES (?, ?)');
     $stmt->execute([$teamId, $user['email']]);
 
     if (is_array($domains)) {
@@ -512,10 +559,10 @@ function addTask(PDO $pdo, string $teamcode) {
     if (!$team) {
         text_response('Team not found', 404);
     }
-    // Solo el admin/líder del equipo puede crear tareas. El front-end ya
-    // ocultaba el botón "Agregar tarea" a quien no fuera líder, pero el
+    // Solo un admin del equipo puede crear tareas. El front-end ya
+    // ocultaba el botón "Agregar tarea" a quien no fuera admin, pero el
     // endpoint no lo exigía; ahora también se valida aquí.
-    require_team_leader($pdo, $team['id'], $user);
+    require_team_admin($pdo, $team['id'], $user);
 
     // La persona asignada debe pertenecer a esa área del equipo (el
     // front-end ya solo deja elegir miembros del área, esto lo respalda
@@ -589,12 +636,15 @@ function taskDone(PDO $pdo) {
         text_response('Task not found', 404);
     }
 
-    // Avisa al líder/admin del equipo de que alguien completó una tarea,
-    // igual que ya hace completeDepartmentTask() con el manager. No se
-    // notifica si el propio líder es quien la completó (p. ej. una tarea
-    // que se autoasignó).
-    if (!empty($team['leader_email']) && $team['leader_email'] !== $email) {
-        notify_user($pdo, $team['leader_email'], $team['id'], 'task_completed',
+    // Avisa a todos los admins del equipo de que alguien completó una
+    // tarea, igual que ya hace completeDepartmentTask() con el manager. No
+    // se notifica a quien la completó si esa persona es admin (p. ej. una
+    // tarea que se autoasignó).
+    foreach (team_admin_emails($pdo, $team['id']) as $adminEmail) {
+        if (strcasecmp($adminEmail, $email) === 0) {
+            continue;
+        }
+        notify_user($pdo, $adminEmail, $team['id'], 'task_completed',
             $user['name'] . ' completó la tarea "' . $task . '" en "' . $domainName . '"');
     }
 
@@ -624,9 +674,9 @@ function updateTeamTask(PDO $pdo, string $taskId) {
     if (!$team) {
         text_response('Team not found', 404);
     }
-    // Solo el líder del equipo puede reasignar, reprogramar, editar o
+    // Solo un admin del equipo puede reasignar, reprogramar, editar o
     // completar tareas desde este menú (misma regla que addTask()).
-    require_team_leader($pdo, $team['id'], $user);
+    require_team_admin($pdo, $team['id'], $user);
 
     $body = request_body();
     // `emails` (lista, separada por comas) es el campo nuevo que permite
@@ -790,7 +840,7 @@ function completedTasks(PDO $pdo) {
 // alguien uniéndose con teamCode.
 function addMember(PDO $pdo, string $teamId) {
     $user = require_auth($pdo);
-    require_team_leader($pdo, $teamId, $user);
+    require_team_admin($pdo, $teamId, $user);
     $body = request_body();
     $memberEmail = trim($body['memberEmail'] ?? '');
 
@@ -841,11 +891,13 @@ function addMember(PDO $pdo, string $teamId) {
     text_response('Member added', 200);
 }
 
-// Un miembro (no el líder) renuncia por su cuenta al equipo. A diferencia
-// de deleteMember (que el líder usa para sacar a alguien), aquí el propio
+// Un miembro (admin o no) renuncia por su cuenta al equipo. A diferencia
+// de deleteMember (que un admin usa para sacar a alguien), aquí el propio
 // usuario autenticado es quien sale, y son el resto de los integrantes del
-// equipo (líder incluido) quienes reciben la notificación, no la persona
-// que renuncia.
+// equipo (admins incluidos) quienes reciben la notificación, no la persona
+// que renuncia. Un admin puede renunciar igual que cualquiera, siempre que
+// no sea el único admin que le queda al equipo (si lo es, primero debe
+// ascender a otro miembro).
 function resignFromTeam(PDO $pdo, string $teamId) {
     $user = require_auth($pdo);
     require_team_member($pdo, $teamId, $user);
@@ -856,11 +908,20 @@ function resignFromTeam(PDO $pdo, string $teamId) {
     if (!$team) {
         text_response('Team not found', 404);
     }
-    if (strcasecmp($user['email'], $team['leader_email']) === 0) {
-        text_response('El líder no puede renunciar; transfiere el liderazgo primero', 400);
+
+    $admins = team_admin_emails($pdo, $teamId);
+    $isAdmin = false;
+    foreach ($admins as $a) {
+        if (strcasecmp($a, $user['email']) === 0) {
+            $isAdmin = true;
+            break;
+        }
+    }
+    if ($isAdmin && count($admins) <= 1) {
+        text_response('Eres el único admin del equipo; asciende a otro miembro antes de salir', 400);
     }
 
-    // Se leen los miembros restantes (incluido el líder) antes de borrar,
+    // Se leen los miembros restantes (admins incluidos) antes de borrar,
     // para poder avisarles a todos que esta persona salió del equipo.
     $stmt = $pdo->prepare('SELECT email FROM team_members WHERE team_id = ? AND email <> ?');
     $stmt->execute([$teamId, $user['email']]);
@@ -875,8 +936,13 @@ function resignFromTeam(PDO $pdo, string $teamId) {
     $stmt = $pdo->prepare('DELETE FROM domain_members WHERE email = ? AND domain_id IN (SELECT id FROM domains WHERE team_id = ?)');
     $stmt->execute([$user['email'], $teamId]);
 
-    // Todo el equipo (no solo el líder) recibe la notificación de que esta
-    // persona salió del grupo.
+    // Si quien renuncia era admin, se le quita también de team_admins para
+    // no dejar un admin "fantasma" que ya no es miembro del equipo.
+    $stmt = $pdo->prepare('DELETE FROM team_admins WHERE team_id = ? AND email = ?');
+    $stmt->execute([$teamId, $user['email']]);
+
+    // Todo el equipo (no solo los admins) recibe la notificación de que
+    // esta persona salió del grupo.
     foreach ($remainingMembers as $memberEmail) {
         notify_user($pdo, $memberEmail, $teamId, 'member_resigned',
             'La persona "' . $user['name'] . '" salió del grupo "' . $team['team_name'] . '"');
@@ -887,7 +953,7 @@ function resignFromTeam(PDO $pdo, string $teamId) {
 
 function deleteMember(PDO $pdo, string $teamId) {
     $user = require_auth($pdo);
-    require_team_leader($pdo, $teamId, $user);
+    require_team_admin($pdo, $teamId, $user);
     $body = request_body();
     $memberEmail = trim($body['memberEmail'] ?? '');
 
@@ -896,6 +962,13 @@ function deleteMember(PDO $pdo, string $teamId) {
     }
     if (strcasecmp($memberEmail, $user['email']) === 0) {
         text_response('The leader cannot remove themselves; transfer leadership first', 400);
+    }
+    // Un admin no se puede sacar directamente del grupo: primero hay que
+    // quitarle el rol con POST /team/removeAdmin/{teamId} (que además
+    // rechaza dejarlo sin ningún admin). Así se evita que un equipo se
+    // quede con un admin que técnicamente ya no es miembro.
+    if (is_team_admin($pdo, $teamId, $memberEmail)) {
+        text_response('Esa persona es admin del equipo; quítale el rol de admin antes de sacarla', 400);
     }
 
     $stmt = $pdo->prepare('DELETE FROM team_members WHERE team_id = ? AND email = ?');
@@ -923,10 +996,10 @@ function deleteMember(PDO $pdo, string $teamId) {
     text_response('Member removed', 200);
 }
 
-// Borra el equipo y todo lo que cuelga de él. Solo el líder puede hacerlo.
+// Borra el equipo y todo lo que cuelga de él. Cualquier admin puede hacerlo.
 function deleteTeam(PDO $pdo, string $teamId) {
     $user = require_auth($pdo);
-    require_team_leader($pdo, $teamId, $user);
+    require_team_admin($pdo, $teamId, $user);
 
     $stmt = $pdo->prepare('SELECT * FROM teams WHERE id = ?');
     $stmt->execute([$teamId]);
@@ -954,7 +1027,7 @@ function deleteTeam(PDO $pdo, string $teamId) {
         $stmt = $pdo->prepare('DELETE dm FROM domain_members dm JOIN domains d ON d.id = dm.domain_id WHERE d.team_id = ?');
         $stmt->execute([$teamId]);
 
-        foreach (['domains', 'team_members', 'texts', 'images', 'leaves', 'leader_messages'] as $table) {
+        foreach (['domains', 'team_members', 'team_admins', 'texts', 'images', 'leaves', 'leader_messages'] as $table) {
             $stmt = $pdo->prepare("DELETE FROM $table WHERE team_id = ?");
             $stmt->execute([$teamId]);
         }
@@ -998,7 +1071,7 @@ function deleteTeam(PDO $pdo, string $teamId) {
 
 function leaderResign(PDO $pdo, string $teamId) {
     $user = require_auth($pdo);
-    require_team_leader($pdo, $teamId, $user);
+    require_team_admin($pdo, $teamId, $user);
     $body = request_body();
     // La pantalla LResign.dart manda el campo como "Correo"; se aceptan las
     // tres grafías para no depender de cuál pantalla haga la llamada.
@@ -1017,6 +1090,13 @@ function leaderResign(PDO $pdo, string $teamId) {
     $stmt = $pdo->prepare('UPDATE teams SET leader_email = ? WHERE id = ?');
     $stmt->execute([$newLeaderEmail, $teamId]);
 
+    // Endpoint legado de "un solo líder": a diferencia de addAdmin() (que
+    // suma un admin sin quitarle el rol a nadie más), esto reemplaza por
+    // completo la lista de admins del equipo por esta única persona, igual
+    // que hacía la vieja transferencia de liderazgo.
+    $pdo->prepare('DELETE FROM team_admins WHERE team_id = ?')->execute([$teamId]);
+    $pdo->prepare('INSERT INTO team_admins (team_id, email) VALUES (?, ?)')->execute([$teamId, $newLeaderEmail]);
+
     $stmt = $pdo->prepare('SELECT team_name FROM teams WHERE id = ?');
     $stmt->execute([$teamId]);
     $team = $stmt->fetch();
@@ -1024,6 +1104,88 @@ function leaderResign(PDO $pdo, string $teamId) {
         'Ahora eres el líder del equipo "' . ($team['team_name'] ?? '') . '"');
 
     text_response('Leadership transferred', 200);
+}
+
+// Asciende a un miembro del equipo a admin. Cualquier admin actual puede
+// hacerlo, y a diferencia de leaderResign() esto no le quita el rol a
+// nadie más: el equipo simplemente pasa a tener un admin adicional, con
+// exactamente los mismos permisos que los demás.
+function addAdmin(PDO $pdo, string $teamId) {
+    $user = require_auth($pdo);
+    require_team_admin($pdo, $teamId, $user);
+    $body = request_body();
+    $memberEmail = trim($body['memberEmail'] ?? '');
+
+    if ($memberEmail === '') {
+        text_response('memberEmail is required', 400);
+    }
+
+    $stmt = $pdo->prepare('SELECT team_name FROM teams WHERE id = ?');
+    $stmt->execute([$teamId]);
+    $team = $stmt->fetch();
+    if (!$team) {
+        text_response('Team not found', 404);
+    }
+
+    // Solo se puede hacer admin a alguien que ya sea miembro del equipo.
+    $stmt = $pdo->prepare('SELECT 1 FROM team_members WHERE team_id = ? AND email = ? LIMIT 1');
+    $stmt->execute([$teamId, $memberEmail]);
+    if (!$stmt->fetch()) {
+        text_response('That person does not belong to this team', 400);
+    }
+
+    if (is_team_admin($pdo, $teamId, $memberEmail)) {
+        // Ya era admin: se responde 200 igual, sin duplicar ni fallar.
+        text_response('That person is already an admin', 200);
+    }
+
+    $stmt = $pdo->prepare('INSERT INTO team_admins (team_id, email) VALUES (?, ?)');
+    $stmt->execute([$teamId, $memberEmail]);
+
+    notify_user($pdo, $memberEmail, $teamId, 'admin_added',
+        'Ahora eres admin del equipo "' . ($team['team_name'] ?? '') . '"');
+
+    text_response('Admin added', 200);
+}
+
+// Le quita el rol de admin a alguien (puede ser el propio admin que llama).
+// Rechaza la operación con 400 si esa persona es el único admin que le
+// queda al equipo, para que un equipo nunca se quede sin ningún admin.
+function removeAdmin(PDO $pdo, string $teamId) {
+    $user = require_auth($pdo);
+    require_team_admin($pdo, $teamId, $user);
+    $body = request_body();
+    $memberEmail = trim($body['memberEmail'] ?? '');
+
+    if ($memberEmail === '') {
+        text_response('memberEmail is required', 400);
+    }
+
+    $admins = team_admin_emails($pdo, $teamId);
+    $isCurrentlyAdmin = false;
+    foreach ($admins as $a) {
+        if (strcasecmp($a, $memberEmail) === 0) {
+            $isCurrentlyAdmin = true;
+            break;
+        }
+    }
+    if (!$isCurrentlyAdmin) {
+        text_response('That person is not an admin of this team', 400);
+    }
+    if (count($admins) <= 1) {
+        text_response('El equipo debe tener al menos un admin; asciende a otro miembro primero', 400);
+    }
+
+    $stmt = $pdo->prepare('DELETE FROM team_admins WHERE team_id = ? AND email = ?');
+    $stmt->execute([$teamId, $memberEmail]);
+
+    $stmt = $pdo->prepare('SELECT team_name FROM teams WHERE id = ?');
+    $stmt->execute([$teamId]);
+    $team = $stmt->fetch();
+    notify_user($pdo, $memberEmail, $teamId, 'admin_removed',
+        'Ya no eres admin del equipo "' . ($team['team_name'] ?? '') . '"');
+
+    text_response('Admin removed', 200);
 }
 
 // ---- handlers: chat ----------------------------------------------------
@@ -1437,31 +1599,94 @@ function markChatRead(PDO $pdo) {
 
 // ---- handlers: resources ------------------------------------------------
 
+// Se asegura de que la columna `img_description` exista en `images` antes de
+// usarla. En bases de datos creadas antes de la migración 010 (ver
+// migrations/010_image_description.sql) esa columna no existe, y tanto
+// showImage() como addImage() la usan directamente: sin esto, cualquiera de
+// las dos operaciones termina en un error 500 ("Unknown column
+// 'img_description'") aunque el resto del código esté bien. Esta función
+// revisa si la columna ya existe y, si falta, la agrega sola (una sola vez
+// por request gracias al `static $checked`).
+function ensure_images_schema(PDO $pdo): void {
+    static $checked = false;
+    if ($checked) return;
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'images' AND COLUMN_NAME = 'img_description'"
+        );
+        $stmt->execute();
+        if ((int) $stmt->fetchColumn() === 0) {
+            $pdo->exec('ALTER TABLE images ADD COLUMN img_description TEXT NULL AFTER img_name');
+        }
+    } catch (Throwable $e) {
+        // Si no se puede verificar/migrar (p. ej. el usuario de la base de
+        // datos no tiene permiso ALTER), no cortamos la petición acá: si la
+        // columna ya existía no pasa nada, y si de verdad falta, el error
+        // original se verá más abajo al ejecutar la consulta real. Se deja
+        // registrado para poder diagnosticarlo desde el log del servidor.
+        error_log('ensure_images_schema: ' . $e->getMessage());
+    }
+    $checked = true;
+}
+
 function showImage(PDO $pdo, string $teamId) {
     $user = require_auth($pdo);
     require_team_member($pdo, $teamId, $user);
-    $stmt = $pdo->prepare('SELECT img_name, img_path FROM images WHERE team_id = ? ORDER BY id DESC');
+    ensure_images_schema($pdo);
+    $stmt = $pdo->prepare('SELECT id, img_name, img_description, img_path FROM images WHERE team_id = ? ORDER BY id DESC');
     $stmt->execute([$teamId]);
     $rows = $stmt->fetchAll();
 
+    // 'imgId' se agrega para poder borrar la imagen desde el cliente (botón
+    // "-" del selector 📷 en el apartado Imágenes); las claves anteriores
+    // (imgURL/imgName/imgDescription) se conservan tal cual para no romper
+    // clientes ya instalados.
     $images = array_map(fn($r) => [
+        'imgId' => (string) $r['id'],
         'imgURL' => UPLOAD_URL_BASE . $r['img_path'],
         'imgName' => $r['img_name'],
+        'imgDescription' => $r['img_description'] ?? '',
     ], $rows);
 
     // The client expects a bare JSON array, not wrapped in an object.
     raw_json_response($images);
 }
 
+/// Elimina una imagen del equipo: borra la fila y, si el archivo sigue en
+/// disco, también el archivo físico. Mismo patrón que deleteDocument().
+function deleteImage(PDO $pdo, string $imageId) {
+    $user = require_auth($pdo);
+    $stmt = $pdo->prepare('SELECT * FROM images WHERE id = ?');
+    $stmt->execute([$imageId]);
+    $image = $stmt->fetch();
+    if (!$image) {
+        error_response('Image not found', 404);
+    }
+    require_team_member($pdo, $image['team_id'], $user);
+
+    $stmt = $pdo->prepare('DELETE FROM images WHERE id = ?');
+    $stmt->execute([$imageId]);
+
+    $filePath = UPLOAD_DIR . $image['img_path'];
+    if (is_file($filePath)) {
+        @unlink($filePath);
+    }
+
+    text_response('Image deleted successfully', 200);
+}
+
 function addImage(PDO $pdo) {
     $user = require_auth($pdo);
     $teamId = trim($_POST['teamId'] ?? '');
     $imgName = trim($_POST['imgName'] ?? '');
+    $imgDescription = trim($_POST['imgDescription'] ?? '');
 
     if ($teamId === '' || empty($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
         text_response('teamId and photo are required', 400);
     }
     require_team_member($pdo, $teamId, $user);
+    ensure_images_schema($pdo);
 
     $tmpPath = $_FILES['photo']['tmp_name'];
     $originalName = $_FILES['photo']['name'];
@@ -1472,13 +1697,39 @@ function addImage(PDO $pdo) {
         text_response('Only image files are allowed', 400);
     }
 
-    $storedName = bin2hex(random_bytes(16)) . '.' . $ext;
-    if (!move_uploaded_file($tmpPath, UPLOAD_DIR . $storedName)) {
+    // Refuerza que la carpeta de subidas exista y sea escribible justo antes
+    // de guardar. config.php ya la crea al arrancar, pero si esa carpeta se
+    // borró o quedó con permisos incorrectos en el servidor, move_uploaded_file
+    // fallaba en silencio y esta función devolvía un 500 sin más contexto.
+    if (!is_dir(UPLOAD_DIR) || !is_writable(UPLOAD_DIR)) {
+        @mkdir(UPLOAD_DIR, 0775, true);
+        @chmod(UPLOAD_DIR, 0775);
+    }
+    if (!is_dir(UPLOAD_DIR) || !is_writable(UPLOAD_DIR)) {
+        error_log('addImage: UPLOAD_DIR no existe o no tiene permisos de escritura: ' . UPLOAD_DIR);
         text_response('Failed to save the uploaded image', 500);
     }
 
-    $stmt = $pdo->prepare('INSERT INTO images (team_id, img_name, img_path) VALUES (?, ?, ?)');
-    $stmt->execute([$teamId, $imgName !== '' ? $imgName : $originalName, $storedName]);
+    $storedName = bin2hex(random_bytes(16)) . '.' . $ext;
+    if (!move_uploaded_file($tmpPath, UPLOAD_DIR . $storedName)) {
+        $lastError = error_get_last();
+        error_log('addImage: move_uploaded_file falló hacia ' . UPLOAD_DIR . $storedName
+            . ($lastError ? (' - ' . $lastError['message']) : ''));
+        text_response('Failed to save the uploaded image', 500);
+    }
+
+    try {
+        $stmt = $pdo->prepare('INSERT INTO images (team_id, img_name, img_description, img_path) VALUES (?, ?, ?, ?)');
+        $stmt->execute([$teamId, $imgName !== '' ? $imgName : $originalName, $imgDescription !== '' ? $imgDescription : null, $storedName]);
+    } catch (Throwable $e) {
+        // Si el INSERT falla (p. ej. la columna img_description seguía sin
+        // existir pese al intento de auto-reparación de arriba), no dejamos
+        // el archivo huérfano en disco y devolvemos un 500 controlado en vez
+        // de dejar que se propague un error sin manejar.
+        @unlink(UPLOAD_DIR . $storedName);
+        error_log('addImage: INSERT falló - ' . $e->getMessage());
+        text_response('Failed to save the uploaded image', 500);
+    }
 
     text_response('Image uploaded successfully', 200);
 }
@@ -1491,11 +1742,52 @@ const ALLOWED_DOCUMENT_EXTENSIONS = [
     'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
     'txt', 'csv', 'zip', 'rar', '7z',
 ];
-const MAX_DOCUMENT_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
+// 2 GB, como pidió el usuario. OJO: esto por sí solo NO alcanza para poder
+// subir un archivo así de grande — PHP corta la subida antes de que este
+// código se ejecute si `upload_max_filesize` / `post_max_size` en php.ini
+// (o vía .htaccess con mod_php) son más chicos, que es el valor por defecto
+// en casi cualquier instalación (típicamente 2-8 MB). Ver hive-backend/.htaccess,
+// donde se agregan directivas php_value para levantar esos límites; si el
+// servidor corre con PHP-FPM en vez de mod_php, esas directivas se ignoran y
+// hay que subir los límites en el pool de PHP-FPM (www.conf) o en php.ini
+// directamente, y reiniciar PHP.
+const MAX_DOCUMENT_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
+
+// Se asegura de que la tabla `documents` exista antes de usarla. Si esta
+// base de datos es de antes de la migración 009 (ver
+// migrations/009_documents.sql) y nunca se corrió esa migración a mano, la
+// tabla no existe: subir un documento fallaba con un error 500 silencioso
+// (que el cliente a veces ni siquiera mostraba si el archivo alcanzaba a
+// guardarse en disco antes de que fallara el INSERT) y, sobre todo, listarlos
+// SIEMPRE devolvía "sin resultados" aunque en teoría ya se hubiera subido
+// algo. CREATE TABLE IF NOT EXISTS es seguro de correr en cada request: si
+// la tabla ya existe, no hace nada.
+function ensure_documents_schema(PDO $pdo): void {
+    static $checked = false;
+    if ($checked) return;
+    try {
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS documents (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                team_id CHAR(24) NOT NULL,
+                doc_name VARCHAR(255) NOT NULL,
+                doc_path VARCHAR(500) NOT NULL,
+                original_name VARCHAR(255) NOT NULL,
+                file_size INT NOT NULL DEFAULT 0,
+                uploaded_by VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB'
+        );
+    } catch (Throwable $e) {
+        error_log('ensure_documents_schema: ' . $e->getMessage());
+    }
+    $checked = true;
+}
 
 function showDocuments(PDO $pdo, string $teamId) {
     $user = require_auth($pdo);
     require_team_member($pdo, $teamId, $user);
+    ensure_documents_schema($pdo);
     $stmt = $pdo->prepare(
         'SELECT id, doc_name, original_name, file_size, uploaded_by, created_at
          FROM documents WHERE team_id = ? ORDER BY id DESC'
@@ -1525,6 +1817,7 @@ function addDocument(PDO $pdo) {
         text_response('teamId and document are required', 400);
     }
     require_team_member($pdo, $teamId, $user);
+    ensure_documents_schema($pdo);
 
     $tmpPath = $_FILES['document']['tmp_name'];
     $originalName = $_FILES['document']['name'];
@@ -1538,23 +1831,41 @@ function addDocument(PDO $pdo) {
         text_response('File is too large (max 25 MB)', 400);
     }
 
-    $storedName = bin2hex(random_bytes(16)) . '.' . $ext;
-    if (!move_uploaded_file($tmpPath, UPLOAD_DIR . $storedName)) {
+    if (!is_dir(UPLOAD_DIR) || !is_writable(UPLOAD_DIR)) {
+        @mkdir(UPLOAD_DIR, 0775, true);
+        @chmod(UPLOAD_DIR, 0775);
+    }
+    if (!is_dir(UPLOAD_DIR) || !is_writable(UPLOAD_DIR)) {
+        error_log('addDocument: UPLOAD_DIR no existe o no tiene permisos de escritura: ' . UPLOAD_DIR);
         text_response('Failed to save the uploaded document', 500);
     }
 
-    $stmt = $pdo->prepare(
-        'INSERT INTO documents (team_id, doc_name, doc_path, original_name, file_size, uploaded_by)
-         VALUES (?, ?, ?, ?, ?, ?)'
-    );
-    $stmt->execute([
-        $teamId,
-        $docName !== '' ? $docName : $originalName,
-        $storedName,
-        $originalName,
-        $size,
-        $user['email'],
-    ]);
+    $storedName = bin2hex(random_bytes(16)) . '.' . $ext;
+    if (!move_uploaded_file($tmpPath, UPLOAD_DIR . $storedName)) {
+        $lastError = error_get_last();
+        error_log('addDocument: move_uploaded_file falló hacia ' . UPLOAD_DIR . $storedName
+            . ($lastError ? (' - ' . $lastError['message']) : ''));
+        text_response('Failed to save the uploaded document', 500);
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            'INSERT INTO documents (team_id, doc_name, doc_path, original_name, file_size, uploaded_by)
+             VALUES (?, ?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([
+            $teamId,
+            $docName !== '' ? $docName : $originalName,
+            $storedName,
+            $originalName,
+            $size,
+            $user['email'],
+        ]);
+    } catch (Throwable $e) {
+        @unlink(UPLOAD_DIR . $storedName);
+        error_log('addDocument: INSERT falló - ' . $e->getMessage());
+        text_response('Failed to save the uploaded document', 500);
+    }
 
     text_response('Document uploaded successfully', 200);
 }

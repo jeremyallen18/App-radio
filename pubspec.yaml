@@ -50,6 +50,11 @@ dependencies:
   # "Guardar como" (para descargarlos) del apartado Documentos de
   # Resource Manager.
   file_picker: ^8.1.7
+  # Guardar el documento descargado en una carpeta temporal (path_provider)
+  # y abrirlo con la app nativa del dispositivo (open_filex), para el botón
+  # "ver documento" de Documentos de Resource Manager.
+  path_provider: ^2.1.4
+  open_filex: ^4.5.0
 
 
 

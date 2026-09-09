@@ -36,16 +36,11 @@ class _ChangePasswordState extends State<ChangePassword> {
           await http.post(Uri.parse(apiUrl), headers: headers, body: body);
 
       if (response.statusCode == 200) {
-        print('Password changed successfully');
-        print(jsonDecode(response.body));
         return null;
       } else {
-        print('Error: ${response.statusCode}');
-        print(jsonDecode(response.body));
         return jsonDecode(response.body)['error'];
       }
     } catch (e) {
-      print('Error: $e');
       return 'An error occurred';
     }
   }

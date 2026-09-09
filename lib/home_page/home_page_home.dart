@@ -161,6 +161,13 @@ class _HomeNavState extends State<HomeNav> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Esta pantalla no tiene ningún campo de texto propio: si el teclado
+      // llega a abrirse (p. ej. residual al volver de un chat) no hace
+      // falta que el Scaffold se encoja para "dejarle lugar", porque nada
+      // aquí lo necesita. Sin esto, el bloque fijo de "Resumen + Acciones
+      // rápidas" (que no es scrolleable) se queda sin espacio y desborda
+      // (RenderFlex overflowed), como en el log.
+      resizeToAvoidBottomInset: false,
       appBar: const MyAppBar(),
       backgroundColor: AppColors.bgBase,
       body: Column(

@@ -43,6 +43,19 @@ class TaskCard extends StatelessWidget {
     }
   }
 
+  /// Una tarea pendiente cuya fecha límite ya pasó se considera "no
+  /// realizada" en vez de simplemente "pendiente".
+  bool get _isOverdue {
+    if (done || deadlineText.isEmpty) return false;
+    final deadline = _parsedDeadline;
+    if (deadline == null) return false;
+    final today = DateTime.now();
+    final daysLeft = DateTime(deadline.year, deadline.month, deadline.day)
+        .difference(DateTime(today.year, today.month, today.day))
+        .inDays;
+    return daysLeft < 0;
+  }
+
   ({String label, AppBadgeVariant variant})? get _urgency {
     if (done || deadlineText.isEmpty) return null;
     final deadline = _parsedDeadline;
@@ -51,7 +64,9 @@ class TaskCard extends StatelessWidget {
     final daysLeft = DateTime(deadline.year, deadline.month, deadline.day)
         .difference(DateTime(today.year, today.month, today.day))
         .inDays;
-    if (daysLeft < 0) return (label: 'Vencida', variant: AppBadgeVariant.error);
+    // Si ya venció, el badge principal ya dice "Tarea no realizada"; no
+    // hace falta repetirlo aquí con un segundo badge de "Vencida".
+    if (daysLeft < 0) return null;
     if (daysLeft == 0) return (label: 'Vence hoy', variant: AppBadgeVariant.warning);
     if (daysLeft <= 2) return (label: 'Vence pronto', variant: AppBadgeVariant.warning);
     return null;
@@ -60,6 +75,10 @@ class TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final urgency = _urgency;
+    final bool overdue = _isOverdue;
+    // Una tarea vencida ya no se puede entregar, ni siquiera con retraso:
+    // se ignora cualquier callback que nos hayan pasado desde afuera.
+    final VoidCallback? effectiveOnComplete = overdue ? null : onComplete;
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -77,17 +96,24 @@ class TaskCard extends StatelessWidget {
                       child: Text(
                         description,
                         style: TextStyle(
-                          color: done ? AppColors.textMuted : AppColors.textPrimary,
+                          color: done
+                              ? AppColors.textMuted
+                              : (overdue ? AppColors.error : AppColors.textPrimary),
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          decoration: done ? TextDecoration.lineThrough : TextDecoration.none,
+                          decoration: (done || overdue) ? TextDecoration.lineThrough : TextDecoration.none,
+                          decorationColor: overdue ? AppColors.error : null,
                         ),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     AppBadge(
-                      label: done ? 'Completada' : 'Pendiente',
-                      variant: done ? AppBadgeVariant.success : AppBadgeVariant.neutral,
+                      label: done
+                          ? 'Completada'
+                          : (_isOverdue ? 'Tarea no realizada' : 'Pendiente'),
+                      variant: done
+                          ? AppBadgeVariant.success
+                          : (_isOverdue ? AppBadgeVariant.error : AppBadgeVariant.neutral),
                     ),
                   ],
                 ),
@@ -124,16 +150,23 @@ class TaskCard extends StatelessWidget {
               padding: EdgeInsets.only(top: 2),
               child: Icon(Icons.check_circle, color: AppColors.success, size: 26),
             )
+          else if (overdue)
+            // Ya no se puede entregar (ni con retraso): se muestra un
+            // tache rojo en vez del botón de completar.
+            Padding(
+              padding: EdgeInsets.only(top: 2),
+              child: Icon(Icons.cancel, color: AppColors.error, size: 26),
+            )
           else if (busy)
             SizedBox(
               width: 26,
               height: 26,
               child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
             )
-          else if (onComplete != null)
+          else if (effectiveOnComplete != null)
             IconButton(
               tooltip: 'Completar tarea',
-              onPressed: onComplete,
+              onPressed: effectiveOnComplete,
               icon: Icon(Icons.radio_button_unchecked, color: AppColors.accent, size: 26),
             ),
         ],

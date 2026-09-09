@@ -30,7 +30,6 @@ class _OTPVerifyState extends State<OTPVerify> {
           await http.post(Uri.parse(apiUrl), headers: headers, body: body);
 
       if (response.statusCode == 200) {
-        print('OTP verified');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Código OTP verificado"),
@@ -44,11 +43,8 @@ class _OTPVerifyState extends State<OTPVerify> {
             ),
           ),
         );
-        print(jsonDecode(response.body));
         return null;
       } else {
-        print('Error: ${response.statusCode}');
-        print(jsonDecode(response.body));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: ${response.body}'),
@@ -57,8 +53,8 @@ class _OTPVerifyState extends State<OTPVerify> {
         );
         return jsonDecode(response.body)['error'];
       }
-    } catch (e) {
-      print('Error: $e');
+    } catch (_) {
+      // Error de red o de parseo: se ignora y se retorna null.
     }
     return null;
   }

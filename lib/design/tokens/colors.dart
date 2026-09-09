@@ -87,6 +87,20 @@ class AppColors {
   );
 
   // ---------------------------------------------------------------------
+  // Tokens para texto/íconos sobre fondos de marca (brandBlue, brandNavy,
+  // buttonGradient). Estos fondos son SIEMPRE azules/oscuros, sin importar
+  // el modo activo, así que el texto/ícono que va encima NO debe usar
+  // [textPrimary]/[textMuted] (que se vuelven negros en modo claro y se
+  // "esconden" contra el azul); debe quedarse fijo en blanco en ambos
+  // modos, igual que ya se hace en models/appbar.dart.
+  // ---------------------------------------------------------------------
+  static const Color onBrand = Colors.white;
+  static const Color onBrandMuted = Colors.white70;
+  // Para acentos que necesitan distinguirse un poco del blanco puro (p. ej.
+  // el doble check "leído" en el chat) pero siguen sobre fondo de marca.
+  static const Color onBrandAccent = Color(0xFF6FA9EE);
+
+  // ---------------------------------------------------------------------
   // Paletas "congeladas" (independientes del modo activo). Las usa
   // [AppTheme] para construir `ThemeData` claro y oscuro por separado,
   // sin depender de [_isDark].

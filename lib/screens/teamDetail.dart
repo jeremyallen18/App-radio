@@ -15,6 +15,7 @@ import 'manageMembers.dart';
 import 'addTask.dart';
 import 'directChat.dart';
 import '../utils/session.dart';
+import '../home_page/tasks.dart';
 class t_detail extends StatefulWidget {
    t_detail({super.key, required this.team});
   dynamic team;
@@ -86,6 +87,13 @@ class _t_detailState extends State<t_detail> {
 
   List<dynamic>? domains;
   List<String> teamMembers = [];
+  // Nombre de perfil de cada miembro del equipo, indexado por correo en
+  // minúsculas (lo manda el backend en `memberNames`). Se usa en vez del
+  // correo para mostrar admins, chips de miembros por área y el diálogo de
+  // reasignar tarea; si el backend todavía no lo manda para alguien (p. ej.
+  // versión vieja del backend, o la cuenta ya no existe), _displayName()
+  // cae de vuelta a la parte del correo antes de la @.
+  Map<String, String> memberNames = {};
 
   // Insensible a mayúsculas/minúsculas, igual que la comparación que hace
   // el backend (strcasecmp) y que _isAdmin() en manageMembers.dart. Antes
@@ -100,8 +108,11 @@ class _t_detailState extends State<t_detail> {
   // después de irse; si es el único, primero debe ascender a alguien más.
   bool get _isOnlyAdmin => admins.length <= 1 && _isAdmin;
 
-  String _displayName(String emailAddr) =>
-      emailAddr.contains('@') ? emailAddr.substring(0, emailAddr.indexOf('@')) : emailAddr;
+  String _displayName(String emailAddr) {
+    final resolved = memberNames[emailAddr.toLowerCase()];
+    if (resolved != null && resolved.trim().isNotEmpty) return resolved.trim();
+    return emailAddr.contains('@') ? emailAddr.substring(0, emailAddr.indexOf('@')) : emailAddr;
+  }
 
   /// Actualiza una tarea de equipo por id: reasignarla (nueva lista
   /// `newEmails`, una o más personas), reprogramarla (nuevo `description`
@@ -216,6 +227,23 @@ class _t_detailState extends State<t_detail> {
     admins = (adminsFromApi != null && adminsFromApi.isNotEmpty)
         ? adminsFromApi
         : (leaderEmail != null && leaderEmail!.isNotEmpty ? [leaderEmail!] : []);
+
+    final rawNames = teams['memberNames'];
+    final names = <String, String>{};
+    if (rawNames is Map) {
+      rawNames.forEach((k, v) {
+        if (k is String && v != null && v.toString().trim().isNotEmpty) {
+          names[k.toLowerCase()] = v.toString().trim();
+        }
+      });
+    }
+    // Respaldo por si el backend todavía no manda `memberNames`: al menos
+    // se conoce el nombre del líder (`leaderName`, ya lo mandaba antes).
+    if (leaderEmail != null && leaderEmail!.isNotEmpty &&
+        leaderName != null && leaderName!.trim().isNotEmpty) {
+      names.putIfAbsent(leaderEmail!.toLowerCase(), () => leaderName!.trim());
+    }
+    memberNames = names;
   }
 
   /// Refresca los datos de este equipo (para reflejar cambios recientes:
@@ -321,7 +349,7 @@ class _t_detailState extends State<t_detail> {
                             ),
                           ),
                           subtitle: Text(
-                            "Para: ${assignedTo.contains('@') ? assignedTo.substring(0, assignedTo.indexOf('@')) : assignedTo}  ·  Vence: ${t['deadline']}",
+                            "Para: ${_displayName(assignedTo)}  ·  Vence: ${t['deadline']}",
                             style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                           ),
                           trailing: IconButton(
@@ -349,8 +377,9 @@ class _t_detailState extends State<t_detail> {
   }
 
   /// Menú de acciones para una tarea (se abre al presionar el ">" de una
-  /// fila en "Gestionar tareas"): reasignarla, reprogramarla (texto y/o
-  /// fecha), o marcarla como completa.
+  /// fila en "Gestionar tareas"): reasignarla (el mismo flujo incluye,
+  /// como segundo paso, reprogramarla: texto y/o fecha), o marcarla como
+  /// completa.
   void _openTaskActionsMenu(dynamic domain, List tasks, int taskIndex) {
     final t = tasks[taskIndex];
     final String? taskId = t['id']?.toString();
@@ -401,20 +430,10 @@ class _t_detailState extends State<t_detail> {
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.swap_horiz, color: AppColors.accent),
                   title: Text('Volver a asignar tarea', style: TextStyle(color: AppColors.textPrimary)),
-                  subtitle: Text('Elige a quién asignársela', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  subtitle: Text('Elige a quién asignársela y, si quieres, reprograma texto/fecha', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _openReassignDialog(domain, tasks, taskIndex, taskId);
-                  },
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.edit_calendar_outlined, color: AppColors.accent),
-                  title: Text('Reprogramar la tarea', style: TextStyle(color: AppColors.textPrimary)),
-                  subtitle: Text('Cambia el texto y/o la fecha de entrega', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    _openRescheduleDialog(domain, tasks, taskIndex, taskId);
                   },
                 ),
                 if (!done)
@@ -443,22 +462,31 @@ class _t_detailState extends State<t_detail> {
     );
   }
 
-  /// Diálogo de "Volver a asignar tarea": elige a una o más personas de la
-  /// misma área para asignársela (el backend valida de nuevo que cada una
-  /// pertenezca a ella). Se puede elegir a la misma persona que ya la tenía
-  /// asignada — no está restringido a "otro" miembro. Al confirmar, la
-  /// tarea vuelve a quedar pendiente (se desmarca como hecha si estaba
-  /// completa) y le llega la notificación de reasignación a cada persona
-  /// elegida; si se elige a más de una, la tarea se reparte: cada quien
-  /// recibe su propia copia.
+  /// Diálogo de "Volver a asignar tarea", en dos pasos:
+  ///  1. Elegir a una o más personas de la misma área para asignársela (el
+  ///     backend valida de nuevo que cada una pertenezca a ella). Se puede
+  ///     elegir a la misma persona que ya la tenía asignada — no está
+  ///     restringido a "otro" miembro. Botones: "Cancelar" y "Siguiente".
+  ///  2. Reprogramar la tarea: editar el texto y/o la fecha de entrega
+  ///     (precargados con los valores actuales). Botones: "Atrás" y
+  ///     "Reasignar", que envía en una sola llamada la nueva asignación
+  ///     junto con la descripción/fecha (haya cambiado o no).
+  /// Al confirmar, la tarea vuelve a quedar pendiente (se desmarca como
+  /// hecha si estaba completa) y le llega la notificación de reasignación
+  /// a cada persona elegida; si se elige a más de una, la tarea se
+  /// reparte: cada quien recibe su propia copia.
   void _openReassignDialog(dynamic domain, List tasks, int taskIndex, String taskId) {
+    final t = tasks[taskIndex];
     final List<String> members = ((domain['members'] as List?) ?? [])
         .map((m) => m.toString())
         .toList();
-    final currentAssignee = (tasks[taskIndex]['assignedTo'] ?? '').toString();
+    final currentAssignee = (t['assignedTo'] ?? '').toString();
     final Set<String> selected = <String>{
       if (members.contains(currentAssignee)) currentAssignee,
     };
+    final descriptionController = TextEditingController(text: (t['description'] ?? '').toString());
+    final deadlineController = TextEditingController(text: (t['deadline'] ?? '').toString());
+    int step = 0; // 0: elegir personas · 1: reprogramar texto/fecha
     bool submitting = false;
 
     showDialog(
@@ -466,10 +494,30 @@ class _t_detailState extends State<t_detail> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
-            return AlertDialog(
-              backgroundColor: AppColors.surface,
-              title: Text('Volver a asignar tarea', style: TextStyle(color: AppColors.textPrimary)),
-              content: members.isEmpty
+            Future<void> pickDeadline() async {
+              final now = DateTime.now();
+              // El admin solo puede asignar tareas desde hoy en adelante,
+              // nunca con fecha límite en el pasado. `today` se normaliza
+              // sin horas/minutos para que "hoy" siga siendo una opción
+              // válida sin importar la hora actual (antes se permitía
+              // elegir incluso el día anterior).
+              final today = DateTime(now.year, now.month, now.day);
+              final picked = await showDatePicker(
+                context: dialogContext,
+                initialDate: today,
+                firstDate: today,
+                lastDate: DateTime(now.year + 5),
+              );
+              if (picked == null) return;
+              final dd = picked.day.toString().padLeft(2, '0');
+              final mm = picked.month.toString().padLeft(2, '0');
+              // Mismo formato dd-MM-yyyy que usa "Agregar tarea", para no
+              // romper el parseo/orden de fechas en el resto de la app.
+              setDialogState(() => deadlineController.text = '$dd-$mm-${picked.year}');
+            }
+
+            Widget buildStepOne() {
+              return members.isEmpty
                   ? Text(
                       'Esta área no tiene más miembros a quién reasignar.',
                       style: TextStyle(color: AppColors.textMuted),
@@ -479,7 +527,7 @@ class _t_detailState extends State<t_detail> {
                       child: ListView(
                         shrinkWrap: true,
                         children: members.map((m) {
-                          final display = m.contains('@') ? m.substring(0, m.indexOf('@')) : m;
+                          final display = _displayName(m);
                           return CheckboxListTile(
                             value: selected.contains(m),
                             activeColor: AppColors.accent,
@@ -497,82 +545,11 @@ class _t_detailState extends State<t_detail> {
                           );
                         }).toList(),
                       ),
-                    ),
-              actions: [
-                TextButton(
-                  onPressed: submitting ? null : () => Navigator.pop(dialogContext),
-                  child: const Text('Cancelar'),
-                ),
-                TextButton(
-                  onPressed: (submitting || selected.isEmpty)
-                      ? null
-                      : () async {
-                          setDialogState(() => submitting = true);
-                          final success = await _updateTask(taskId, newEmails: selected.toList());
-                          if (!mounted) return;
-                          if (success) {
-                            // Reasignar puede crear filas de tarea nuevas
-                            // (una por persona adicional elegida) y siempre
-                            // desmarca la tarea como completa, así que se
-                            // refresca el equipo entero en vez de solo
-                            // parchear esta fila en memoria.
-                            await _refreshTeam();
-                            if (!mounted) return;
-                            Navigator.pop(dialogContext);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  selected.length > 1 ? 'Tarea reasignada a ${selected.length} personas' : 'Tarea reasignada',
-                                ),
-                              ),
-                            );
-                          } else {
-                            setDialogState(() => submitting = false);
-                          }
-                        },
-                  child: Text(submitting ? 'Guardando…' : 'Reasignar'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  /// Diálogo de "Reprogramar la tarea": deja editar tanto el texto de la
-  /// tarea como su fecha de entrega, y guarda solo lo que haya cambiado.
-  void _openRescheduleDialog(dynamic domain, List tasks, int taskIndex, String taskId) {
-    final t = tasks[taskIndex];
-    final descriptionController = TextEditingController(text: (t['description'] ?? '').toString());
-    final deadlineController = TextEditingController(text: (t['deadline'] ?? '').toString());
-    bool submitting = false;
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            Future<void> pickDeadline() async {
-              final now = DateTime.now();
-              final picked = await showDatePicker(
-                context: dialogContext,
-                initialDate: now,
-                firstDate: now.subtract(const Duration(days: 1)),
-                lastDate: DateTime(now.year + 5),
-              );
-              if (picked == null) return;
-              final dd = picked.day.toString().padLeft(2, '0');
-              final mm = picked.month.toString().padLeft(2, '0');
-              // Mismo formato dd-MM-yyyy que usa "Agregar tarea", para no
-              // romper el parseo/orden de fechas en el resto de la app.
-              setDialogState(() => deadlineController.text = '$dd-$mm-${picked.year}');
+                    );
             }
 
-            return AlertDialog(
-              backgroundColor: AppColors.surface,
-              title: Text('Reprogramar la tarea', style: TextStyle(color: AppColors.textPrimary)),
-              content: SingleChildScrollView(
+            Widget buildStepTwo() {
+              return SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -598,47 +575,76 @@ class _t_detailState extends State<t_detail> {
                     ),
                   ],
                 ),
+              );
+            }
+
+            Future<void> submitReassign() async {
+              final newDescription = descriptionController.text.trim();
+              final newDeadline = deadlineController.text.trim();
+              if (newDescription.isEmpty || newDeadline.isEmpty) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(content: Text('Completa la descripción y la fecha')),
+                );
+                return;
+              }
+              setDialogState(() => submitting = true);
+              final success = await _updateTask(
+                taskId,
+                newEmails: selected.toList(),
+                description: newDescription,
+                deadline: newDeadline,
+              );
+              if (!mounted) return;
+              if (success) {
+                // Reasignar puede crear filas de tarea nuevas (una por
+                // persona adicional elegida) y siempre desmarca la tarea
+                // como completa, así que se refresca el equipo entero en
+                // vez de solo parchear esta fila en memoria.
+                await _refreshTeam();
+                if (!mounted) return;
+                Navigator.pop(dialogContext);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      selected.length > 1 ? 'Tarea reasignada a ${selected.length} personas' : 'Tarea reasignada',
+                    ),
+                  ),
+                );
+              } else {
+                setDialogState(() => submitting = false);
+              }
+            }
+
+            return AlertDialog(
+              backgroundColor: AppColors.surface,
+              title: Text(
+                step == 0 ? 'Volver a asignar tarea' : 'Reprogramar la tarea',
+                style: TextStyle(color: AppColors.textPrimary),
               ),
-              actions: [
-                TextButton(
-                  onPressed: submitting ? null : () => Navigator.pop(dialogContext),
-                  child: const Text('Cancelar'),
-                ),
-                TextButton(
-                  onPressed: submitting
-                      ? null
-                      : () async {
-                          final newDescription = descriptionController.text.trim();
-                          final newDeadline = deadlineController.text.trim();
-                          if (newDescription.isEmpty || newDeadline.isEmpty) {
-                            ScaffoldMessenger.of(dialogContext).showSnackBar(
-                              const SnackBar(content: Text('Completa la descripción y la fecha')),
-                            );
-                            return;
-                          }
-                          setDialogState(() => submitting = true);
-                          final success = await _updateTask(
-                            taskId,
-                            description: newDescription,
-                            deadline: newDeadline,
-                          );
-                          if (!mounted) return;
-                          if (success) {
-                            setState(() {
-                              tasks[taskIndex]['description'] = newDescription;
-                              tasks[taskIndex]['deadline'] = newDeadline;
-                            });
-                            Navigator.pop(dialogContext);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Tarea reprogramada')),
-                            );
-                          } else {
-                            setDialogState(() => submitting = false);
-                          }
-                        },
-                  child: Text(submitting ? 'Guardando…' : 'Guardar'),
-                ),
-              ],
+              content: step == 0 ? buildStepOne() : buildStepTwo(),
+              actions: step == 0
+                  ? [
+                      TextButton(
+                        onPressed: submitting ? null : () => Navigator.pop(dialogContext),
+                        child: const Text('Cancelar'),
+                      ),
+                      TextButton(
+                        onPressed: (submitting || selected.isEmpty)
+                            ? null
+                            : () => setDialogState(() => step = 1),
+                        child: const Text('Siguiente'),
+                      ),
+                    ]
+                  : [
+                      TextButton(
+                        onPressed: submitting ? null : () => setDialogState(() => step = 0),
+                        child: const Text('Atrás'),
+                      ),
+                      TextButton(
+                        onPressed: submitting ? null : submitReassign,
+                        child: Text(submitting ? 'Guardando…' : 'Reasignar'),
+                      ),
+                    ],
             );
           },
         );
@@ -668,7 +674,14 @@ class _t_detailState extends State<t_detail> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    Text("$teamName",textAlign: TextAlign.center,style: TextStyle(color:AppColors.textPrimary,fontSize: 30,fontWeight: FontWeight.w800 ),),
+                    // Este encabezado va sobre el degradado bgBase→brandNavy
+                    // del Container padre, que en su parte superior siempre
+                    // es azul/oscuro (brandNavy no cambia con el modo). Por
+                    // eso usa colores fijos (onBrand/onBrandMuted) en vez de
+                    // AppColors.textPrimary/textMuted: esos se vuelven casi
+                    // negros en modo claro y el texto se "esconde" contra el
+                    // azul.
+                    Text("$teamName",textAlign: TextAlign.center,style: TextStyle(color:AppColors.onBrand,fontSize: 30,fontWeight: FontWeight.w800 ),),
                     const SizedBox(height: 6,),
                     Wrap(
                       alignment: WrapAlignment.center,
@@ -678,26 +691,44 @@ class _t_detailState extends State<t_detail> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.shield_outlined, size: 15, color: AppColors.textMuted),
+                            Icon(Icons.shield_outlined, size: 15, color: AppColors.onBrandMuted),
                             const SizedBox(width: 4),
-                            Text(
-                              admins.isEmpty
-                                  ? ""
-                                  : (admins.length == 1
-                                      ? "Admin: ${_displayName(admins.first)}"
-                                      : "Admins: ${admins.map(_displayName).join(', ')}"),
-                              style: TextStyle(color: AppColors.textMuted, fontSize: 14,fontWeight: FontWeight.w600 ),
-                            ),
+                            if (admins.isNotEmpty)
+                              Text.rich(
+                                TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: admins.length == 1 ? "Admin: " : "Admins: ",
+                                      style: TextStyle(
+                                        color: AppColors.onBrandMuted,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    // El nombre del/los admin(s) va en negrita y con el
+                                    // color de acento para que resalte más que el resto
+                                    // de la info del encabezado (código de equipo, etc.).
+                                    TextSpan(
+                                      text: admins.map(_displayName).join(', '),
+                                      style: TextStyle(
+                                        color: AppColors.onBrandAccent,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.tag, size: 15, color: AppColors.textMuted),
+                            Icon(Icons.tag, size: 15, color: AppColors.onBrandMuted),
                             const SizedBox(width: 4),
                             Text(
                               teamCode ?? '',
-                              style: TextStyle(color: AppColors.textMuted, fontSize: 14,fontWeight: FontWeight.w600 ),
+                              style: TextStyle(color: AppColors.onBrandMuted, fontSize: 14,fontWeight: FontWeight.w600 ),
                             ),
                           ],
                         ),
@@ -745,6 +776,19 @@ class _t_detailState extends State<t_detail> {
     );
   }
 
+  /// Al tocar el texto de una tarea (desde el detalle del equipo), lleva a
+  /// la pantalla de "Mis tareas" y la deja ya posicionada en la sección que
+  /// corresponde según el estado de esa tarea: "Completadas" si ya está
+  /// hecha, o "Pendientes" si todavía no.
+  void _openTaskInMyTasks(bool done) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TaskFocusScreen(showCompleted: done),
+      ),
+    );
+  }
+
   Widget _buildDomainCard(BuildContext context, int index) {
     final domain = domains![index];
     final List members = (domain['members'] as List?) ?? [];
@@ -756,7 +800,14 @@ class _t_detailState extends State<t_detail> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.textPrimary.withValues(alpha: 0.08),
+        // Antes usaba AppColors.textPrimary con 8% de opacidad como
+        // "relleno" — casi transparente, así que dejaba ver el degradado de
+        // fondo (que en buena parte de la pantalla es azul marino fijo). En
+        // modo claro, el texto de las tareas (también dinámico, oscuro) caía
+        // encima de ese azul y se perdía. Con AppColors.surface como fondo
+        // sólido de la tarjeta, el texto siempre contrasta contra un color
+        // pensado para eso, sin importar qué haya detrás.
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.surfaceBorder),
       ),
@@ -793,7 +844,7 @@ class _t_detailState extends State<t_detail> {
                     visualDensity: VisualDensity.compact,
                     avatar: Icon(Icons.person, size: 14, color: AppColors.textMuted),
                     label: Text(
-                      s.contains('@') ? s.substring(0, s.indexOf('@')) : s,
+                      _displayName(s),
                       style: TextStyle(color: AppColors.textPrimary, fontSize: 12),
                     ),
                   ),
@@ -828,22 +879,26 @@ class _t_detailState extends State<t_detail> {
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              t['description'] ?? '',
-                              style: TextStyle(
-                                color: done ? AppColors.textMuted : AppColors.textPrimary,
-                                fontSize: 14,
-                                decoration: done ? TextDecoration.lineThrough : null,
+                        child: InkWell(
+                          onTap: () => _openTaskInMyTasks(done),
+                          borderRadius: BorderRadius.circular(6),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                t['description'] ?? '',
+                                style: TextStyle(
+                                  color: done ? AppColors.textMuted : AppColors.textPrimary,
+                                  fontSize: 14,
+                                  decoration: done ? TextDecoration.lineThrough : null,
+                                ),
                               ),
-                            ),
-                            Text(
-                              "Para: ${assignedTo.contains('@') ? assignedTo.substring(0, assignedTo.indexOf('@')) : assignedTo}  ·  Vence: ${t['deadline']}",
-                              style: TextStyle(color: AppColors.textMuted, fontSize: 11),
-                            ),
-                          ],
+                              Text(
+                                "Para: ${_displayName(assignedTo)}  ·  Vence: ${t['deadline']}",
+                                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -889,7 +944,9 @@ class _t_detailState extends State<t_detail> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
-        color: AppColors.textPrimary.withValues(alpha: 0.08),
+        // Mismo ajuste que en _buildDomainCard: fondo sólido en vez de un
+        // tinte casi transparente que dejaba ver el azul del degradado.
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.surfaceBorder),
       ),
@@ -963,6 +1020,7 @@ class _t_detailState extends State<t_detail> {
                             currentUserEmail: email ?? '',
                             admins: admins,
                             members: teamMembers,
+                            memberNames: memberNames,
                           )));
                   if (mounted) await _refreshTeam();
                 }),

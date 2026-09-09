@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
 import '../utils/api_config.dart';
 import '../utils/session.dart';
 import '../screens/login.dart';
@@ -106,17 +109,34 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   bool _hasError = false;
   bool _uploading = false;
   String? _downloadingId;
+  String? _viewingId;
   String? _deletingId;
   String? _currentEmail;
 
   PlatformFile? _pickedFile;
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadCurrentEmail();
     _fetchDocuments();
+    _searchController.addListener(() {
+      setState(() => _searchQuery = _searchController.text.trim().toLowerCase());
+    });
+  }
+
+  /// Documentos cuyo nombre (o nombre original del archivo) coincide con lo
+  /// escrito en el buscador. Se filtra sobre la lista ya cargada del
+  /// backend, sin pedir nada nuevo al servidor.
+  List<DocumentItem> get _filteredDocuments {
+    if (_searchQuery.isEmpty) return _documents;
+    return _documents.where((doc) {
+      return doc.docName.toLowerCase().contains(_searchQuery) ||
+          doc.originalName.toLowerCase().contains(_searchQuery);
+    }).toList();
   }
 
   Future<void> _loadCurrentEmail() async {
@@ -168,9 +188,19 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     }
   }
 
+  // Debe coincidir con MAX_DOCUMENT_SIZE_BYTES en el backend
+  // (hive-backend/index.php), para avisar de entrada en vez de esperar a
+  // que el servidor rechace la subida ya iniciada.
+  static const int _maxFileSizeBytes = 2 * 1024 * 1024 * 1024; // 2 GB
+
   Future<void> _pickFile() async {
+    // `withData: false` es clave para archivos grandes: con `true`, el
+    // picker cargaba el archivo COMPLETO en memoria (un archivo de 2 GB
+    // fácilmente tumba la app). Sin `bytes`, solo se guardan metadatos
+    // (nombre, tamaño, extensión) y la ruta en disco (`path`), que es lo
+    // que usa _uploadDocument para subirlo por streaming.
     final result = await FilePicker.platform.pickFiles(
-      withData: true,
+      withData: false,
       type: FileType.custom,
       allowedExtensions: const [
         'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
@@ -178,15 +208,20 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       ],
     );
     if (result == null || result.files.isEmpty) return;
+    final picked = result.files.single;
+    if (picked.size > _maxFileSizeBytes) {
+      _showSnack('El archivo pesa más de 2 GB, elige uno más pequeño.');
+      return;
+    }
     setState(() {
-      _pickedFile = result.files.single;
-      _nameController.text = _pickedFile!.name;
+      _pickedFile = picked;
+      _nameController.text = picked.name;
     });
   }
 
   Future<void> _uploadDocument() async {
     final file = _pickedFile;
-    if (file == null || file.bytes == null) {
+    if (file == null) {
       _showSnack('Elige un archivo primero.');
       return;
     }
@@ -202,9 +237,26 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         'teamId': widget.teamId,
         'docName': _nameController.text.trim(),
       });
-      request.files.add(
-        http.MultipartFile.fromBytes('document', file.bytes!, filename: file.name),
-      );
+
+      // Por streaming desde disco (`fromPath`) cuando hay ruta disponible
+      // (Android/iOS/desktop): así el archivo nunca se carga completo en
+      // memoria, sin importar si pesa 10 MB o 2 GB. Solo en la rara
+      // situación de que `path` venga null (típicamente web, que este
+      // proyecto no compila) se cae de vuelta a `bytes` si están
+      // disponibles.
+      if (file.path != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('document', file.path!, filename: file.name),
+        );
+      } else if (file.bytes != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes('document', file.bytes!, filename: file.name),
+        );
+      } else {
+        _showSnack('No se pudo leer el archivo seleccionado.');
+        setState(() => _uploading = false);
+        return;
+      }
 
       final response = await request.send();
       if (response.statusCode == 200) {
@@ -253,6 +305,46 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     }
   }
 
+  /// A diferencia de _downloadDocument (que pide al usuario dónde guardar
+  /// el archivo), esto lo trae del mismo endpoint pero lo guarda en la
+  /// carpeta temporal del dispositivo y lo abre de inmediato con la app
+  /// nativa correspondiente (visor de PDF, Word, Excel, etc.), que es lo
+  /// que dispara al tocar el documento en la lista.
+  Future<void> _viewDocument(DocumentItem doc) async {
+    setState(() => _viewingId = doc.id);
+    try {
+      final token = await _authHeader();
+      final response = await http.get(
+        Uri.parse('$kBaseUrl/document/download/${doc.id}'),
+        headers: {'Authorization': token},
+      );
+      if (response.statusCode == 200) {
+        final Uint8List bytes = response.bodyBytes;
+        final dir = await getTemporaryDirectory();
+        // Se limpian caracteres problemáticos del nombre original para
+        // usarlo como nombre de archivo en el sistema de archivos local.
+        final safeName =
+            doc.originalName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+        final filePath = '${dir.path}/${doc.id}_$safeName';
+        final file = File(filePath);
+        await file.writeAsBytes(bytes, flush: true);
+
+        final result = await OpenFilex.open(filePath);
+        if (result.type != ResultType.done) {
+          _showSnack(
+            'No se pudo abrir el documento. Instala una app compatible con .${doc.extension} o descárgalo.',
+          );
+        }
+      } else {
+        _showSnack('No se pudo abrir el documento.');
+      }
+    } catch (e) {
+      _showSnack('Ocurrió un error al abrir el documento.');
+    } finally {
+      if (mounted) setState(() => _viewingId = null);
+    }
+  }
+
   Future<void> _deleteDocument(DocumentItem doc) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -297,6 +389,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -322,7 +415,25 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
             onUpload: _uploadDocument,
           ),
           const SizedBox(height: AppSpacing.lg),
-          SectionHeader(title: 'Documentos del equipo (${_documents.length})'),
+          // Buscador por nombre: arriba de "Documentos del equipo" y abajo
+          // de la tarjeta "Subir documento".
+          AppTextField(
+            controller: _searchController,
+            hintText: 'Buscar documentos por nombre...',
+            prefixIcon: Icon(Icons.search_rounded, color: AppColors.textMuted),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: Icon(Icons.close_rounded, color: AppColors.textMuted, size: 18),
+                    onPressed: () => _searchController.clear(),
+                  )
+                : null,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          SectionHeader(
+            title: _searchQuery.isEmpty
+                ? 'Documentos del equipo (${_documents.length})'
+                : 'Resultados (${_filteredDocuments.length} de ${_documents.length})',
+          ),
           Expanded(
             child: _isLoading
                 ? const LoadingState(message: 'Cargando documentos...')
@@ -334,26 +445,34 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                             title: 'Todavía no hay documentos',
                             message: 'Sube el primero desde el botón de arriba.',
                           )
-                        : RefreshIndicator(
-                            onRefresh: _fetchDocuments,
-                            child: ListView.separated(
-                              padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              itemCount: _documents.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-                              itemBuilder: (context, index) {
-                                final doc = _documents[index];
-                                return _DocumentTile(
-                                  doc: doc,
-                                  isDownloading: _downloadingId == doc.id,
-                                  isDeleting: _deletingId == doc.id,
-                                  canDelete: _currentEmail != null && _currentEmail == doc.uploadedBy,
-                                  onDownload: () => _downloadDocument(doc),
-                                  onDelete: () => _deleteDocument(doc),
-                                );
-                              },
-                            ),
-                          ),
+                        : _filteredDocuments.isEmpty
+                            ? EmptyState(
+                                icon: Icons.search_off_rounded,
+                                title: 'Sin resultados',
+                                message: 'Ningún documento coincide con "$_searchQuery".',
+                              )
+                            : RefreshIndicator(
+                                onRefresh: _fetchDocuments,
+                                child: ListView.separated(
+                                  padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  itemCount: _filteredDocuments.length,
+                                  separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                                  itemBuilder: (context, index) {
+                                    final doc = _filteredDocuments[index];
+                                    return _DocumentTile(
+                                      doc: doc,
+                                      isDownloading: _downloadingId == doc.id,
+                                      isViewing: _viewingId == doc.id,
+                                      isDeleting: _deletingId == doc.id,
+                                      canDelete: _currentEmail != null && _currentEmail == doc.uploadedBy,
+                                      onView: () => _viewDocument(doc),
+                                      onDownload: () => _downloadDocument(doc),
+                                      onDelete: () => _deleteDocument(doc),
+                                    );
+                                  },
+                                ),
+                              ),
           ),
         ],
       ),
@@ -390,7 +509,7 @@ class _UploadCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'PDF, Word, Excel, PowerPoint, txt, csv o comprimidos. Máx. 25 MB.',
+            'PDF, Word, Excel, PowerPoint, txt, csv o comprimidos. Máx. 2 GB.',
             style: TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -453,16 +572,20 @@ class _DocumentTile extends StatelessWidget {
   const _DocumentTile({
     required this.doc,
     required this.isDownloading,
+    required this.isViewing,
     required this.isDeleting,
     required this.canDelete,
+    required this.onView,
     required this.onDownload,
     required this.onDelete,
   });
 
   final DocumentItem doc;
   final bool isDownloading;
+  final bool isViewing;
   final bool isDeleting;
   final bool canDelete;
+  final VoidCallback onView;
   final VoidCallback onDownload;
   final VoidCallback onDelete;
 
@@ -470,6 +593,9 @@ class _DocumentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = _styleFor(doc.extension);
     return AppCard(
+      // Tocar la tarjeta (fuera de los botones de descargar/eliminar) abre
+      // el documento con la app nativa del dispositivo.
+      onTap: isViewing ? null : onView,
       child: Row(
         children: [
           Container(
@@ -480,7 +606,15 @@ class _DocumentTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppRadius.chip),
               border: Border.all(color: style.color.withValues(alpha: 0.4)),
             ),
-            child: Icon(style.icon, color: style.color, size: 22),
+            child: isViewing
+                ? Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: style.color,
+                    ),
+                  )
+                : Icon(style.icon, color: style.color, size: 22),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -517,6 +651,12 @@ class _DocumentTile extends StatelessWidget {
                     icon: Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
                     tooltip: 'Eliminar',
                   ),
+          if (!isViewing)
+            IconButton(
+              onPressed: onView,
+              icon: Icon(Icons.visibility_rounded, color: AppColors.accent),
+              tooltip: 'Ver documento',
+            ),
           isDownloading
               ? const Padding(
                   padding: EdgeInsets.all(10),

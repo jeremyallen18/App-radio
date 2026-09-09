@@ -57,8 +57,6 @@ class _MyAppBarState extends State<MyAppBar> {
       setState(() {
         userName = data;
       });
-    } else {
-      print('Error: ${response.statusCode}');
     }
   }
 

@@ -1,3 +1,17 @@
+# Límites de subida para soportar documentos de hasta 2 GB (ver
+# MAX_DOCUMENT_SIZE_BYTES en index.php). Estas directivas solo funcionan si
+# el servidor corre PHP como módulo de Apache (mod_php); si corre bajo
+# PHP-FPM (común en LiteSpeed, Nginx, o Apache con mod_fcgid/proxy_fcgi),
+# Apache las ignora y hay que subir estos mismos valores en el php.ini o el
+# pool de PHP-FPM que use ese sitio, y reiniciar el servicio.
+<IfModule mod_php.c>
+    php_value upload_max_filesize 2048M
+    php_value post_max_size 2048M
+    php_value max_execution_time 3600
+    php_value max_input_time 3600
+    php_value memory_limit 2048M
+</IfModule>
+
 RewriteEngine On
 RewriteBase /hive-backend/
 

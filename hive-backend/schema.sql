@@ -70,8 +70,27 @@ CREATE TABLE IF NOT EXISTS teams (
   id CHAR(24) PRIMARY KEY,
   team_name VARCHAR(255) NOT NULL,
   team_code VARCHAR(20) NOT NULL UNIQUE,
+  -- Se conserva por compatibilidad (algún cliente viejo o reporte podría
+  -- leerla), pero ya no es la fuente de verdad de quién administra el
+  -- equipo: eso ahora vive en team_admins, que permite más de un admin.
+  -- createTeam() sigue llenándola con el creador, y leaderResign() (el
+  -- endpoint legado de "un solo líder") la sigue actualizando.
   leader_email VARCHAR(255) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Un equipo puede tener varios admins con los mismos permisos (agregar o
+-- sacar miembros, gestionar tareas, borrar el equipo, y poner o quitar a
+-- otros admins). El backend nunca deja que esta tabla se quede sin
+-- ninguna fila para un equipo existente (ver removeAdmin()/resignFromTeam()
+-- en index.php).
+CREATE TABLE IF NOT EXISTS team_admins (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  team_id CHAR(24) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_team_admin (team_id, email),
+  FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS domains (
@@ -135,9 +154,14 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   username VARCHAR(255) NOT NULL,
   recipient_email VARCHAR(255) NULL,
   message TEXT NOT NULL,
+  -- Mensaje al que responde este, si el usuario usó "Responder" sobre un
+  -- mensaje puntual (ver migrations/012_chat_replies.sql). NULL si es un
+  -- mensaje normal, sin responder a nada.
+  reply_to_id INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   KEY idx_chat_messages_team (team_id, id),
-  KEY idx_chat_messages_direct (recipient_email, username, id)
+  KEY idx_chat_messages_direct (recipient_email, username, id),
+  KEY idx_chat_messages_reply (reply_to_id)
 ) ENGINE=InnoDB;
 
 -- Marca de "hasta dónde leyó cada usuario" en cada chat (de equipo o
@@ -158,6 +182,7 @@ CREATE TABLE IF NOT EXISTS images (
   id INT AUTO_INCREMENT PRIMARY KEY,
   team_id CHAR(24) NOT NULL,
   img_name VARCHAR(255) NOT NULL,
+  img_description TEXT NULL,
   img_path VARCHAR(500) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;

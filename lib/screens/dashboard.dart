@@ -65,9 +65,6 @@ class dashb_memState extends State<dashb_mem> {
       if (name != null && name!.isNotEmpty) {
         Session.cacheEmail(name!);
       }
-    } else {
-      print(' ${response.statusCode}');
-      print('Error Message: ${response.body}');
     }
   }
 

@@ -355,18 +355,22 @@ class _FilterChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Fondo del chip seleccionado siempre azul (brandBlue, fijo):
+              // el color de encima debe quedar fijo en blanco en vez de
+              // AppColors.textPrimary (se oscurece en modo claro y se
+              // pierde contra el azul).
               if (icon != null) ...[
                 Icon(
                   icon,
                   size: 14,
-                  color: selected ? AppColors.textPrimary : AppColors.textMuted,
+                  color: selected ? AppColors.onBrand : AppColors.textMuted,
                 ),
                 const SizedBox(width: 4),
               ],
               Text(
                 label,
                 style: TextStyle(
-                  color: selected ? AppColors.textPrimary : AppColors.textMuted,
+                  color: selected ? AppColors.onBrand : AppColors.textMuted,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
                 ),

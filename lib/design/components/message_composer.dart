@@ -17,11 +17,21 @@ class MessageComposer extends StatefulWidget {
     required this.controller,
     required this.onSend,
     this.hintText = 'Escribe un mensaje…',
+    this.replyingTo,
+    this.onCancelReply,
   });
 
   final TextEditingController controller;
   final VoidCallback onSend;
   final String hintText;
+
+  /// Si no es null, se muestra arriba del campo de texto una vista previa
+  /// del mensaje al que se está respondiendo (claves 'name' y 'message'),
+  /// con una "X" para cancelar la respuesta.
+  final Map<String, String>? replyingTo;
+
+  /// Se llama al tocar la "X" de la vista previa de respuesta.
+  final VoidCallback? onCancelReply;
 
   @override
   State<MessageComposer> createState() => _MessageComposerState();
@@ -84,6 +94,12 @@ class _MessageComposerState extends State<MessageComposer> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (widget.replyingTo != null)
+              _ReplyPreviewBar(
+                name: widget.replyingTo!['name'] ?? '',
+                message: widget.replyingTo!['message'] ?? '',
+                onCancel: widget.onCancelReply ?? () {},
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
               child: Row(
@@ -153,7 +169,9 @@ class _MessageComposerState extends State<MessageComposer> {
                         onTap: _handleSend,
                         child: Padding(
                           padding: EdgeInsets.all(12),
-                          child: Icon(Icons.send_rounded, color: AppColors.textPrimary, size: 20),
+                          // Círculo siempre azul (buttonGradient): ícono
+                          // fijo en blanco para que no se pierda en modo claro.
+                          child: Icon(Icons.send_rounded, color: AppColors.onBrand, size: 20),
                         ),
                       ),
                     ),
@@ -172,6 +190,65 @@ class _MessageComposerState extends State<MessageComposer> {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Vista previa del mensaje al que se está respondiendo, sobre el campo de
+/// texto: nombre del autor citado, su texto (truncado a una línea) y una
+/// "X" para cancelar. Se muestra solo cuando [MessageComposer.replyingTo]
+/// no es null.
+class _ReplyPreviewBar extends StatelessWidget {
+  const _ReplyPreviewBar({
+    required this.name,
+    required this.message,
+    required this.onCancel,
+  });
+
+  final String name;
+  final String message;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border(left: BorderSide(color: AppColors.accent, width: 3)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Respondiendo a $name',
+                  style: TextStyle(color: AppColors.accent, fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  message,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12.5),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Cancelar respuesta',
+            icon: Icon(Icons.close, size: 18, color: AppColors.textMuted),
+            onPressed: onCancel,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
       ),
     );
   }
