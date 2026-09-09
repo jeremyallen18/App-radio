@@ -226,7 +226,9 @@ function adminScheduleGet(PDO $pdo, string $employeeId) {
 }
 
 // Crea o modifica el horario asignado a un empleado. Solo el director.
-// No toca los snapshots ya congelados: el histórico permanece inmutable.
+// Los snapshots de días PASADOS quedan inmutables; el de HOY sí se sincroniza
+// (attendance_apply_schedule_change_to_today) para que un cambio de última hora
+// — p. ej. autorizar salida temprana — surta efecto en el acto.
 function adminScheduleSave(PDO $pdo, string $employeeId) {
     $admin = attendance_admin_guard($pdo);
     require_role($admin, ['director']);
@@ -262,6 +264,10 @@ function adminScheduleSave(PDO $pdo, string $employeeId) {
            updated_by = VALUES(updated_by)'
     );
     $stmt->execute([$emp['id'], $entry, $exit, $meal, $max, $lateTol, $admin['id']]);
+
+    // Aplica el cambio también al día en curso (salida temprana autorizada,
+    // etc.). No afecta a los días pasados.
+    attendance_apply_schedule_change_to_today($pdo, $emp['id']);
 
     json_response([
         'success'  => true,
@@ -333,6 +339,9 @@ function adminScheduleBulkSave(PDO $pdo) {
                 continue;
             }
             $up->execute([$eid, $entry, $exit, $meal, $max, $lateTol, $admin['id']]);
+            // El cambio aplica también al día en curso de cada trabajador
+            // (los días pasados no se tocan).
+            attendance_apply_schedule_change_to_today($pdo, $eid);
             $applied[] = $eid;
         }
         $pdo->commit();
