@@ -267,6 +267,8 @@ class AttendancePrimaryAction extends StatelessWidget {
         action == AttendanceAction.inicioComida &&
         !day.mealSkipped;
 
+    final hint = _availabilityHint(action, day.schedule);
+
     return Column(
       children: [
         AppButton(
@@ -274,6 +276,14 @@ class AttendancePrimaryAction extends StatelessWidget {
           loading: submitting,
           onPressed: submitting ? null : () => onPerform(action),
         ),
+        if (hint != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            hint,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+            textAlign: TextAlign.center,
+          ),
+        ],
         if (showSkipMeal) ...[
           const SizedBox(height: AppSpacing.sm),
           TextButton(
@@ -290,5 +300,38 @@ class AttendancePrimaryAction extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  /// Hora ("HH:MM") a partir de la cual el backend acepta el próximo fichaje:
+  /// entrada = hora de entrada − 30 min; inicio de comida = hora de comida;
+  /// salida = hora de salida. `null` si no hay horario o el paso no aplica.
+  String? _availabilityHint(AttendanceAction action, EmployeeSchedule? s) {
+    if (s == null) return null;
+    switch (action) {
+      case AttendanceAction.entrada:
+        final t = _minusMinutes(s.entryTime, 30);
+        return t == null ? null : 'Disponible desde las $t.';
+      case AttendanceAction.inicioComida:
+        return 'Disponible desde las ${s.mealTime}.';
+      case AttendanceAction.salida:
+        return 'Disponible desde las ${s.exitTime}.';
+      case AttendanceAction.finComida:
+      case AttendanceAction.saltarComida:
+        return null;
+    }
+  }
+
+  /// Resta [minutes] a una hora "HH:MM"; `null` si el formato no es válido.
+  String? _minusMinutes(String hhmm, int minutes) {
+    final parts = hhmm.split(':');
+    if (parts.length != 2) return null;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return null;
+    var total = h * 60 + m - minutes;
+    if (total < 0) total += 24 * 60;
+    final nh = (total ~/ 60) % 24;
+    final nm = total % 60;
+    return '${nh.toString().padLeft(2, '0')}:${nm.toString().padLeft(2, '0')}';
   }
 }

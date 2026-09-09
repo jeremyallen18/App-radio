@@ -37,6 +37,10 @@ class NotificationTile extends StatelessWidget {
         return (icon: Icons.badge_outlined, color: AppColors.accent, category: 'Departamento');
       case 'department_assigned':
         return (icon: Icons.apartment_outlined, color: AppColors.success, category: 'Departamento');
+      case 'attendance_correction':
+        return (icon: Icons.schedule, color: AppColors.accent, category: 'Asistencia');
+      case 'attendance_reminder':
+        return (icon: Icons.alarm, color: AppColors.accent, category: 'Asistencia');
       default:
         return (icon: Icons.notifications_outlined, color: AppColors.textMuted, category: 'General');
     }

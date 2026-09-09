@@ -5,6 +5,7 @@ import 'package:doliv_social/shared/calendar/calendar_screen.dart';
 import 'package:doliv_social/shared/chat/chat.dart';
 import 'package:doliv_social/shared/chat/chat_history.dart';
 import 'package:doliv_social/shared/attendance/attendance_history_screen.dart';
+import 'package:doliv_social/shared/attendance/attendance_screen.dart';
 import 'package:doliv_social/shared/home/teams.dart';
 import 'package:doliv_social/shared/leave/absence_justification_screen.dart';
 import 'package:doliv_social/shared/leave/my_leave_screen.dart';
@@ -64,6 +65,10 @@ class NotificationRouter {
 
         case 'attendance_correction':
           target = const AttendanceHistoryScreen();
+          break;
+
+        case 'attendance_reminder':
+          target = const AttendanceScreen();
           break;
 
         case 'member_removed':
