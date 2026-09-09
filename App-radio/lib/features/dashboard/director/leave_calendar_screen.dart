@@ -21,7 +21,11 @@ class LeaveCalendarScreen extends StatefulWidget {
 class _LeaveCalendarScreenState extends State<LeaveCalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay = DateTime.now();
-  CalendarFormat _format = CalendarFormat.month;
+
+  static const _monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  ];
 
   List<DepartmentInfo> _departments = const [];
   String? _departmentId;
@@ -127,12 +131,20 @@ class _LeaveCalendarScreenState extends State<LeaveCalendarScreen> {
               lastDay: DateTime.utc(2035, 12, 31),
               focusedDay: _focusedDay,
               locale: kCalendarLocale,
-              calendarFormat: _format,
-              availableCalendarFormats: const {
-                CalendarFormat.month: 'Mes',
-                CalendarFormat.twoWeeks: '2 semanas',
-                CalendarFormat.week: 'Semana',
-              },
+              // Vista fija de mes: sin botón de formato, que era lo que
+              // apretaba el título y lo partía letra por letra.
+              calendarFormat: CalendarFormat.month,
+              headerStyle: HeaderStyle(
+                titleCentered: true,
+                formatButtonVisible: false,
+                titleTextStyle: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+                titleTextFormatter: (date, locale) =>
+                    '${_monthNames[date.month - 1]} ${date.year}',
+              ),
               startingDayOfWeek: StartingDayOfWeek.monday,
               weekendDays: kWorkingWeekendDays,
               enabledDayPredicate: tableCalendarWorkingDay,
@@ -145,7 +157,6 @@ class _LeaveCalendarScreenState extends State<LeaveCalendarScreen> {
                   _focusedDay = foc;
                 });
               },
-              onFormatChanged: (f) => setState(() => _format = f),
               onPageChanged: (foc) {
                 _focusedDay = foc;
                 _load();
