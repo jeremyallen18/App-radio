@@ -156,12 +156,14 @@ class EmployeeSchedule {
   final String exitTime;
   final String mealTime;
   final int mealMaxMinutes;
+  final int lateToleranceMinutes;
 
   EmployeeSchedule({
     required this.entryTime,
     required this.exitTime,
     required this.mealTime,
     required this.mealMaxMinutes,
+    required this.lateToleranceMinutes,
   });
 
   factory EmployeeSchedule.fromJson(Map<String, dynamic> json) {
@@ -170,6 +172,7 @@ class EmployeeSchedule {
       exitTime: json['exitTime']?.toString() ?? '--:--',
       mealTime: json['mealTime']?.toString() ?? '--:--',
       mealMaxMinutes: (json['mealMaxMinutes'] as num?)?.toInt() ?? 60,
+      lateToleranceMinutes: (json['lateToleranceMinutes'] as num?)?.toInt() ?? 15,
     );
   }
 }
@@ -200,6 +203,7 @@ class AttendanceDay {
 
   final bool isLate;
   final int lateMinutes;
+  final int? toleranceMinutes;
 
   final int? mealLimitMinutes;
   final bool mealExceeded;
@@ -225,6 +229,7 @@ class AttendanceDay {
     required this.workedInProgress,
     required this.isLate,
     required this.lateMinutes,
+    required this.toleranceMinutes,
     required this.mealLimitMinutes,
     required this.mealExceeded,
     required this.mealExcessMinutes,
@@ -251,6 +256,7 @@ class AttendanceDay {
       workedInProgress: json['workedInProgress'] == true,
       isLate: json['isLate'] == true,
       lateMinutes: (json['lateMinutes'] as num?)?.toInt() ?? 0,
+      toleranceMinutes: (json['toleranceMinutes'] as num?)?.toInt(),
       mealLimitMinutes: (json['mealLimitMinutes'] as num?)?.toInt(),
       mealExceeded: json['mealExceeded'] == true,
       mealExcessMinutes: (json['mealExcessMinutes'] as num?)?.toInt() ?? 0,
