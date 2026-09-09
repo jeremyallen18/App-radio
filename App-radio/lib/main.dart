@@ -57,6 +57,10 @@ void main() async {
   Intl.defaultLocale = 'es_MX';
   await initializeDateFormatting('es_MX', null);
 
+  // Carga la preferencia de tema (claro/oscuro) ANTES del primer frame, para
+  // que la app arranque directamente en el modo correcto (sin parpadeo).
+  await ThemeController.instance.init();
+
   // `just_audio_background` (controles en notificación / pantalla de
   // bloqueo). Debe inicializarse ANTES de crear cualquier AudioPlayer (por
   // eso va antes de tocar RadioPlayer.instance): habilita el foreground
@@ -103,9 +107,20 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // `AnimatedBuilder` re-ejecuta este build cada vez que `ThemeController`
+    // notifica un cambio de modo (claro/oscuro).
+    return AnimatedBuilder(
+      animation: ThemeController.instance,
+      builder: (context, _) => _buildApp(context),
+    );
+  }
+
+  Widget _buildApp(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeController.instance.themeMode,
       navigatorKey: appNavigatorKey,
       navigatorObservers: [routeObserver],
       // Todos los widgets de calendario/fecha del sistema en español.
@@ -117,12 +132,20 @@ class MyApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       // Envuelve toda la app en el fondo de marca + el gate de conectividad
-      // (muestra `OfflineView` si el backend no responde).
+      // (muestra `OfflineView` si el backend no responde). El `KeyedSubtree`
+      // con una `Key` atada al modo fuerza a reconstruir todo el árbol
+      // navegable al alternar el tema, para que cada pantalla vuelva a leer
+      // `AppColors` (getters) con el valor correcto. El costo es que alternar
+      // el tema reinicia la pila de navegación — aceptable para una opción
+      // de ajustes.
       builder: (context, child) {
         if (child == null) return const SizedBox.shrink();
-        return ColoredBox(
-          color: AppColors.bgBase,
-          child: ConnectivityGate(child: child),
+        return KeyedSubtree(
+          key: ValueKey(ThemeController.instance.isDark),
+          child: ColoredBox(
+            color: AppColors.bgBase,
+            child: ConnectivityGate(child: child),
+          ),
         );
       },
       initialRoute: '/',

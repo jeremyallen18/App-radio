@@ -201,6 +201,19 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
               ),
             ),
             Divider(color: AppColors.surfaceBorder, height: 1),
+            SwitchListTile(
+              secondary: Icon(Icons.dark_mode_outlined, color: AppColors.accent),
+              title: Text(
+                'Tema oscuro',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              value: ThemeController.instance.isDark,
+              onChanged: (v) => ThemeController.instance.setDark(v),
+            ),
+            Divider(color: AppColors.surfaceBorder, height: 1),
             Padding(
               padding: EdgeInsets.all(AppSpacing.lg),
               child: Text(
