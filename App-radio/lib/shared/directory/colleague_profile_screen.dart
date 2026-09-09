@@ -186,8 +186,7 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
                       : null,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                AppButton(
-                  label: 'Enviar mensaje',
+                _SendMessageButton(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => ChatScreen(
@@ -499,6 +498,66 @@ class _TeamsSection extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Botón "Enviar mensaje" de la ficha del compañero. A diferencia de
+/// [AppButton] (barra a lo ancho, para CTA de formulario), este se ajusta a su
+/// contenido —ícono + texto— porque es una acción suelta a media pantalla.
+class _SendMessageButton extends StatelessWidget {
+  const _SendMessageButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: AppPressable(
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            onTap: onPressed,
+            child: Ink(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                gradient: AppColors.buttonGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.brandBlue.withValues(alpha: 0.35),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xl,
+                  vertical: 12,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.chat_bubble_outline,
+                        color: AppColors.textPrimary, size: 18),
+                    SizedBox(width: AppSpacing.sm),
+                    Text(
+                      'Enviar mensaje',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
