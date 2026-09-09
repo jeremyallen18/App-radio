@@ -321,6 +321,18 @@ Vive en [`hive-backend/`](hive-backend/), dentro de este repo. Localmente, Apach
 - Sin horario asignado el trabajador no puede registrar entrada (`409 NO_SCHEDULE`).
 - Cron nuevo **cada 5 minutos** `cron_attendance_reminders.php`: recordatorios push de entrada, comida (15 min antes) y salida vía FCM (`notify_user`). Si no se da de alta, los avisos igual llegan al abrir "Mi asistencia" (respaldo perezoso en `GET /attendance/today`).
 
+**Antes de desplegar / operación**
+
+- **Migración 031**: al aplicarla, cualquier `employee`/`manager` verificado que **no** tenga fila en `employee_schedules` deja de poder fichar (el endpoint responde `409 NO_SCHEDULE`). Antes de desplegar, asignar horario a todos; para listar a los que faltan:
+  ```sql
+  SELECT u.id, u.email FROM users u
+  LEFT JOIN employee_schedules es ON es.employee_id = u.id
+  WHERE u.role IN ('employee','manager') AND es.employee_id IS NULL AND u.email_verified_at IS NOT NULL;
+  ```
+- Registrar el cron `*/5 * * * *` de `cron_attendance_reminders.php` **antes** de anunciar la función; sin él los recordatorios solo llegan al abrir "Mi asistencia" (respaldo perezoso), no de forma proactiva.
+- Una **salida anticipada** (antes de `exit_time`) no la puede registrar el trabajador: el endpoint responde `409 EXIT_TOO_EARLY` y debe resolverse con una corrección del director.
+- En el **reporte mensual**, `lateMinutes` suma solo el atraso de los días marcados como tardanza (los que superan la tolerancia), no el delta bruto de todos los días.
+
 ## Esquema de base de datos (`hive_db`)
 
 Cargar con:

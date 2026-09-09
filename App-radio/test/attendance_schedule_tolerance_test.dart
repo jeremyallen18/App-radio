@@ -107,42 +107,75 @@ void main() {
   });
 
   group('leyenda de disponibilidad', () {
-    AttendanceDay dayWith(String next) => AttendanceDay.fromJson({
-          'state': next == 'entrada' ? 'sin_entrada' : 'en_jornada',
-          'nextAction': next,
-          'schedule': {
-            'entryTime': '09:00',
-            'exitTime': '17:00',
-            'mealTime': '14:00',
-            'mealMaxMinutes': 60,
-            'lateToleranceMinutes': 15,
-          },
+    // La leyenda solo aparece mientras la ventana sigue en el futuro; una vez
+    // abierta desaparece para no leerse como advertencia. Se prueba la lógica
+    // pura (`attendanceAvailabilityHint`) con un "ahora" fijo, así el resultado
+    // no depende del reloj de pared en el que corran las pruebas.
+    EmployeeSchedule schedule({
+      String entryTime = '09:00',
+      String mealTime = '14:00',
+      String exitTime = '17:00',
+    }) =>
+        EmployeeSchedule.fromJson({
+          'entryTime': entryTime,
+          'exitTime': exitTime,
+          'mealTime': mealTime,
+          'mealMaxMinutes': 60,
+          'lateToleranceMinutes': 15,
         });
 
-    testWidgets('entrada: muestra "desde las 08:30"', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: AttendancePrimaryAction(
-            day: dayWith('entrada'),
-            submitting: false,
-            onPerform: (_) {},
-          ),
-        ),
-      ));
-      expect(find.textContaining('08:30'), findsOneWidget);
+    // 10:00 => 600 minutos desde medianoche.
+    const now10h = 10 * 60;
+
+    test('entrada: ventana futura muestra "desde las 08:30"', () {
+      final hint = attendanceAvailabilityHint(
+          AttendanceAction.entrada, schedule(entryTime: '09:00'),
+          nowMinutes: 8 * 60); // 08:00 < 08:30
+      expect(hint, contains('08:30'));
     });
 
-    testWidgets('inicio de comida: muestra "desde las 14:00"', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: AttendancePrimaryAction(
-            day: dayWith('inicio_comida'),
-            submitting: false,
-            onPerform: (_) {},
-          ),
-        ),
-      ));
-      expect(find.textContaining('14:00'), findsOneWidget);
+    test('entrada: ventana ya abierta => sin leyenda', () {
+      final hint = attendanceAvailabilityHint(
+          AttendanceAction.entrada, schedule(entryTime: '09:00'),
+          nowMinutes: now10h); // 10:00, ya pasó 08:30
+      expect(hint, isNull);
+    });
+
+    test('entrada: "disponible desde" envuelve al día anterior => sin leyenda',
+        () {
+      final hint = attendanceAvailabilityHint(
+          AttendanceAction.entrada, schedule(entryTime: '00:01'),
+          nowMinutes: now10h);
+      expect(hint, isNull);
+    });
+
+    test('inicio de comida: ventana futura muestra "desde las 14:00"', () {
+      final hint = attendanceAvailabilityHint(
+          AttendanceAction.inicioComida, schedule(mealTime: '14:00'),
+          nowMinutes: now10h);
+      expect(hint, contains('14:00'));
+    });
+
+    test('inicio de comida: ventana ya abierta => sin leyenda', () {
+      final hint = attendanceAvailabilityHint(
+          AttendanceAction.inicioComida, schedule(mealTime: '14:00'),
+          nowMinutes: 15 * 60);
+      expect(hint, isNull);
+    });
+
+    test('salida: null cuando no hay horario', () {
+      expect(
+        attendanceAvailabilityHint(AttendanceAction.salida, null,
+            nowMinutes: now10h),
+        isNull,
+      );
+    });
+
+    test('salida: formato de hora inválido => sin leyenda', () {
+      final hint = attendanceAvailabilityHint(
+          AttendanceAction.salida, schedule(exitTime: 'xx:yy'),
+          nowMinutes: now10h);
+      expect(hint, isNull);
     });
   });
 }

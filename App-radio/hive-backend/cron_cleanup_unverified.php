@@ -17,3 +17,11 @@ require __DIR__ . '/helpers.php';
 
 $removed = cleanup_unverified_accounts($pdo);
 fwrite(STDOUT, date('c') . "  cuentas sin verificar eliminadas: $removed\n");
+
+// Poda de recordatorios de asistencia ya enviados: la tabla de deduplicación
+// (attendance_reminders_sent) crece ~5 filas por trabajador y día laboral sin
+// borrarse nunca. 90 días de historial bastan para la idempotencia.
+$prunedReminders = $pdo->exec(
+    "DELETE FROM attendance_reminders_sent WHERE work_date < (CURDATE() - INTERVAL 90 DAY)"
+);
+fwrite(STDOUT, date('c') . "  recordatorios de asistencia podados: $prunedReminders\n");
