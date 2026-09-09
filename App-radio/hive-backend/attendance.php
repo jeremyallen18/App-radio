@@ -207,6 +207,36 @@ function attendance_snapshot_schedule(PDO $pdo, string $employeeId, string $work
     ];
 }
 
+// Hora efectiva ('HH:MM:SS') de un campo del horario para $workDate, o null si
+// el trabajador no tiene horario ni override. Prioridad:
+//   1) snapshot del día (histórico congelado), si existe
+//   2) $override[$field] — solo para 'entry_time', cuando un evento con
+//      ubicación cubre hoy al trabajador
+//   3) employee_schedules del trabajador
+// $field ∈ {'entry_time','meal_time','exit_time'}.
+function attendance_effective_time(PDO $pdo, string $employeeId, string $workDate, string $field, ?array $override = null): ?string {
+    $stmt = $pdo->prepare(
+        'SELECT entry_time, meal_time, exit_time
+         FROM attendance_schedule_snapshots WHERE employee_id = ? AND work_date = ?'
+    );
+    $stmt->execute([$employeeId, $workDate]);
+    $snap = $stmt->fetch();
+    if ($snap && !empty($snap[$field])) {
+        return $snap[$field];
+    }
+    if ($field === 'entry_time' && $override && !empty($override['entry_time'])) {
+        $t = (string) $override['entry_time'];
+        return strlen($t) === 5 ? $t . ':00' : $t;
+    }
+    $sched = attendance_schedule_for($pdo, $employeeId);
+    return $sched && !empty($sched[$field]) ? $sched[$field] : null;
+}
+
+// Corta la petición con la forma {success:false, code, message} y 409.
+function attendance_window_fail(string $code, string $message): void {
+    json_response(['success' => false, 'code' => $code, 'message' => $message], 409);
+}
+
 // ---- helpers: cálculos -----------------------------------------------
 
 function attendance_minutes_between(string $a, string $b): int {
@@ -458,6 +488,20 @@ function attendanceEntry(PDO $pdo) {
     $override = event_entry_override_for_day($pdo, $user['department_id'] ?? null, $workDate);
     $overrideLoc = ($override && $override['latitude'] !== null && $override['longitude'] !== null)
         ? $override : null;
+
+    // Ventana de entrada: exige horario (o evento-override) y no permite fichar
+    // más de 30 minutos antes de la hora asignada.
+    $entryEff = attendance_effective_time($pdo, $user['id'], $workDate, 'entry_time', $override);
+    if ($entryEff === null) {
+        attendance_window_fail('NO_SCHEDULE',
+            'El director aún no te asignó un horario. Pídele que lo configure para poder registrar tu asistencia.');
+    }
+    $opensAt = strtotime($workDate . ' ' . $entryEff) - 30 * 60;
+    if (time() < $opensAt) {
+        attendance_window_fail('TOO_EARLY',
+            'Todavía es pronto. Podrás registrar tu entrada desde las ' . date('H:i', $opensAt) . '.');
+    }
+
     attendance_verify_location($pdo, 'entrada', $lat, $lng, $overrideLoc);
 
     // Congela el horario del día ANTES de crear la entrada.
