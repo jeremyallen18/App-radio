@@ -9,7 +9,8 @@ import 'package:doliv_social/services/attendance_service.dart' show AttendanceEx
 /// Se llama SOLO al registrar entrada o al terminar la hora de comida — nunca
 /// se rastrea la ubicación de forma continua.
 class AttendanceLocation {
-  static Future<({double latitude, double longitude})> current() async {
+  static Future<({double latitude, double longitude, double accuracyM})>
+      current() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
       throw AttendanceException(
         'Activa la ubicación (GPS) del dispositivo para registrar tu asistencia.',
@@ -40,7 +41,11 @@ class AttendanceLocation {
           timeLimit: Duration(seconds: 20),
         ),
       );
-      return (latitude: pos.latitude, longitude: pos.longitude);
+      return (
+        latitude: pos.latitude,
+        longitude: pos.longitude,
+        accuracyM: pos.accuracy,
+      );
     } catch (_) {
       throw AttendanceException(
         'No fue posible obtener tu ubicación. Sal a un lugar con mejor señal e '
