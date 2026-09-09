@@ -261,15 +261,17 @@ function attendance_day_summary(PDO $pdo, array $employee, string $workDate, arr
         $workedInProgress = $salida === null;
     }
 
-    // Llegada tarde: hora real de entrada vs. horario asignado ese día.
+    // Llegada tarde: hora real de entrada vs. horario asignado ese día, con
+    // la tolerancia configurada por el director (congelada en el snapshot).
+    $tolMinutes = $schedule ? (int) ($schedule['late_tolerance_minutes'] ?? 15) : 15;
     $isLate = false;
     $lateMinutes = 0;
     if ($entrada && $schedule) {
         $scheduledEntry = strtotime($workDate . ' ' . $schedule['entry_time']);
         $actualEntry = strtotime($entrada['event_time']);
         if ($actualEntry > $scheduledEntry) {
-            $lateMinutes = (int) round(($actualEntry - $scheduledEntry) / 60);
-            $isLate = $lateMinutes > 0;
+            $lateMinutes = (int) round(($actualEntry - $scheduledEntry) / 60); // delta real
+            $isLate = $lateMinutes > $tolMinutes;                              // respeta tolerancia
         }
     }
 
@@ -304,6 +306,7 @@ function attendance_day_summary(PDO $pdo, array $employee, string $workDate, arr
         'workedInProgress'   => $workedInProgress,
         'isLate'             => $isLate,
         'lateMinutes'        => $lateMinutes,
+        'toleranceMinutes'   => $tolMinutes,
         'mealLimitMinutes'   => $mealLimit,
         'mealExceeded'       => $mealExceeded,
         'mealExcessMinutes'  => $mealExcessMinutes,
@@ -312,6 +315,7 @@ function attendance_day_summary(PDO $pdo, array $employee, string $workDate, arr
             'exitTime'       => substr($schedule['exit_time'], 0, 5),
             'mealTime'       => substr($schedule['meal_time'], 0, 5),
             'mealMaxMinutes' => (int) $schedule['meal_max_minutes'],
+            'lateToleranceMinutes' => (int) ($schedule['late_tolerance_minutes'] ?? 15),
         ] : null,
     ];
 }
