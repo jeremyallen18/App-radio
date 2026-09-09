@@ -12,6 +12,8 @@ import 'package:doliv_social/shared/calendar/calendar_screen.dart';
 import 'package:doliv_social/shared/leave/my_leave_screen.dart';
 import 'package:doliv_social/shared/teams/task_board_screen.dart';
 import 'package:doliv_social/shared/directory/colleague_directory_screen.dart';
+import 'package:doliv_social/shared/resources/department_documents_screen.dart';
+import 'package:doliv_social/shared/resources/department_documents_picker.dart';
 import 'package:doliv_social/features/dashboard/director/attendance_corrections_screen.dart';
 import 'package:doliv_social/features/dashboard/director/attendance_report_screen.dart';
 import 'package:doliv_social/features/dashboard/director/admin_location_screen.dart';
@@ -184,15 +186,29 @@ List<AppMenuSection> _employeeSections(
         ),
       ],
     ),
-    const AppMenuSection(
-      title: 'Próximamente',
+    AppMenuSection(
+      title: 'Recursos del departamento',
       entries: [
-        AppMenuEntry(
-          icon: Icons.folder_shared_outlined,
-          title: 'Recursos compartidos',
-          enabled: false,
-          trailingLabel: 'Próximamente',
-        ),
+        if (department != null)
+          AppMenuEntry(
+            icon: Icons.folder_shared_outlined,
+            title: 'Documentos del departamento',
+            subtitle: 'Ver, buscar y descargar los archivos de tu área',
+            onTap: () => push(
+              DepartmentDocumentsScreen(
+                departmentId: department.id,
+                departmentName: department.name,
+                canManage: false,
+              ),
+            ),
+          )
+        else
+          const AppMenuEntry(
+            icon: Icons.folder_shared_outlined,
+            title: 'Documentos del departamento',
+            subtitle: 'Disponible cuando tengas un departamento asignado',
+            enabled: false,
+          ),
       ],
     ),
   ];
@@ -305,15 +321,29 @@ List<AppMenuSection> _managerSections(
           ),
       ],
     ),
-    const AppMenuSection(
-      title: 'Próximamente',
+    AppMenuSection(
+      title: 'Recursos del departamento',
       entries: [
-        AppMenuEntry(
-          icon: Icons.folder_shared_outlined,
-          title: 'Recursos del departamento',
-          enabled: false,
-          trailingLabel: 'Próximamente',
-        ),
+        if (department != null)
+          AppMenuEntry(
+            icon: Icons.folder_shared_outlined,
+            title: 'Documentos del departamento',
+            subtitle: 'Subir, renombrar, eliminar y descargar archivos del área',
+            onTap: () => push(
+              DepartmentDocumentsScreen(
+                departmentId: department.id,
+                departmentName: department.name,
+                canManage: true,
+              ),
+            ),
+          )
+        else
+          const AppMenuEntry(
+            icon: Icons.folder_shared_outlined,
+            title: 'Documentos del departamento',
+            subtitle: 'Disponible cuando tengas un departamento asignado',
+            enabled: false,
+          ),
       ],
     ),
   ];
@@ -329,6 +359,12 @@ List<AppMenuSection> _directorSections(void Function(Widget) push) {
           title: 'Gestionar equipos y departamentos',
           subtitle: 'Crear departamentos y asignar managers',
           onTap: () => push(const TeamAdminScreen()),
+        ),
+        AppMenuEntry(
+          icon: Icons.folder_shared_outlined,
+          title: 'Documentos por departamento',
+          subtitle: 'Subir, renombrar, eliminar y descargar archivos de cualquier área',
+          onTap: () => push(const DepartmentDocumentsPicker()),
         ),
       ],
     ),
