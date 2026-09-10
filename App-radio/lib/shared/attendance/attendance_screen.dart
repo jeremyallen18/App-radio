@@ -149,7 +149,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       bioType = r.type;
     }
 
-    _device ??= await DeviceIdentity.current();
+    try {
+      _device ??= await DeviceIdentity.current();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      _snack('No se pudo verificar tu dispositivo. Inténtalo de nuevo.');
+      return;
+    }
 
     // La entrada y el fin de la hora de comida exigen ubicación: se pide el
     // GPS y se manda al backend, que valida contra el lugar de asistencia.
@@ -189,11 +196,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _snack(_successMessage(action, day));
     } on AttendanceException catch (e) {
       if (!mounted) return;
-      setState(() => _submitting = false);
+      setState(() {
+        _submitting = false;
+        if (e.code == 'UNKNOWN_DEVICE') {
+          _deviceState = AttendanceDeviceState.unknown;
+        }
+      });
       _snack(e.message);
-      if (e.code == 'UNKNOWN_DEVICE') {
-        setState(() => _deviceState = AttendanceDeviceState.unknown);
-      }
       // Si el backend indica un permiso aprobado, o el estado cambió, se
       // recarga para reflejar "asistencia no requerida" y no dejar un botón
       // que ya no aplica.
