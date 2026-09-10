@@ -3,6 +3,7 @@ require __DIR__ . '/config.php';
 require __DIR__ . '/helpers.php';
 require __DIR__ . '/site_content.php';
 require __DIR__ . '/events.php';
+require __DIR__ . '/attendance_device.php';
 require __DIR__ . '/attendance.php';
 require __DIR__ . '/attendance_admin.php';
 require __DIR__ . '/attendance_reports.php';
