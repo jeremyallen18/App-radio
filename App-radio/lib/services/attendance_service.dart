@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:doliv_social/models/attendance.dart';
 import 'package:doliv_social/models/calendar_event.dart';
 import 'package:doliv_social/core/api_config.dart';
+import 'package:doliv_social/core/device/device_identity.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 
 /// Error del módulo de asistencia con un mensaje ya listo para mostrar en
@@ -62,7 +63,11 @@ class AttendanceApi {
     AttendanceAction action, {
     double? latitude,
     double? longitude,
+    double? locationAccuracy,
     String method = 'gps',
+    DeviceIdentity? device,
+    String? biometricResult,
+    String? biometricType,
   }) async {
     final res = await _post(
       Uri.parse('$kBaseUrl/${action.endpointPath}'),
@@ -70,13 +75,35 @@ class AttendanceApi {
         'method': method,
         if (latitude != null) 'latitude': latitude.toString(),
         if (longitude != null) 'longitude': longitude.toString(),
+        if (locationAccuracy != null) 'locationAccuracy': locationAccuracy.toString(),
         // Solo diagnóstico: el backend usa su propia hora como oficial.
         'deviceTime': DateTime.now().toIso8601String(),
+        if (device != null) ...device.toBody(),
+        if (biometricResult != null) 'biometricResult': biometricResult,
+        if (biometricType != null) 'biometricType': biometricType,
       },
     );
     return AttendanceDay.fromJson(
       (jsonDecode(res.body) as Map<String, dynamic>)['day'] as Map<String, dynamic>,
     );
+  }
+
+  /// Estado del dispositivo actual respecto de la cuenta.
+  static Future<AttendanceDeviceStatus> deviceStatus(DeviceIdentity device) async {
+    final uri = Uri.parse('$kBaseUrl/attendance/device/status')
+        .replace(queryParameters: device.toBody());
+    final res = await _get(uri);
+    return AttendanceDeviceStatus.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  /// Solicita al director autorizar el dispositivo actual (bloqueado).
+  static Future<AttendanceDeviceState> requestDevice(DeviceIdentity device) async {
+    final res = await _post(
+      Uri.parse('$kBaseUrl/attendance/device/request'),
+      device.toBody(),
+    );
+    final d = jsonDecode(res.body) as Map<String, dynamic>;
+    return attendanceDeviceStateFrom(d['state'] as String?);
   }
 
   /// Historial de asistencia del empleado (por defecto, últimos 30 días).
@@ -226,6 +253,51 @@ class AttendanceApi {
           .toList(),
       message: d['message']?.toString() ?? 'Horarios asignados.',
     );
+  }
+
+  // ---- dispositivos (panel administrativo) ---------------------------
+
+  static Future<List<DeviceRequestRow>> adminDeviceRequests({String status = 'pending'}) async {
+    final uri = Uri.parse('$kBaseUrl/admin/attendance/device-requests')
+        .replace(queryParameters: {'status': status});
+    final res = await _get(uri);
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    return ((decoded['requests'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((e) => DeviceRequestRow.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  static Future<void> resolveDeviceRequest(int id, {required bool approve, String? note}) async {
+    await _post(
+      Uri.parse('$kBaseUrl/admin/attendance/device-requests/$id/resolve'),
+      {
+        'decision': approve ? 'approve' : 'reject',
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      },
+    );
+  }
+
+  static Future<List<DeviceAnomaly>> adminDeviceAnomalies({int days = 30}) async {
+    final uri = Uri.parse('$kBaseUrl/admin/attendance/device-anomalies')
+        .replace(queryParameters: {'days': days.toString()});
+    final res = await _get(uri);
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    return ((decoded['anomalies'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((e) => DeviceAnomaly.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  static Future<TrustedDeviceInfo?> adminEmployeeDevice(String employeeId) async {
+    final res = await _get(Uri.parse('$kBaseUrl/admin/attendance/$employeeId/device'));
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    final d = decoded['device'];
+    return d is Map ? TrustedDeviceInfo.fromJson(Map<String, dynamic>.from(d)) : null;
+  }
+
+  static Future<void> adminResetEmployeeDevice(String employeeId) async {
+    await _post(Uri.parse('$kBaseUrl/admin/attendance/$employeeId/device/reset'), {});
   }
 
   // ---- resumen mensual ----------------------------------------------

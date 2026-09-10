@@ -525,3 +525,132 @@ class AttendanceCorrection {
     return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
   }
 }
+
+// ---- vinculación de dispositivo / biometría --------------------------------
+
+enum AttendanceDeviceState { none, trusted, pending, unknown }
+
+AttendanceDeviceState attendanceDeviceStateFrom(String? raw) {
+  switch (raw) {
+    case 'none':
+      return AttendanceDeviceState.none;
+    case 'trusted':
+      return AttendanceDeviceState.trusted;
+    case 'pending':
+      return AttendanceDeviceState.pending;
+    default:
+      return AttendanceDeviceState.unknown;
+  }
+}
+
+/// Estado del dispositivo actual respecto de la cuenta (para pintar el botón
+/// de fichar). Ver GET /attendance/device/status.
+class AttendanceDeviceStatus {
+  const AttendanceDeviceStatus({
+    required this.state,
+    this.model,
+    this.osVersion,
+    this.via,
+  });
+
+  final AttendanceDeviceState state;
+  final String? model;
+  final String? osVersion;
+  final String? via;
+
+  factory AttendanceDeviceStatus.fromJson(Map<String, dynamic> j) {
+    final dev = j['device'];
+    final d = dev is Map ? Map<String, dynamic>.from(dev) : const <String, dynamic>{};
+    return AttendanceDeviceStatus(
+      state: attendanceDeviceStateFrom(j['state'] as String?),
+      model: d['model'] as String?,
+      osVersion: d['osVersion'] as String?,
+      via: d['via'] as String?,
+    );
+  }
+}
+
+/// Fila de la pestaña "Solicitudes pendientes" del panel del director.
+class DeviceRequestRow {
+  const DeviceRequestRow({
+    required this.id,
+    required this.employeeId,
+    required this.employeeName,
+    required this.platform,
+    required this.attempts,
+    required this.firstSeen,
+    required this.lastSeen,
+    this.model,
+    this.osVersion,
+  });
+
+  final int id;
+  final String employeeId;
+  final String employeeName;
+  final String platform;
+  final int attempts;
+  final String firstSeen;
+  final String lastSeen;
+  final String? model;
+  final String? osVersion;
+
+  factory DeviceRequestRow.fromJson(Map<String, dynamic> j) {
+    final emp = j['employee'];
+    final e = emp is Map ? Map<String, dynamic>.from(emp) : const <String, dynamic>{};
+    return DeviceRequestRow(
+      id: (j['id'] as num).toInt(),
+      employeeId: (e['id'] ?? '').toString(),
+      employeeName: (e['name'] ?? '').toString(),
+      platform: (j['platform'] ?? '').toString(),
+      attempts: (j['attempts'] as num?)?.toInt() ?? 1,
+      firstSeen: (j['firstSeen'] ?? '').toString(),
+      lastSeen: (j['lastSeen'] ?? '').toString(),
+      model: j['model'] as String?,
+      osVersion: j['osVersion'] as String?,
+    );
+  }
+}
+
+/// Dispositivo confiado de un empleado (pestaña "Dispositivos confiados").
+class TrustedDeviceInfo {
+  const TrustedDeviceInfo({this.model, this.osVersion, this.platform, this.enrolledAt, this.via});
+
+  final String? model;
+  final String? osVersion;
+  final String? platform;
+  final String? enrolledAt;
+  final String? via;
+
+  factory TrustedDeviceInfo.fromJson(Map<String, dynamic> j) => TrustedDeviceInfo(
+        model: j['model'] as String?,
+        osVersion: j['osVersion'] as String?,
+        platform: j['platform'] as String?,
+        enrolledAt: j['enrolledAt'] as String?,
+        via: j['via'] as String?,
+      );
+}
+
+/// Anomalía de dispositivo para revisión del director.
+class DeviceAnomaly {
+  const DeviceAnomaly({
+    required this.type,
+    required this.employeeId,
+    required this.employeeName,
+    required this.detail,
+    this.at,
+  });
+
+  final String type;
+  final String employeeId;
+  final String employeeName;
+  final String detail;
+  final String? at;
+
+  factory DeviceAnomaly.fromJson(Map<String, dynamic> j) => DeviceAnomaly(
+        type: (j['type'] ?? '').toString(),
+        employeeId: (j['employeeId'] ?? '').toString(),
+        employeeName: (j['employeeName'] ?? '').toString(),
+        detail: (j['detail'] ?? '').toString(),
+        at: j['at'] as String?,
+      );
+}
