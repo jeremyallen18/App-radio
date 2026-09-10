@@ -1,0 +1,31 @@
+DirectoryIndex index.php index.html
+
+# Redirecciones 301 para conservar enlaces, QR y posicionamiento antiguos
+# despues de mover las paginas internas a la carpeta /pages/, y despues de
+# convertir todas las paginas estaticas a PHP para separar logica y
+# plantillas (ver plan de arquitectura en el historial del proyecto).
+
+# Paso 1: URLs planas antiguas (antes de moverse a /pages/) -> ubicacion final en /pages/*.php
+Redirect 301 /conocenos.html /pages/conocenos.php
+Redirect 301 /servicios.html /pages/servicios.php
+Redirect 301 /programas.html /pages/programas.php
+Redirect 301 /podcast.html /pages/podcast.php
+Redirect 301 /eventos.html /pages/eventos.php
+Redirect 301 /equipo.html /pages/equipo.php
+Redirect 301 /seccionazul.html /pages/seccionazul.php
+Redirect 301 /anuncios.html /pages/anuncios.php
+
+# Paso 2: URLs intermedias /pages/*.html (vivieron ahi antes de esta migracion a PHP)
+Redirect 301 /pages/conocenos.html /pages/conocenos.php
+Redirect 301 /pages/servicios.html /pages/servicios.php
+Redirect 301 /pages/programas.html /pages/programas.php
+Redirect 301 /pages/podcast.html /pages/podcast.php
+Redirect 301 /pages/eventos.html /pages/eventos.php
+Redirect 301 /pages/equipo.html /pages/equipo.php
+Redirect 301 /pages/seccionazul.html /pages/seccionazul.php
+
+# Paso 3: index.html historico -> raiz (DirectoryIndex ya sirve index.php en /)
+Redirect 301 /index.html /
+
+# anuncios.php ya vivia en /pages/anuncios.php; se conserva sin cambios.
+Redirect 301 /anuncios.php /pages/anuncios.php

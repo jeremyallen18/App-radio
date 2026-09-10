@@ -1,0 +1,10 @@
+# Almacenamiento privado (evidencia de incapacidades, etc.).
+# NUNCA debe servirse por HTTP directo: los archivos solo se entregan a
+# través de endpoints autenticados (ver leave_requests.php).
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+</IfModule>

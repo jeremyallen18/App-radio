@@ -1,0 +1,100 @@
+/* =========================================================
+   components/interactions.css
+   Estilos de las interacciones de mouse globales (ver
+   assets/js/core/interactions.js): [data-magnetic], [data-tilt] y
+   [data-ripple]. El JS ya solo actua con mouse real (hover + fine)
+   y sin prefers-reduced-motion; aqui se repite la guarda de
+   reduced-motion para que tampoco quede transicion residual.
+   ========================================================= */
+
+/* --- Boton imantado: el JS escribe transform en cada mousemove;
+       esta transicion suaviza el seguimiento y el regreso a su
+       lugar al salir el cursor (antes el regreso era un salto). --- */
+[data-magnetic] {
+    transition: transform 160ms var(--ease-out);
+}
+
+/* --- Tarjeta con inclinacion 3D.
+       Mientras el cursor esta encima (.is-tilted) la transicion es
+       corta y lineal, para seguirlo sin lag; al salir, la regla base
+       hace un regreso mas calmado con ease-out. Se re-declaran
+       box-shadow/border-color porque esta transicion reemplaza a la
+       de .card (patterns.css) por orden de cascada. --- */
+[data-tilt] {
+    position: relative;
+    transition: transform 280ms var(--ease-out),
+                box-shadow var(--duration-base) var(--ease-out),
+                border-color var(--duration-base) var(--ease-out);
+}
+
+[data-tilt].is-tilted {
+    transition: transform 90ms linear,
+                box-shadow var(--duration-base) var(--ease-out),
+                border-color var(--duration-base) var(--ease-out);
+    will-change: transform;
+}
+
+/* Brillo que sigue al cursor dentro de la tarjeta (posicion via
+   --spot-x/--spot-y, escritas por el JS en la propia tarjeta). */
+[data-tilt]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+        240px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+        rgba(0, 212, 255, 0.14),
+        transparent 65%
+    );
+    opacity: 0;
+    transition: opacity var(--duration-base) var(--ease-out);
+    pointer-events: none;
+    z-index: 3;
+}
+
+[data-tilt].is-tilted::after {
+    opacity: 1;
+}
+
+/* --- Onda al presionar (span .fx-ripple inyectado por el JS en el
+       punto exacto del click, se autodestruye al terminar). --- */
+[data-ripple] {
+    position: relative;
+    overflow: hidden;
+}
+
+.fx-ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle,
+        rgba(255, 255, 255, 0.35) 0%,
+        rgba(255, 255, 255, 0.12) 45%,
+        transparent 70%
+    );
+    transform: scale(0.15);
+    opacity: 0.9;
+    pointer-events: none;
+    z-index: 5;
+    animation: fx-ripple-out 500ms var(--ease-out) forwards;
+}
+
+@keyframes fx-ripple-out {
+    to {
+        transform: scale(1);
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-magnetic],
+    [data-tilt] {
+        transition: none;
+        transform: none !important;
+    }
+
+    [data-tilt]::after,
+    .fx-ripple {
+        display: none;
+    }
+}

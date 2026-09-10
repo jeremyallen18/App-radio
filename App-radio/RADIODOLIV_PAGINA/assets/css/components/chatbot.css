@@ -1,0 +1,555 @@
+/* =========================
+   CHATBOT DOLIV
+   ========================= */
+
+/* Launcher */
+/* Boton flotante del asistente virtual. Su distancia al borde inferior
+   suma --sticky-player-offset (mantenida al dia por
+   core/sticky-player.js) para que nunca quede tapado por la barra de
+   reproduccion persistente, sin importar donde este esa barra. */
+.doliv-bot-launcher {
+    position: fixed;
+    right: 22px;
+    bottom: calc(24px + var(--sticky-player-offset, 0px));
+    width: 68px;
+    height: 68px;
+    border: 0;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2775ff, #00c8f8);
+    box-shadow: 0 18px 42px rgba(0, 200, 248, 0.34);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    z-index: 2800;
+    transition: transform 0.2s ease, opacity 0.2s ease, visibility 0.2s ease, bottom 0.2s ease;
+}
+
+/* Oculta el launcher cuando el chat esta abierto. */
+.doliv-bot-launcher.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px) scale(0.92);
+}
+
+/* Ajusta el logo grande dentro del circulo flotante. */
+.doliv-bot-launcher img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    border-radius: 50%;
+}
+
+/* Panel */
+/* Ventana principal del chatbot. Misma logica de --sticky-player-offset
+   que el launcher, para que tampoco quede tapada por la barra. */
+.doliv-bot {
+    position: fixed;
+    right: 22px;
+    bottom: calc(24px + var(--sticky-player-offset, 0px));
+    width: min(382px, calc(100vw - 28px));
+    height: min(590px, calc(100vh - 120px));
+    border-radius: 16px 16px 0 0;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto 1fr auto auto;
+    background: #03060b;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 26px 70px rgba(0, 0, 0, 0.46);
+    z-index: 2810;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(18px) scale(0.96);
+    transform-origin: bottom right;
+    transition: opacity 0.22s ease, visibility 0.22s ease, transform 0.22s ease;
+}
+
+/* Estado visible del chatbot. */
+.doliv-bot.is-open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+/* Estado expandido para conversaciones largas. */
+.doliv-bot.is-expanded {
+    width: min(520px, calc(100vw - 32px));
+    height: min(720px, calc(100vh - 48px));
+}
+
+/* Encabezado azul del chatbot. */
+.doliv-bot-header {
+    min-height: 80px;
+    padding: 16px 18px;
+    background: linear-gradient(135deg, #1374ff, #00a7d8);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+/* Agrupa avatar, nombre y estado. */
+.doliv-bot-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+/* Avatar del bot usando el logo de la carpeta logo. */
+.doliv-bot-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, 0.18);
+    flex: 0 0 auto;
+}
+
+/* Ajusta el logo dentro del avatar. */
+.doliv-bot-avatar img {
+    width: 38px;
+    height: 38px;
+    object-fit: contain;
+    border-radius: 50%;
+}
+
+/* Nombre del asistente. */
+.doliv-bot-brand strong {
+    display: block;
+    color: #ffffff;
+    font-size: 1.08rem;
+    line-height: 1.2;
+}
+
+/* Estado debajo del nombre. */
+.doliv-bot-brand small {
+    display: block;
+    color: rgba(255, 255, 255, 0.84);
+    font-size: 0.82rem;
+    margin-top: 3px;
+}
+
+/* Acciones del encabezado: expandir y cerrar. */
+.doliv-bot-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Botones iconicos del encabezado. */
+.doliv-bot-icon-btn {
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    color: #ffffff;
+    background: transparent;
+    cursor: pointer;
+}
+
+/* Hover de botones del encabezado. */
+.doliv-bot-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+/* Tamano de iconos del encabezado. */
+.doliv-bot-icon-btn svg {
+    width: 19px;
+    height: 19px;
+}
+
+/* Messages */
+/* Area desplazable de mensajes. */
+.doliv-bot-messages {
+    min-height: 0;
+    padding: 16px;
+    overflow-y: auto;
+    background: linear-gradient(180deg, #05080f 0%, #020408 100%);
+    scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.06);
+}
+
+/* Burbuja base de mensaje. */
+.doliv-bot-message {
+    max-width: 78%;
+    margin-bottom: 16px;
+    color: #ffffff;
+}
+
+/* Burbuja del bot a la izquierda. */
+.doliv-bot-message.is-bot {
+    margin-right: auto;
+}
+
+/* Burbuja del usuario a la derecha. */
+.doliv-bot-message.is-user {
+    margin-left: auto;
+}
+
+/* Caja interna de cada burbuja. */
+.doliv-bot-message > div {
+    padding: 13px 14px;
+    border-radius: 14px;
+    font-size: 0.92rem;
+    line-height: 1.46;
+    overflow-wrap: anywhere;
+}
+
+/* Estilo de burbuja del bot. */
+.doliv-bot-message.is-bot > div {
+    background: #1c1f25;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* Estilo de burbuja del usuario. */
+.doliv-bot-message.is-user > div {
+    background: linear-gradient(135deg, #1d7bff, #00b8df);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Hora debajo de cada burbuja. */
+.doliv-bot-message time {
+    display: block;
+    margin-top: 5px;
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 0.76rem;
+}
+
+/* Alinea hora de mensajes del usuario. */
+.doliv-bot-message.is-user time {
+    text-align: right;
+}
+
+/* Links dentro de respuestas del bot. */
+.doliv-bot-message a {
+    color: #7dd3fc;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+/* Subrayado al pasar sobre enlaces del bot. */
+.doliv-bot-message a:hover {
+    text-decoration: underline;
+}
+
+/* Lista de paquetes dentro de las respuestas. */
+.doliv-bot-list {
+    margin: 10px 0 0;
+    padding-left: 18px;
+}
+
+/* Espaciado de cada paquete de servicios. */
+.doliv-bot-list li {
+    margin: 7px 0;
+}
+
+/* Contenedor de opciones iniciales dentro del mensaje. */
+.doliv-bot-choice-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+/* Botones de opciones dentro de la conversacion. */
+.doliv-bot-choice {
+    min-height: 38px;
+    border: 1px solid rgba(0, 200, 248, 0.34);
+    border-radius: 999px;
+    background: rgba(0, 200, 248, 0.1);
+    color: #dff8ff;
+    font-size: 0.82rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+/* Hover de opciones iniciales. */
+.doliv-bot-choice:hover {
+    background: rgba(0, 200, 248, 0.2);
+}
+
+/* Indicador de escritura. */
+.doliv-bot-message.is-typing > div {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 58px;
+}
+
+/* Puntos animados del indicador. */
+.doliv-bot-message.is-typing span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.72);
+    animation: dolivBotTyping 1s infinite ease-in-out;
+}
+
+/* Retraso del segundo punto. */
+.doliv-bot-message.is-typing span:nth-child(2) {
+    animation-delay: 0.12s;
+}
+
+/* Retraso del tercer punto. */
+.doliv-bot-message.is-typing span:nth-child(3) {
+    animation-delay: 0.24s;
+}
+
+/* Animacion sutil de escritura. */
+@keyframes dolivBotTyping {
+    0%, 80%, 100% {
+        transform: translateY(0);
+        opacity: 0.55;
+    }
+
+    40% {
+        transform: translateY(-4px);
+        opacity: 1;
+    }
+}
+
+/* Form */
+/* Formulario inferior del chat. */
+.doliv-bot-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px 14px;
+    background: #03060b;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Campo de texto del chatbot. */
+.doliv-bot-input {
+    min-width: 0;
+    flex: 1;
+    height: 42px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    outline: 0;
+    background: rgba(255, 255, 255, 0.07);
+    color: #ffffff;
+    padding: 0 14px;
+    font-size: 0.92rem;
+}
+
+/* Placeholder del campo de texto. */
+.doliv-bot-input::placeholder {
+    color: rgba(255, 255, 255, 0.52);
+}
+
+/* Boton enviar del chatbot. */
+.doliv-bot-form button {
+    width: 42px;
+    height: 42px;
+    border: 0;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, #1d7bff, #00b8df);
+    color: #ffffff;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+
+/* Tamano del icono enviar. */
+.doliv-bot-form button svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Boton de cambiar tema claro/oscuro. */
+.theme-toggle {
+    background: transparent;
+    border: 0;
+    padding: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Icono del boton de tema (sol/luna). */
+#theme-icon {
+    color: #ffffff;
+    stroke: #ffffff;
+    transition: transform 0.2s ease, color 0.2s ease, stroke 0.2s ease;
+}
+
+/* Animacion simple del icono al pasar el mouse. */
+.theme-toggle:hover #theme-icon {
+    transform: scale(1.08);
+}
+
+/* Boton hamburguesa (oculto en desktop). */
+.mobile-menu-toggle {
+    display: none;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-main);
+    border-radius: 10px;
+    width: 42px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+/* Elementos que JS inserta solo para el panel movil. */
+.mobile-search-row {
+    display: none;
+}
+
+/* =========================================================
+   Light theme
+   Movido desde themes/light.css (fase de reorganizacion de
+   arquitectura CSS, 2026-08-13): estas reglas ya pertenecian a este
+   componente, solo estaban centralizadas en otro archivo.
+   ========================================================= */
+body.light-theme .doliv-bot {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.12);
+    box-shadow: 0 26px 70px rgba(15, 23, 42, 0.24);
+}
+
+body.light-theme .doliv-bot-messages {
+    background: linear-gradient(180deg, #f8fafc 0%, #eef6ff 100%);
+}
+
+body.light-theme .doliv-bot-message.is-bot > div {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.14);
+    color: #0f172a;
+}
+
+body.light-theme .doliv-bot-message time {
+    color: #64748b;
+}
+
+body.light-theme .doliv-bot-message a {
+    color: #0369a1;
+}
+
+body.light-theme .doliv-bot-choice {
+    background: rgba(14, 165, 233, 0.1);
+    border-color: rgba(14, 165, 233, 0.24);
+    color: #0369a1;
+}
+
+body.light-theme .doliv-bot-choice:hover {
+    background: rgba(14, 165, 233, 0.18);
+}
+
+body.light-theme .doliv-bot-form {
+    background: #ffffff;
+    border-top-color: rgba(15, 23, 42, 0.1);
+}
+
+body.light-theme .doliv-bot-input {
+    background: #f8fafc;
+    border-color: rgba(15, 23, 42, 0.12);
+    color: #0f172a;
+}
+
+body.light-theme .doliv-bot-input::placeholder {
+    color: #64748b;
+}
+
+/* =========================================================
+   Mobile
+   Movido desde responsive.css (fase de reorganizacion de
+   arquitectura CSS, 2026-08-13): estas reglas ya pertenecian a este
+   componente, solo estaban centralizadas en otro archivo.
+   ========================================================= */
+@media (max-width: 768px) {
+    .doliv-bot-launcher {
+        right: 16px;
+        bottom: 18px;
+        width: 62px;
+        height: 62px;
+    }
+
+    .doliv-bot-launcher img {
+        width: 52px;
+        height: 52px;
+    }
+
+    .doliv-bot {
+        right: 10px;
+        bottom: 10px;
+        width: calc(100vw - 20px);
+        height: min(620px, calc(100vh - 92px));
+        border-radius: 16px;
+    }
+
+    .doliv-bot.is-expanded {
+        width: calc(100vw - 20px);
+        height: calc(100vh - 20px);
+    }
+
+    .doliv-bot-header {
+        min-height: 74px;
+        padding: 14px;
+    }
+
+    .doliv-bot-brand strong {
+        font-size: 1rem;
+    }
+
+    .doliv-bot-brand small {
+        font-size: 0.76rem;
+    }
+
+    .doliv-bot-message {
+        max-width: 86%;
+    }
+
+    .mobile-menu-toggle {
+        display: inline-flex;
+    }
+
+    .theme-toggle,
+    .mobile-menu-toggle {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        border: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    body.light-theme .mobile-menu-toggle {
+        background: #ffffff;
+    }
+
+    body.light-theme .theme-toggle {
+        background: #ffffff;
+    }
+
+    .mobile-search-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--glass-border);
+        border-radius: 10px;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+        background: rgba(255, 255, 255, 0.06);
+        min-height: 46px;
+    }
+
+    .mobile-search-row i {
+        color: #cbd5e1;
+    }
+
+    .mobile-search-input {
+        width: 100%;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--text-main);
+        font-size: 0.95rem;
+    }
+}
+

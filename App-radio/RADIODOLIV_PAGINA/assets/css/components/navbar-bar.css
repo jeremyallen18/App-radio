@@ -1,0 +1,200 @@
+/* =============================================
+   components/navbar-bar.css
+   Navbar, parte 1/3: barra de navegacion (glass, logo, enlaces,
+   caja de busqueda compacta). Dividido desde navbar.css (fase de
+   reorganizacion de arquitectura CSS, 2026-08-13) -- mismo
+   contenido, sin cambios de valores.
+   Sigue en components/navbar-search.css.
+   ============================================= */
+
+/* =========================
+   NAVBAR
+   ========================= */
+
+/* Barra superior fija con efecto vidrio. */
+.nav-glass {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    padding: 18px 24px;
+    background: rgba(5, 10, 20, 0.82);
+    border-bottom: 1px solid var(--glass-border);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: background 0.25s ease, box-shadow 0.25s ease, padding 0.25s ease;
+}
+
+/* Estado "solido" que un pequeño script agrega al hacer scroll (rediseno 2026-07-30). */
+.nav-glass.is-scrolled {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    background: rgba(4, 9, 18, 0.95);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* Contenedor interno para centrar y separar logo/menu/acciones. */
+.nav-container {
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+/* Bloque de logo + texto de marca. */
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Tamano del logo de la marca. */
+.logo img {
+    height: 44px;
+    width: auto;
+}
+
+/* Contorno blanco sutil para mejorar visibilidad del logo SVG. */
+.logo-img {
+    filter:
+        drop-shadow(0 0 1px #fff)
+        drop-shadow(0 0 1px #fff)
+        drop-shadow(0 0 1px #fff)
+        drop-shadow(0 0 1px #fff);
+}
+
+/* Estilo del texto del logo. */
+.logo span {
+    font-size: 1rem;
+    letter-spacing: 0.4px;
+}
+
+/* Lista horizontal de enlaces de navegacion. */
+.nav-links {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    margin: 0 40px;
+}
+
+/* Estilo base de los links del menu. */
+.nav-links a {
+    position: relative;
+    text-decoration: none;
+    color: var(--muted-text);
+    font-size: 0.92rem;
+    font-weight: 500;
+    white-space: nowrap;
+    padding-bottom: 4px;
+    transition: color 0.2s ease;
+}
+
+/* Subrayado animado que crece desde el centro al pasar el mouse. */
+.nav-links a::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -2px;
+    width: 0;
+    height: 2px;
+    background: var(--brand-cyan, var(--cyan-glow));
+    transform: translateX(-50%);
+    transition: width 0.22s ease;
+}
+
+.nav-links a:hover::after,
+.nav-links a.active::after {
+    width: 100%;
+}
+
+/* Color del link activo y hover. */
+.nav-links a:hover,
+.nav-links a.active {
+    color: var(--cyan-glow);
+}
+
+/* Punto que indica la pagina activa. */
+.nav-links a.active::before {
+    content: "";
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: var(--brand-cyan, var(--cyan-glow));
+    vertical-align: middle;
+}
+
+/* Acciones derechas: buscador y tema. */
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+/* Caja del buscador del navbar: pill redondeada con transiciones suaves de
+   foco/hover (antes era una caja angulosa sin estado hover ni focus-within). */
+.search-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    max-width: 180px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 999px;
+    cursor: text;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.search-container:hover {
+    border-color: rgba(6, 182, 212, 0.4);
+}
+
+/* Resalta el buscador pequeño cuando el panel global está abierto o el input tiene foco. */
+.search-container.search-active,
+.search-container:focus-within {
+    border-color: rgba(59, 130, 246, 0.75);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.14);
+}
+
+/* Color del icono de busqueda. */
+.search-icon {
+    flex: none;
+    color: var(--muted-text);
+    transition: color 0.2s ease;
+}
+
+.search-container.search-active .search-icon,
+.search-container:focus-within .search-icon {
+    color: var(--cyan-glow);
+}
+
+/* Input de busqueda del navbar. */
+.search-input {
+    width: 88px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--text-main);
+    font-size: 0.82rem;
+}
+
+/* Estilo visual del placeholder del input. */
+.search-input::placeholder {
+    color: rgba(255, 255, 255, 0.45);
+}
+

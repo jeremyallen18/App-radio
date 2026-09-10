@@ -1,0 +1,335 @@
+/* =========================================================
+   CONOCENOS — capitulos a pantalla completa en vez de bandas
+   de color alternadas: cada seccion ocupa un viewport entero
+   y centra su contenido, para que el scroll vaya revelando un
+   "capitulo" a la vez con tipografia grande como protagonista
+   (inspirado en el patron de scroll a pantalla completa que
+   pidio el usuario). El fondo es el continuo del sitio
+   (--bg-dark / --bg-gradient, ya reactivo a modo claro via
+   base.css/themes/light.css) -- no hay bandas de color propias.
+   ========================================================= */
+
+.about-main {
+    /* Acento de marca (azul de la estacion) usado en badge, iconos
+       y enlaces de esta pagina. */
+    --about-accent: #0070d1;
+    --about-accent-soft: rgba(0, 112, 209, 0.16);
+}
+
+.about-chapter {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: var(--space-8) 5%;
+}
+
+.about-chapter--hero {
+    padding-top: calc(var(--space-8) + 96px);
+}
+
+.about-chapter-inner {
+    max-width: 1100px;
+    width: 100%;
+    margin-inline: auto;
+}
+
+/* Tipografia grande y editorial: cada titulo domina su propio
+   capitulo en vez de compartir protagonismo con una banda de color. */
+.about-main h1,
+.about-main h2,
+.about-main h3 {
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+}
+
+.about-main .section-title {
+    font-size: clamp(2.5rem, 7vw, 5.5rem);
+    margin-bottom: var(--space-6);
+}
+
+/* --- 1. HERO --- */
+.about-hero-inner {
+    max-width: 920px;
+}
+
+.about-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px var(--space-4);
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--about-accent) 45%, transparent);
+    background: var(--about-accent-soft);
+    color: var(--text-main);
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: var(--space-5);
+}
+
+.about-hero-inner h1 {
+    font-size: clamp(3rem, 8vw, 6.5rem);
+    margin-bottom: var(--space-5);
+}
+
+.about-hero-inner h1 .text-gradient {
+    background: linear-gradient(90deg, var(--about-accent), var(--brand-cyan, var(--about-accent)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.about-hero-subtitle {
+    color: var(--soft-text);
+    max-width: 60ch;
+    line-height: 1.5;
+    font-size: clamp(1.125rem, 2vw, 1.375rem);
+}
+
+/* --- 2. QUIENES SOMOS --- */
+.about-intro {
+    max-width: 900px;
+}
+
+.about-intro p {
+    color: var(--soft-text);
+    line-height: 1.55;
+    font-size: clamp(1.125rem, 2vw, 1.375rem);
+}
+
+/* --- 3. MISION / VISION / VALORES — texto puro, sin tarjetas:
+       columnas separadas por una linea fina en vez de una caja
+       con fondo/borde, para que el reveal de scroll se sienta en
+       el texto mismo y no en un contenedor. --- */
+.purpose-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-6);
+}
+
+.purpose-card {
+    border-left: 1px solid var(--glass-border);
+    padding-left: var(--space-6);
+    transform-origin: bottom center;
+}
+
+.purpose-card:first-child {
+    border-left: none;
+    padding-left: 0;
+}
+
+.purpose-card svg {
+    width: 32px;
+    height: 32px;
+    color: var(--about-accent);
+    margin-bottom: var(--space-4);
+}
+
+.purpose-card h3 {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    margin-bottom: var(--space-3);
+}
+
+.purpose-card p {
+    color: var(--soft-text);
+    line-height: 1.55;
+    font-size: 1.05rem;
+}
+
+/* --- 4. VALORES (detalle) — lista de texto puro, separada por
+       lineas finas en vez de tarjetas. --- */
+.values-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-width: 760px;
+}
+
+.values-list li {
+    color: var(--soft-text);
+    padding-block: var(--space-5);
+    border-top: 1px solid var(--glass-border);
+    line-height: 1.5;
+    font-size: clamp(1.125rem, 2vw, 1.375rem);
+    transform-origin: bottom center;
+}
+
+.values-list li:last-child {
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.values-list li strong {
+    color: var(--text-main);
+    font-weight: 700;
+}
+
+/* =========================================================
+   Reveal-on-scroll: stagger con profundidad (rotateX) para las
+   rejillas (tarjetas de proposito, lista de valores). Ver
+   .scroll-tilt-up en base.css para el mismo gesto aplicado a
+   bloques individuales (hero, intro).
+
+   Usa transition (no animation) con un estado oculto base, para
+   que el gesto se pueda REVERTIR cuando el elemento vuelve a salir
+   del area de disparo al subir el scroll (ver el observer en
+   conocenos.php, que ya no deja de observar tras la primera
+   aparicion). --- */
+.purpose-grid > *,
+.values-list > * {
+    opacity: 0;
+    transform: perspective(1000px) translateY(50px) rotateX(-18deg);
+    transition: opacity 0.9s var(--ease-out), transform 0.9s var(--ease-out);
+}
+
+[data-reveal].is-visible .purpose-grid > *,
+[data-reveal].is-visible .values-list > * {
+    opacity: 1;
+    transform: none;
+    transition-delay: calc(var(--stagger, 0) * 110ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .purpose-grid > *,
+    .values-list > * {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}
+
+@media (max-width: 900px) {
+    .about-chapter {
+        min-height: auto;
+        padding-block: var(--space-8);
+    }
+
+    .about-chapter--hero {
+        padding-top: calc(var(--space-7) + 96px);
+    }
+
+    .purpose-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-7);
+    }
+
+    .purpose-card {
+        border-left: none;
+        padding-left: 0;
+        border-top: 1px solid var(--glass-border);
+        padding-top: var(--space-6);
+    }
+
+    .purpose-card:first-child {
+        border-top: none;
+        padding-top: 0;
+    }
+}
+
+/* =========================================================
+   PAGE TRANSITION (llegada) — Conocenos es narrativa/capitulo:
+   entra deslizando desde la izquierda + fade, como si se abriera
+   una nueva pagina de un libro. Ver components/page-transitions.css.
+   ========================================================= */
+@media (prefers-reduced-motion: no-preference) {
+    ::view-transition-old(root) {
+        animation: pt-conocenos-exit var(--duration-base) var(--ease-out);
+    }
+
+    ::view-transition-new(root) {
+        animation: pt-conocenos-enter var(--duration-slow) var(--ease-out);
+    }
+
+    @keyframes pt-conocenos-exit {
+        to { opacity: 0; transform: translateX(-16px); }
+    }
+
+    @keyframes pt-conocenos-enter {
+        from { opacity: 0; transform: translateX(-24px); }
+    }
+}
+
+/* =========================================================
+   Light theme
+   El rediseno de Conocenos usa capitulos a pantalla completa sobre
+   el fondo/tarjetas globales (--bg-dark, --glass, --glass-border),
+   que ya son reactivos al tema claro (ver themes/light.css) -- ya no
+   usa .about-hero, .about-hero-card ni el fondo/borde fijo que
+   vivian ahi, asi que esta pagina no necesita overrides propios.
+   ========================================================= */
+
+/* =========================================================
+   Mobile
+   Movido desde responsive.css (fase de reorganizacion de
+   arquitectura CSS, 2026-08-13): estas reglas ya pertenecian a esta
+   pagina, solo estaban centralizadas en otro archivo.
+   ========================================================= */
+@media (max-width: 980px) {
+    .purpose-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .values-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* =========================================================
+   FONDO ANIMADO (solo Conocenos) — VANTA.GLOBE
+   El fondo es un canvas WebGL (three.js r134 + vanta.globe) que
+   monta pages/conocenos.js dentro de #about-vanta, un contenedor
+   creado por JS (no hay HTML nuevo en el PHP) y destruido al salir
+   de la pagina. Aqui solo vive su posicionamiento y la vineta que
+   protege el contraste del texto sobre el globo.
+
+   Los colores del globo NO estan aqui sino en conocenos.js, porque
+   Vanta los recibe como enteros por opcion; el JS lee el tema activo
+   (body.light-theme) y reinicia el efecto con la paleta que toca.
+   ========================================================= */
+
+#about-vanta {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none; /* el globo se ve, pero no roba clicks ni scroll */
+    /* Segundo nivel de sutileza, ademas de los tonos apagados y del
+       backgroundAlpha: 0 del efecto (ver pages/conocenos.js): el globo
+       queda como una insinuacion detras del texto, no como una imagen. */
+    opacity: 0.5;
+}
+
+body.light-theme #about-vanta {
+    /* En claro las lineas contrastan mas contra el fondo blanco,
+       asi que se bajan todavia mas. */
+    opacity: 0.35;
+}
+
+#about-vanta canvas {
+    display: block;
+}
+
+/* Mientras el canvas no existe (JS deshabilitado, WebGL no soportado,
+   prefers-reduced-motion), no se ve nada raro: queda el fondo global
+   del sitio, que ya es reactivo al tema. */
+
+/* Vineta: oscurece los bordes para que los titulares de cada capitulo
+   sigan siendo lo mas luminoso de la pantalla por encima del globo. */
+html[data-page="conocenos"] .about-main {
+    position: relative;
+    isolation: isolate;
+}
+
+html[data-page="conocenos"] .about-main::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(ellipse 100% 80% at 50% 42%, transparent 55%, rgba(3, 7, 18, 0.38) 100%);
+}
+
+/* Light theme: la vineta se vuelve un sombreado suave, para no
+   ensuciar el fondo claro del globo. */
+html[data-page="conocenos"] body.light-theme .about-main::after {
+    background: radial-gradient(ellipse 100% 80% at 50% 42%, transparent 55%, rgba(15, 23, 42, 0.12) 100%);
+}

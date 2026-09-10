@@ -15,7 +15,7 @@ import 'package:doliv_social/shared/directory/colleague_directory_screen.dart';
 import 'package:doliv_social/shared/resources/department_documents_screen.dart';
 import 'package:doliv_social/shared/resources/department_documents_picker.dart';
 import 'package:doliv_social/features/dashboard/director/attendance_corrections_screen.dart';
-import 'package:doliv_social/features/dashboard/director/attendance_report_screen.dart';
+import 'package:doliv_social/features/dashboard/director/reports_screen.dart';
 import 'package:doliv_social/features/dashboard/director/admin_location_screen.dart';
 import 'package:doliv_social/features/dashboard/director/attendance_devices_screen.dart';
 import 'package:doliv_social/features/dashboard/director/admin_schedule_screen.dart';
@@ -280,9 +280,9 @@ List<AppMenuSection> _managerSections(
         ),
         AppMenuEntry(
           icon: Icons.summarize_outlined,
-          title: 'Reporte mensual',
-          subtitle: 'Exportar CSV o PDF',
-          onTap: () => push(const AttendanceReportScreen()),
+          title: 'Reportes del mes',
+          subtitle: 'Asistencia y actividades · CSV o PDF',
+          onTap: () => push(const ReportsScreen()),
         ),
       ],
     ),
@@ -398,9 +398,9 @@ List<AppMenuSection> _directorSections(void Function(Widget) push) {
         ),
         AppMenuEntry(
           icon: Icons.summarize_outlined,
-          title: 'Reporte mensual para nómina',
-          subtitle: 'Exportar CSV o PDF',
-          onTap: () => push(const AttendanceReportScreen()),
+          title: 'Reportes del mes',
+          subtitle: 'Asistencia para nómina y actividades · CSV o PDF',
+          onTap: () => push(const ReportsScreen()),
         ),
         AppMenuEntry(
           icon: Icons.rule,

@@ -1,0 +1,27 @@
+/* =========================================================
+   components/layout.css
+   Encabezado de seccion compartido (.section-eyebrow, .section-title,
+   .section-head), usado en varias paginas para el titulo de cada
+   banda de contenido. Extraido de components/patterns.css --
+   movimiento de codigo puro (fase de reorganizacion de arquitectura
+   CSS, 2026-08-13).
+   ========================================================= */
+
+.section-eyebrow {
+    font-size: var(--text-sm);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--brand-cyan);
+}
+
+.section-title {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+}
+
+.section-head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-bottom: var(--space-6);
+}

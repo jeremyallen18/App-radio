@@ -1,0 +1,9 @@
+{
+  "name": "hive-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Utilidades Node contra el backend PHP en vivo (hive-backend).",
+  "dependencies": {
+    "mysql2": "^3.11.0"
+  }
+}

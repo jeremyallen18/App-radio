@@ -1,0 +1,36 @@
+/* =========================================================
+   components/modals.css
+   Modal base: estructura comun para overlays con tarjeta central
+   (.modal-base, .modal-overlay, .modal-card). Extraido de
+   components/patterns.css -- movimiento de codigo puro (fase de
+   reorganizacion de arquitectura CSS, 2026-08-13).
+   ========================================================= */
+
+.modal-base {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-base) var(--ease-out);
+}
+
+.modal-base.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-base .modal-overlay {
+    position: absolute;
+    inset: 0;
+    backdrop-filter: blur(8px);
+    background: rgba(5, 10, 20, 0.6);
+}
+
+.modal-base .modal-card {
+    position: relative;
+    z-index: 1;
+}

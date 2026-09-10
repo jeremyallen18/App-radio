@@ -1,0 +1,103 @@
+/* =========================================================
+   base/variables.css
+   Variables globales del sitio (colores, espaciado, tipografia,
+   radios, z-index, movimiento). Extraido de base.css sin cambiar
+   ningun valor -- movimiento de codigo puro (fase de reorganizacion
+   de arquitectura CSS, 2026-08-13).
+   ========================================================= */
+
+/* Variables base del tema oscuro (por defecto). */
+:root {
+    --bg-dark: #050a14;
+    --bg-gradient: radial-gradient(circle at top right, #0a1931, #050a14);
+    --text-main: #ffffff;
+    --muted-text: rgba(255, 255, 255, 0.7);
+    --soft-text: rgba(255, 255, 255, 0.6);
+    --cyan-glow: #00f2ff;
+    --primary-blue: #007bff;
+    --glass: rgba(255, 255, 255, 0.04);
+    --glass-border: rgba(255, 255, 255, 0.1);
+
+    /* Paleta de marca usada en el rediseno de Inicio (2026-07-30). */
+    --brand-cyan: #00d4ff;
+    --brand-navy: #050a14;
+    --brand-deep-blue: #0a1931;
+    --brand-gray: #94a3b8;
+
+    /* -----------------------------------------------------------
+       Tokens agregados en el rediseno de arquitectura (fase 1).
+       Se agregan de forma aditiva: no quitan ni redefinen ningun
+       valor existente, asi que no hay riesgo de regresion visual.
+       ----------------------------------------------------------- */
+
+    /* Alias: --cyan-glow ahora es un espejo de --brand-cyan en vez de su
+       propio hex (#00f2ff). Unifica los dos cyans del sitio en un solo
+       valor visual sin tocar ningun selector que ya use var(--cyan-glow). */
+    --cyan-glow: var(--brand-cyan);
+
+    /* Escala de espaciado (base 4px). */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 48px;
+    --space-8: 64px;
+    --space-9: 96px;
+
+    /* Tipografia: Space Grotesk para titulos (h1-h6, .section-title,
+       eyebrows), Inter para texto de lectura y botones -- ver
+       base/reset.css. Cargadas juntas en inc/partials/head.php. */
+    --font-body: "Inter", sans-serif;
+    --font-display: "Space Grotesk", sans-serif;
+
+    /* Escala tipografica. */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 2rem;
+    --text-4xl: 2.5rem;
+    --text-5xl: 3.25rem;
+
+    /* Escala de radios. */
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --radius-full: 999px;
+
+    /* Escala de z-index: reemplaza los literales sueltos (2400..9999)
+       repartidos entre navbar/chatbot/modales. Los componentes existentes
+       se migran a estos tokens de forma incremental (fase 4). */
+    --z-nav: 100;
+    --z-dropdown: 200;
+    --z-overlay: 900;
+    --z-modal: 1000;
+    --z-panel: 1100;
+    --z-toast: 1200;
+    --z-skiplink: 5000;
+
+    /* Tokens de movimiento (guia Emil Kowalski: ease-out para entrar/salir,
+       nunca ease-in; duraciones bajo 300ms para UI). */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --duration-fast: 120ms;
+    --duration-base: 200ms;
+    --duration-slow: 280ms;
+
+    /* Padding compartido de "page shell", reemplaza el literal "130px 5% 90px"
+       copiado a mano en servicios.css, podcast.css, equipo.css, seccionazul.css,
+       eventos.css y anuncios.css. */
+    --page-shell-padding: 130px 5% 90px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --duration-fast: 0.01ms;
+        --duration-base: 0.01ms;
+        --duration-slow: 0.01ms;
+    }
+}
