@@ -1,0 +1,327 @@
+/* =========================
+   ANUNCIOS
+   Modal de detalle + transiciones de pagina. El contenedor principal
+   (hero, grilla, galeria) ahora vive en pages/anuncios-news.css, con
+   el diseño portado de news4.html -- este archivo solo conserva lo que
+   sigue siendo del sitio: el modal (inc/components/modal-announcement.php)
+   y sus disparadores desde cualquier [data-announcement-index].
+   ========================= */
+
+.announcements-empty {
+    max-width: 760px;
+    margin: 0 auto;
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    background: var(--glass);
+    padding: 28px;
+    text-align: center;
+}
+
+.announcements-empty p {
+    color: var(--soft-text);
+    margin-top: 10px;
+}
+
+/* =========================================================
+   MODAL — misma identidad editorial que el resto del rediseño
+   (.anw en pages/anuncios-news.css): la tarjeta lleva la clase "anw"
+   (ver inc/components/modal-announcement.php) solo para heredar sus
+   variables --anw-* -- oscuro=navy+azul de marca, claro=papel/tinta,
+   resuelto automaticamente por esas variables, sin duplicar la
+   paleta aqui. El resto de sus reglas (fondo/columnas/tipografia de
+   pagina) no aplican porque el modal no trae ese markup.
+   ========================================================= */
+.announcement-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.28s var(--ease-out, ease), visibility 0s linear 0.28s;
+}
+
+.announcement-modal.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.28s var(--ease-out, ease);
+}
+
+.announcement-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.78);
+    backdrop-filter: blur(8px);
+}
+
+.announcement-modal-card {
+    position: relative;
+    width: min(760px, 100%);
+    max-height: calc(100vh - 48px);
+    margin: 0 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid var(--anw-line, rgba(0, 242, 255, 0.32));
+    border-radius: 14px;
+    background: var(--anw-paper, #071326);
+    color: var(--anw-ink, #ffffff);
+    font-family: var(--anw-serif, inherit);
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+    transform: scale(0.96) translateY(18px);
+    opacity: 0;
+    transition: transform 0.32s var(--ease-out, ease), opacity 0.32s var(--ease-out, ease);
+}
+
+.announcement-modal.is-open .announcement-modal-card {
+    transform: none;
+    opacity: 1;
+}
+
+.announcement-modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 3;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 999px;
+    background: rgba(4, 8, 16, 0.5);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.announcement-modal-close:hover {
+    border-color: var(--anw-accent, #fff);
+    color: var(--anw-accent, #fff);
+    transform: scale(1.06);
+}
+
+.announcement-modal-media {
+    position: relative;
+    width: 100%;
+    max-height: 48vh;
+    overflow: auto;
+    background: var(--anw-wash, rgba(0, 0, 0, 0.25));
+    border-bottom: 1px solid var(--anw-line, transparent);
+}
+
+.announcement-modal-media img {
+    width: 100%;
+    min-height: 240px;
+    max-height: 48vh;
+    display: block;
+    object-fit: contain;
+    transform-origin: center center;
+    transition: transform 0.18s ease;
+}
+
+/* Barra de zoom flotante sobre la imagen, en vez de una fila aparte
+   -- deja la imagen protagonista y el control a mano solo cuando hace
+   falta. */
+.announcement-zoom-controls {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    z-index: 2;
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    border-radius: 999px;
+    background: rgba(4, 8, 16, 0.55);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.announcement-zoom-controls button {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.announcement-zoom-controls button:hover {
+    background: var(--anw-accent, rgba(255, 255, 255, 0.16));
+    color: var(--anw-on-accent, #fff);
+}
+
+.announcement-modal-content {
+    padding: 26px 28px 30px;
+}
+
+.announcement-modal-kicker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    font-family: var(--anw-sans, inherit);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.announcement-modal-brand {
+    color: var(--anw-accent, var(--cyan-glow));
+}
+
+.announcement-modal-kicker #announcement-modal-date {
+    color: var(--anw-ink-70, rgba(255, 255, 255, 0.6));
+    font-weight: 500;
+}
+
+.announcement-modal-brand + #announcement-modal-date::before {
+    content: '\2022';
+    margin-right: 10px;
+    color: var(--anw-ink-50, rgba(255, 255, 255, 0.4));
+}
+
+.announcement-modal-content h2 {
+    font-family: var(--anw-sans, inherit);
+    font-weight: 800;
+    font-size: clamp(1.5rem, 4vw, 2.15rem);
+    line-height: 1.2;
+    margin-bottom: 14px;
+    color: var(--anw-ink, inherit);
+}
+
+.announcement-modal-content > p:last-of-type {
+    color: var(--anw-ink-70, rgba(255, 255, 255, 0.84));
+    line-height: 1.75;
+    font-size: 1.02rem;
+}
+
+.announcement-modal-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-top: 26px;
+    padding-top: 22px;
+    border-top: 1px solid var(--anw-line, rgba(255, 255, 255, 0.12));
+}
+
+/* Selector reforzado (.announcement-modal .announcement-modal-links a,
+   no solo .announcement-modal-links a): con la misma especificidad que
+   ".anw a" (color:inherit, ver pages/anuncios-news.css) el empate lo
+   ganaba esa regla por cargarse despues -- los botones quedaban con el
+   texto del mismo color que el fondo (texto invisible). */
+.announcement-modal .announcement-modal-links a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 46px;
+    border-radius: 999px;
+    padding: 10px 16px;
+    color: var(--anw-on-accent, #fff);
+    text-decoration: none;
+    font-family: var(--anw-sans, inherit);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+    background: var(--anw-accent, linear-gradient(135deg, #1d4ed8, #06b6d4));
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.announcement-modal-links a:hover {
+    opacity: 0.85;
+    transform: translateY(-1px);
+}
+
+.announcement-modal-links p {
+    grid-column: 1 / -1;
+    color: var(--anw-ink-70, rgba(255, 255, 255, 0.72));
+    font-family: var(--anw-serif, inherit);
+}
+
+body.light-theme .announcements-empty {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.12);
+    color: #0f172a;
+}
+
+body.light-theme .announcements-empty p {
+    color: #334155;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .announcement-modal,
+    .announcement-modal-card {
+        transition: opacity 0.15s linear !important;
+        transform: none !important;
+    }
+}
+
+
+/* =========================================================
+   PAGE TRANSITION (llegada) — Anuncios entra como un banner que
+   cae desde arriba + fade. Ver components/page-transitions.css.
+   ========================================================= */
+@media (prefers-reduced-motion: no-preference) {
+    ::view-transition-old(root) {
+        animation: pt-anuncios-exit var(--duration-base) var(--ease-out);
+    }
+
+    ::view-transition-new(root) {
+        animation: pt-anuncios-enter var(--duration-slow) var(--ease-out);
+    }
+
+    @keyframes pt-anuncios-exit {
+        to { opacity: 0; transform: translateY(16px); }
+    }
+
+    @keyframes pt-anuncios-enter {
+        from { opacity: 0; transform: translateY(-20px); }
+    }
+}
+
+/* =========================================================
+   Mobile
+   Movido desde responsive.css (fase de reorganizacion de
+   arquitectura CSS, 2026-08-13): estas reglas ya pertenecian a esta
+   pagina, solo estaban centralizadas en otro archivo.
+   ========================================================= */
+@media (max-width: 768px) {
+    .announcement-modal-card {
+        width: calc(100% - 18px);
+        max-height: calc(100vh - 18px);
+        margin: 9px auto;
+        border-radius: 12px;
+    }
+
+    .announcement-modal-media {
+        max-height: 42vh;
+    }
+
+    .announcement-modal-media img {
+        min-height: 190px;
+        max-height: 42vh;
+    }
+
+    .announcement-modal-content {
+        padding: 18px;
+    }
+
+    .announcement-modal-links {
+        grid-template-columns: 1fr;
+    }
+}
+

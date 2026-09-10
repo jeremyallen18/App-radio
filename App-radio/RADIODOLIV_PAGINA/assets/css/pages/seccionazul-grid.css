@@ -1,0 +1,482 @@
+/* =============================================
+   pages/seccionazul-grid.css
+   Sección Azul, parte 2/3: secciones por giro y entradas del directorio.
+
+   Aqui vive la firma de la pagina: la LINEA DE PUNTOS que une el nombre
+   de cada aliado con sus marcas de contacto, que es el artefacto
+   tipografico que hace reconocible a un directorio impreso. Por eso las
+   entradas no son tarjetas: son renglones sobre reglas finas, densos y
+   alfabetizados dentro de su giro, como una pagina de la Seccion
+   Amarilla compuesta en tinta azul.
+   Viene de pages/seccionazul-hero.css, sigue en
+   pages/seccionazul-dossier.css.
+   ============================================= */
+
+.dir-body {
+    display: grid;
+    gap: clamp(48px, 6vw, 84px);
+}
+
+.dir-section.is-filtered-out {
+    display: none;
+}
+
+/* Panel de vitrina: cada giro vive en una placa de vidrio suave, en vez
+   de flotar sobre el fondo continuo -- lo que separa un directorio
+   impreso de una zona de patrocinadores es precisamente tener un
+   escaparate propio por rubro. */
+.dir-section {
+    padding: clamp(24px, 3vw, 44px) clamp(20px, 3vw, 40px);
+    border: 1px solid var(--dir-rule);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, rgba(147, 180, 217, 0.05), rgba(147, 180, 217, 0.015));
+    box-shadow: 0 40px 90px -60px rgba(0, 0, 0, 0.7);
+}
+
+/* =========================================================
+   DIVISOR DE GIRO
+   ========================================================= */
+.dir-section-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    margin-bottom: var(--space-5);
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+    filter: blur(6px);
+    transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out), filter 0.6s var(--ease-out);
+}
+
+.dir-section-head.is-visible {
+    opacity: 1;
+    transform: none;
+    filter: none;
+}
+
+/* El icono del giro entra en su propia placa circular con resplandor:
+   deja de ser un simbolo suelto y pasa a leerse como un sello. */
+.dir-section-icon {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex: none;
+    border-radius: var(--radius-full);
+    background: color-mix(in srgb, var(--dir-accent) 14%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--dir-accent) 30%, transparent),
+                0 0 28px -6px var(--dir-accent);
+}
+
+.dir-section-icon i,
+.dir-section-icon svg {
+    width: 19px;
+    height: 19px;
+    color: var(--dir-accent);
+    stroke: currentColor;
+    flex: none;
+}
+
+.dir-section-name {
+    font-size: clamp(1.05rem, 2.2vw, 1.35rem);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-main);
+}
+
+/* Regla que estira hasta el conteo, como el filete que separa rubros en
+   una pagina de directorio. */
+.dir-section-rule {
+    flex: 1 1 auto;
+    height: 1px;
+    background: var(--dir-rule);
+}
+
+.dir-section-count {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--dir-accent);
+    font-variant-numeric: tabular-nums;
+}
+
+/* =========================================================
+   ENTRADAS
+   ========================================================= */
+.dir-entries {
+    list-style: none;
+    border-top: 1px solid var(--dir-rule);
+}
+
+/* En pantallas anchas el panel ya no fuerza una sola columna angosta:
+   dos entradas por fila aprovechan el ancho ganado sin perder la linea
+   de puntos (cada renglon sigue midiendo su propio ancho). */
+@media (min-width: 1160px) {
+    .dir-entries {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        column-gap: clamp(32px, 3vw, 56px);
+        border-top: 0;
+    }
+
+    .dir-entries > .dir-entry {
+        border-top: 1px solid var(--dir-rule);
+    }
+}
+
+.dir-entry {
+    border-bottom: 1px solid var(--dir-rule);
+    opacity: 0;
+    transform: translateY(20px) scale(0.985);
+    filter: blur(4px);
+    transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out), filter 0.6s var(--ease-out);
+    transition-delay: calc(var(--stagger, 0) * 60ms);
+}
+
+.dir-entry.is-visible {
+    opacity: 1;
+    transform: none;
+    filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dir-entry,
+    .dir-section-head {
+        opacity: 1;
+        transform: none;
+        filter: none;
+        transition: none;
+    }
+}
+
+.dir-entry-btn {
+    position: relative;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    grid-template-areas:
+        "plate line"
+        "plate sub"
+        "plate summary"
+        "plate open";
+    align-items: start;
+    gap: 3px var(--space-5);
+    padding: var(--space-5) var(--space-4) var(--space-5) 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    transition: padding-left var(--duration-base) var(--ease-out),
+                background var(--duration-base) var(--ease-out);
+}
+
+/* Filete vertical del color del giro que crece al pasar el cursor: el
+   unico "fondo" del renglon, y solo mientras se interactua. */
+.dir-entry-btn::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 10%;
+    bottom: 10%;
+    width: 2px;
+    background: var(--dir-accent);
+    transform: scaleY(0);
+    transform-origin: center;
+    transition: transform var(--duration-base) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .dir-entry-btn:hover,
+    .dir-entry-btn:focus-visible {
+        padding-left: var(--space-4);
+        background: var(--dir-plate);
+    }
+
+    .dir-entry-btn:hover::before,
+    .dir-entry-btn:focus-visible::before {
+        transform: scaleY(1);
+    }
+}
+
+/* --- Placa: el logotipo que un directorio imprime junto al renglon.
+       Mas grande que en la version impresa (aqui son patrocinadores,
+       no un pie de pagina) y con un resplandor propio al pasar el
+       cursor. --- */
+.dir-entry-plate {
+    grid-area: plate;
+    width: 88px;
+    height: 88px;
+    display: block;
+    overflow: hidden;
+    border: 1px solid var(--dir-rule);
+    border-radius: var(--radius-sm);
+    background: var(--dir-plate);
+    transition: box-shadow var(--duration-slow) var(--ease-out),
+                border-color var(--duration-slow) var(--ease-out);
+}
+
+.dir-entry-btn:hover .dir-entry-plate,
+.dir-entry-btn:focus-visible .dir-entry-plate {
+    border-color: color-mix(in srgb, var(--dir-accent) 55%, transparent);
+    box-shadow: 0 0 30px -10px var(--dir-accent);
+}
+
+.dir-entry-plate img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: saturate(0.35) contrast(1.05);
+    transition: filter var(--duration-slow) var(--ease-out),
+                transform var(--duration-slow) var(--ease-out);
+}
+
+.dir-entry-btn:hover .dir-entry-plate img,
+.dir-entry-btn:focus-visible .dir-entry-plate img {
+    filter: saturate(1) contrast(1);
+    transform: scale(1.06);
+}
+
+/* --- Renglon principal: nombre · linea de puntos · marcas --- */
+.dir-entry-line {
+    grid-area: line;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+}
+
+.dir-entry-name {
+    flex: 0 1 auto;
+    font-size: clamp(1.15rem, 2.4vw, 1.5rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.005em;
+    color: var(--text-main);
+    transition: color var(--duration-base) var(--ease-out);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dir-entry-btn:hover .dir-entry-name,
+.dir-entry-btn:focus-visible .dir-entry-name {
+    color: var(--dir-accent);
+}
+
+/* LA FIRMA: los puntos que llevan del nombre a sus datos de contacto,
+   igual que en un directorio impreso llevan del nombre al telefono. Se
+   "entintan" al pasar el cursor. */
+.dir-entry-leader {
+    flex: 1 1 auto;
+    min-width: 20px;
+    align-self: center;
+    height: 7px;
+    background-image: radial-gradient(circle at center, currentColor 1px, transparent 1.4px);
+    background-size: 7px 7px;
+    background-repeat: repeat-x;
+    color: var(--muted-text);
+    opacity: 0.4;
+    transition: color var(--duration-base) var(--ease-out),
+                opacity var(--duration-base) var(--ease-out);
+}
+
+.dir-entry-btn:hover .dir-entry-leader,
+.dir-entry-btn:focus-visible .dir-entry-leader {
+    color: var(--dir-accent);
+    opacity: 1;
+}
+
+/* Marcas de contacto: los pequeños simbolos que un directorio imprime al
+   final del renglon para decir por donde se le encuentra. */
+.dir-entry-marks {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted-text);
+    transition: color var(--duration-base) var(--ease-out);
+}
+
+.dir-entry-btn:hover .dir-entry-marks,
+.dir-entry-btn:focus-visible .dir-entry-marks {
+    color: var(--dir-accent);
+}
+
+/* Codigos abreviados (FB · IG · TT…) compuestos en monoespaciada, como las
+   abreviaturas que un directorio impreso pone al final del renglon. Ver
+   sz_social_code() en pages/seccionazul.php. */
+.dir-mark {
+    display: inline-flex;
+    align-items: center;
+    font-family: "JetBrains Mono", "SFMono-Regular", monospace;
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+}
+
+.dir-mark--place i,
+.dir-mark--place svg {
+    width: 13px;
+    height: 13px;
+    stroke: currentColor;
+}
+
+.dir-entry-nomark {
+    font-size: 0.8rem;
+    opacity: 0.5;
+}
+
+/* --- Lineas secundarias --- */
+.dir-entry-sub {
+    grid-area: sub;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--dir-accent);
+    margin-top: 4px;
+}
+
+.dir-entry-summary {
+    grid-area: summary;
+    max-width: 62ch;
+    color: var(--soft-text);
+    line-height: 1.6;
+    font-size: var(--text-sm);
+    margin-top: 6px;
+}
+
+.dir-entry-open {
+    grid-area: open;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    margin-top: 10px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--muted-text);
+    transition: color var(--duration-base) var(--ease-out), gap var(--duration-base) var(--ease-out);
+}
+
+.dir-entry-open i,
+.dir-entry-open svg {
+    width: 13px;
+    height: 13px;
+    stroke: currentColor;
+}
+
+.dir-entry-btn:hover .dir-entry-open,
+.dir-entry-btn:focus-visible .dir-entry-open {
+    color: var(--dir-accent);
+    gap: 10px;
+}
+
+.dir-empty {
+    color: var(--soft-text);
+    padding: var(--space-7) 0;
+}
+
+/* =========================================================
+   CIERRE — la pagina tambien vende el espacio: un directorio que no
+   dice como aparecer en el esta a medias.
+   ========================================================= */
+.dir-join {
+    margin-top: clamp(56px, 7vw, 96px);
+    padding-top: var(--space-6);
+    border-top: 2px solid var(--brand-cyan, #38bdf8);
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out);
+}
+
+.dir-join.is-visible {
+    opacity: 1;
+    transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dir-join {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}
+
+.dir-join-label {
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-family: "Archivo Narrow", "Inter", sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-main);
+    margin-bottom: 8px;
+}
+
+.dir-join-text {
+    max-width: 52ch;
+    color: var(--soft-text);
+    line-height: 1.65;
+    margin-bottom: var(--space-4);
+}
+
+.dir-join-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 0 4px;
+    border-bottom: 1px solid var(--dir-rule);
+    color: var(--text-main);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: var(--text-sm);
+    transition: color var(--duration-base) var(--ease-out),
+                border-color var(--duration-base) var(--ease-out),
+                gap var(--duration-base) var(--ease-out);
+}
+
+.dir-join-cta i,
+.dir-join-cta svg {
+    width: 15px;
+    height: 15px;
+    stroke: currentColor;
+}
+
+.dir-join-cta:hover {
+    color: var(--brand-cyan, #38bdf8);
+    border-color: var(--brand-cyan, #38bdf8);
+    gap: 12px;
+}
+
+/* =========================================================
+   Responsive: la placa se encoge y el renglon deja de forzar una sola
+   linea para el nombre, que en telefono necesita partirse.
+   ========================================================= */
+@media (max-width: 640px) {
+    .dir-entry-btn {
+        grid-template-columns: 56px minmax(0, 1fr);
+        gap: 2px var(--space-3);
+    }
+
+    .dir-entry-plate {
+        width: 56px;
+        height: 56px;
+    }
+
+    .dir-entry-line {
+        flex-wrap: wrap;
+        gap: 4px 8px;
+    }
+
+    .dir-entry-name {
+        white-space: normal;
+        flex-basis: 100%;
+    }
+
+    /* Sin el nombre en la misma linea, la guia de puntos se queda sin
+       funcion (no lleva de un dato a otro), asi que se retira y las
+       marcas se alinean solas bajo el nombre. */
+    .dir-entry-leader {
+        display: none;
+    }
+}

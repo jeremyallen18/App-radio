@@ -8,6 +8,7 @@ require __DIR__ . '/attendance.php';
 require __DIR__ . '/attendance_admin.php';
 require __DIR__ . '/attendance_reports.php';
 require __DIR__ . '/attendance_reminders.php';
+require __DIR__ . '/activities_reports.php';
 require __DIR__ . '/leave_requests.php';
 require __DIR__ . '/absences.php';
 require __DIR__ . '/dept_tasks.php';
@@ -203,6 +204,8 @@ $routes = [
     // Rutas específicas ANTES del comodín /admin/attendance/{id}.
     ['GET',  '#^/admin/attendance/summary/?$#',               'adminAttendanceSummary'],
     ['GET',  '#^/admin/attendance/report/?$#',                'attendanceReport'],
+    ['GET',  '#^/admin/activities/summary/?$#',               'adminActivitiesSummary'],
+    ['GET',  '#^/admin/activities/report/?$#',                'adminActivitiesReport'],
     ['GET',  '#^/admin/attendance/corrections/?$#',           'adminAttendanceCorrections'],
     ['POST', '#^/admin/attendance/corrections/([^/]+)/resolve/?$#', 'adminAttendanceCorrectionResolve'],
     ['GET',  '#^/admin/attendance/device-requests/?$#',                 'adminAttendanceDeviceRequests'],

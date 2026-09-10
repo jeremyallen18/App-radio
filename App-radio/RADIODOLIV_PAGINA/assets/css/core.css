@@ -1,0 +1,30 @@
+/* =========================================================
+   core.css - paquete siempre cargado (todas las paginas).
+   Contiene solo lo que es realmente compartido: tokens, patrones
+   reutilizables, navbar/chatbot/footer y el tema claro. Cada pagina
+   ademas enlaza su propia hoja especifica (assets/css/pages/X.css)
+   por separado desde inc/partials/head.php via $pageStylesheet.
+
+   main.css (el @import que cargaba TODO en cada pagina) ya se retiro
+   a _backup_20260730/ - todas las paginas usan core.css + su propia
+   hoja especifica desde inc/partials/head.php.
+   ========================================================= */
+
+@import url("base/variables.css");
+@import url("base/reset.css");
+@import url("base/animations.css");
+@import url("components/cards.css");
+@import url("components/layout.css");
+@import url("components/modals.css");
+@import url("components/buttons.css");
+@import url("components/page-transitions.css");
+@import url("components/navbar-bar.css");
+@import url("components/navbar-search.css");
+@import url("components/navbar-theme-mobile.css");
+@import url("components/chatbot.css");
+@import url("components/footer.css");
+@import url("components/sticky-player.css");
+@import url("components/carousel.css");
+@import url("components/interactions.css");
+@import url("themes/light.css");
+@import url("responsive.css");

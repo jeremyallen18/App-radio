@@ -1,0 +1,675 @@
+// Modelos de asistencia y hora de comida. Todos los cálculos los resuelve el
+// backend (/attendance/*, /admin/attendance|schedules); aquí solo se transportan.
+
+/// Estado del ciclo de asistencia del día, determinado por el backend.
+enum AttendanceState { sinEntrada, enJornada, enComida, jornadaTerminada }
+
+AttendanceState attendanceStateFromString(String? value) {
+  switch (value) {
+    case 'en_jornada':
+      return AttendanceState.enJornada;
+    case 'en_comida':
+      return AttendanceState.enComida;
+    case 'jornada_terminada':
+      return AttendanceState.jornadaTerminada;
+    default:
+      return AttendanceState.sinEntrada;
+  }
+}
+
+/// Acción que dicta el botón principal ahora mismo; `null` si la jornada terminó.
+/// `saltarComida` es una acción secundaria opcional (nunca la devuelve el backend
+/// como `nextAction`): solo deja constancia, no cierra la jornada.
+enum AttendanceAction { entrada, inicioComida, finComida, salida, saltarComida }
+
+AttendanceAction? attendanceActionFromString(String? value) {
+  switch (value) {
+    case 'entrada':
+      return AttendanceAction.entrada;
+    case 'inicio_comida':
+      return AttendanceAction.inicioComida;
+    case 'fin_comida':
+      return AttendanceAction.finComida;
+    case 'salida':
+      return AttendanceAction.salida;
+    case 'sin_comida':
+      return AttendanceAction.saltarComida;
+    default:
+      return null;
+  }
+}
+
+extension AttendanceActionInfo on AttendanceAction {
+  /// Texto del botón principal.
+  String get buttonLabel {
+    switch (this) {
+      case AttendanceAction.entrada:
+        return 'REGISTRAR ENTRADA';
+      case AttendanceAction.inicioComida:
+        return 'INICIAR HORA DE COMIDA';
+      case AttendanceAction.finComida:
+        return 'TERMINAR HORA DE COMIDA';
+      case AttendanceAction.salida:
+        return 'REGISTRAR SALIDA';
+      case AttendanceAction.saltarComida:
+        return 'NO TOMARÉ HORA DE COMIDA';
+    }
+  }
+
+  /// Segmento de ruta del endpoint POST correspondiente.
+  String get endpointPath {
+    switch (this) {
+      case AttendanceAction.entrada:
+        return 'attendance/entry';
+      case AttendanceAction.inicioComida:
+        return 'attendance/meal/start';
+      case AttendanceAction.finComida:
+        return 'attendance/meal/end';
+      case AttendanceAction.salida:
+        return 'attendance/exit';
+      case AttendanceAction.saltarComida:
+        return 'attendance/meal/skip';
+    }
+  }
+}
+
+/// Permiso aprobado que cubre hoy (campo `absence` de GET /attendance/today):
+/// la asistencia no se requiere.
+class AttendanceAbsence {
+  final String type;      // vacaciones | incapacidad | permiso
+  final String typeLabel;
+  final DateTime? startDate;
+  final DateTime? endDate;
+
+  AttendanceAbsence({
+    required this.type,
+    required this.typeLabel,
+    required this.startDate,
+    required this.endDate,
+  });
+
+  factory AttendanceAbsence.fromJson(Map<String, dynamic> json) => AttendanceAbsence(
+        type: json['type']?.toString() ?? '',
+        typeLabel: json['typeLabel']?.toString() ?? 'Ausencia autorizada',
+        startDate: DateTime.tryParse(json['startDate']?.toString() ?? ''),
+        endDate: DateTime.tryParse(json['endDate']?.toString() ?? ''),
+      );
+
+  static AttendanceAbsence? maybe(dynamic json) {
+    if (json is Map) {
+      return AttendanceAbsence.fromJson(Map<String, dynamic>.from(json));
+    }
+    return null;
+  }
+
+  String get rangeLabel {
+    final s = startDate, e = endDate;
+    if (s == null || e == null) return '';
+    String f(DateTime d) =>
+        '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+    return s == e ? f(s) : '${f(s)} → ${f(e)}';
+  }
+}
+
+/// Geocerca configurada por el director. `entrada` y `fin_comida` se rechazan
+/// si el GPS cae fuera del radio.
+class AttendanceLocationConfig {
+  final double latitude;
+  final double longitude;
+  final int radiusM;
+  final String? label;
+
+  AttendanceLocationConfig({
+    required this.latitude,
+    required this.longitude,
+    required this.radiusM,
+    this.label,
+  });
+
+  factory AttendanceLocationConfig.fromJson(Map<String, dynamic> json) {
+    return AttendanceLocationConfig(
+      latitude: (json['latitude'] as num).toDouble(),
+      longitude: (json['longitude'] as num).toDouble(),
+      radiusM: (json['radiusM'] as num?)?.toInt() ?? 10,
+      label: json['label'] as String?,
+    );
+  }
+
+  static AttendanceLocationConfig? maybe(dynamic json) {
+    if (json is Map) {
+      return AttendanceLocationConfig.fromJson(Map<String, dynamic>.from(json));
+    }
+    return null;
+  }
+}
+
+/// Horario asignado a un empleado por el director.
+class EmployeeSchedule {
+  final String entryTime; // "HH:MM"
+  final String exitTime;
+  final String mealTime;
+  final int mealMaxMinutes;
+  final int lateToleranceMinutes;
+
+  EmployeeSchedule({
+    required this.entryTime,
+    required this.exitTime,
+    required this.mealTime,
+    required this.mealMaxMinutes,
+    required this.lateToleranceMinutes,
+  });
+
+  factory EmployeeSchedule.fromJson(Map<String, dynamic> json) {
+    return EmployeeSchedule(
+      entryTime: json['entryTime']?.toString() ?? '--:--',
+      exitTime: json['exitTime']?.toString() ?? '--:--',
+      mealTime: json['mealTime']?.toString() ?? '--:--',
+      mealMaxMinutes: (json['mealMaxMinutes'] as num?)?.toInt() ?? 60,
+      lateToleranceMinutes: (json['lateToleranceMinutes'] as num?)?.toInt() ?? 15,
+    );
+  }
+}
+
+/// Resumen de un día de asistencia: horas registradas + cálculos del backend.
+class AttendanceDay {
+  final DateTime? workDate;
+  final AttendanceState state;
+  final String stateLabel;
+  final AttendanceAction? nextAction;
+
+  final String? entrada; // "HH:MM" o null
+  final String? inicioComida;
+  final String? finComida;
+  final String? salida;
+
+  /// El trabajador declaró que hoy no tomará comida (solo constancia).
+  final bool mealSkipped;
+
+  final int? mealMinutes;
+  final String? mealMinutesLabel;
+  final int? mealElapsedMinutes; // comida en curso (para el temporizador)
+
+  final int? workedMinutes;
+  final String? workedLabel;
+  final bool workedInProgress;
+
+  final bool isLate;
+  final int lateMinutes;
+  final int? toleranceMinutes;
+
+  final int? mealLimitMinutes;
+  final bool mealExceeded;
+  final int mealExcessMinutes;
+
+  final EmployeeSchedule? schedule;
+
+  AttendanceDay({
+    required this.workDate,
+    required this.state,
+    required this.stateLabel,
+    required this.nextAction,
+    required this.entrada,
+    required this.inicioComida,
+    required this.finComida,
+    required this.salida,
+    required this.mealSkipped,
+    required this.mealMinutes,
+    required this.mealMinutesLabel,
+    required this.mealElapsedMinutes,
+    required this.workedMinutes,
+    required this.workedLabel,
+    required this.workedInProgress,
+    required this.isLate,
+    required this.lateMinutes,
+    required this.toleranceMinutes,
+    required this.mealLimitMinutes,
+    required this.mealExceeded,
+    required this.mealExcessMinutes,
+    required this.schedule,
+  });
+
+  factory AttendanceDay.fromJson(Map<String, dynamic> json) {
+    final schedJson = json['schedule'];
+    return AttendanceDay(
+      workDate: DateTime.tryParse(json['workDate']?.toString() ?? ''),
+      state: attendanceStateFromString(json['state']?.toString()),
+      stateLabel: json['stateLabel']?.toString() ?? 'Sin entrada',
+      nextAction: attendanceActionFromString(json['nextAction']?.toString()),
+      entrada: json['entrada']?.toString(),
+      inicioComida: json['inicioComida']?.toString(),
+      finComida: json['finComida']?.toString(),
+      salida: json['salida']?.toString(),
+      mealSkipped: json['mealSkipped'] == true,
+      mealMinutes: (json['mealMinutes'] as num?)?.toInt(),
+      mealMinutesLabel: json['mealMinutesLabel']?.toString(),
+      mealElapsedMinutes: (json['mealElapsedMinutes'] as num?)?.toInt(),
+      workedMinutes: (json['workedMinutes'] as num?)?.toInt(),
+      workedLabel: json['workedLabel']?.toString(),
+      workedInProgress: json['workedInProgress'] == true,
+      isLate: json['isLate'] == true,
+      lateMinutes: (json['lateMinutes'] as num?)?.toInt() ?? 0,
+      toleranceMinutes: (json['toleranceMinutes'] as num?)?.toInt(),
+      mealLimitMinutes: (json['mealLimitMinutes'] as num?)?.toInt(),
+      mealExceeded: json['mealExceeded'] == true,
+      mealExcessMinutes: (json['mealExcessMinutes'] as num?)?.toInt() ?? 0,
+      schedule: schedJson is Map<String, dynamic>
+          ? EmployeeSchedule.fromJson(schedJson)
+          : (schedJson is Map
+                ? EmployeeSchedule.fromJson(Map<String, dynamic>.from(schedJson))
+                : null),
+    );
+  }
+
+  /// Fecha en formato "29 AGO 2026" para el historial.
+  String get workDateLabel {
+    final d = workDate;
+    if (d == null) return '';
+    const meses = [
+      'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
+      'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
+    ];
+    return '${d.day.toString().padLeft(2, '0')} ${meses[d.month - 1]} ${d.year}';
+  }
+}
+
+/// Fila del panel administrativo: un empleado con su estado de hoy.
+class AdminAttendanceRow {
+  final String employeeId;
+  final String name;
+  final String email;
+  final String? position;
+  final bool hasSchedule;
+  final AttendanceDay day;
+
+  AdminAttendanceRow({
+    required this.employeeId,
+    required this.name,
+    required this.email,
+    required this.position,
+    required this.hasSchedule,
+    required this.day,
+  });
+
+  factory AdminAttendanceRow.fromJson(Map<String, dynamic> json) {
+    return AdminAttendanceRow(
+      employeeId: json['employeeId']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      position: json['position']?.toString(),
+      hasSchedule: json['hasSchedule'] == true,
+      day: AttendanceDay.fromJson(json),
+    );
+  }
+}
+
+/// Fila del administrador de horarios: un empleado con su horario (o sin él).
+class EmployeeScheduleRow {
+  final String employeeId;
+  final String name;
+  final String email;
+  final String? position;
+  final EmployeeSchedule? schedule;
+
+  EmployeeScheduleRow({
+    required this.employeeId,
+    required this.name,
+    required this.email,
+    required this.position,
+    required this.schedule,
+  });
+
+  factory EmployeeScheduleRow.fromJson(Map<String, dynamic> json) {
+    final schedJson = json['schedule'];
+    return EmployeeScheduleRow(
+      employeeId: json['employeeId']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      position: json['position']?.toString(),
+      schedule: schedJson is Map
+          ? EmployeeSchedule.fromJson(Map<String, dynamic>.from(schedJson))
+          : null,
+    );
+  }
+}
+
+/// Resumen de asistencia de un periodo (un mes). Devuelto por
+/// GET /attendance/summary y por cada fila de GET /admin/attendance/summary.
+class AttendancePeriodSummary {
+  final int businessDays;
+  final int workedDays;
+  final int totalMinutes;
+  final String totalLabel;
+  final double totalHours;
+  final int lateCount;
+  final int lateMinutes;
+  final int absentDays;
+  final int vacationDays;
+  final int incapacityDays;
+  final int permissionDays;
+
+  /// % de días trabajados sin llegar tarde; `null` si no trabajó ningún día.
+  final int? onTimeRate;
+
+  AttendancePeriodSummary({
+    required this.businessDays,
+    required this.workedDays,
+    required this.totalMinutes,
+    required this.totalLabel,
+    required this.totalHours,
+    required this.lateCount,
+    required this.lateMinutes,
+    required this.absentDays,
+    required this.vacationDays,
+    required this.incapacityDays,
+    required this.permissionDays,
+    required this.onTimeRate,
+  });
+
+  factory AttendancePeriodSummary.fromJson(Map<String, dynamic> json) {
+    int n(String k) => (json[k] as num?)?.toInt() ?? 0;
+    return AttendancePeriodSummary(
+      businessDays: n('businessDays'),
+      workedDays: n('workedDays'),
+      totalMinutes: n('totalMinutes'),
+      totalLabel: json['totalLabel']?.toString() ?? '0h',
+      totalHours: (json['totalHours'] as num?)?.toDouble() ?? 0,
+      lateCount: n('lateCount'),
+      lateMinutes: n('lateMinutes'),
+      absentDays: n('absentDays'),
+      vacationDays: n('vacationDays'),
+      incapacityDays: n('incapacityDays'),
+      permissionDays: n('permissionDays'),
+      onTimeRate: (json['onTimeRate'] as num?)?.toInt(),
+    );
+  }
+}
+
+/// Fila del resumen mensual por empleado (GET /admin/attendance/summary).
+class AdminAttendanceSummaryRow {
+  final String employeeId;
+  final String name;
+  final String? position;
+  final String? departmentId;
+  final AttendancePeriodSummary summary;
+
+  AdminAttendanceSummaryRow({
+    required this.employeeId,
+    required this.name,
+    required this.position,
+    required this.departmentId,
+    required this.summary,
+  });
+
+  factory AdminAttendanceSummaryRow.fromJson(Map<String, dynamic> json) =>
+      AdminAttendanceSummaryRow(
+        employeeId: json['employeeId']?.toString() ?? '',
+        name: json['name']?.toString() ?? '',
+        position: json['position']?.toString(),
+        departmentId: json['departmentId']?.toString(),
+        summary: AttendancePeriodSummary.fromJson(json),
+      );
+}
+
+/// Tipo de fichaje que se pide corregir (= `attendance.type` en el backend).
+enum CorrectionKind { entrada, inicioComida, finComida, salida }
+
+CorrectionKind correctionKindFromString(String? v) => switch (v) {
+      'inicio_comida' => CorrectionKind.inicioComida,
+      'fin_comida' => CorrectionKind.finComida,
+      'salida' => CorrectionKind.salida,
+      _ => CorrectionKind.entrada,
+    };
+
+extension CorrectionKindInfo on CorrectionKind {
+  String get apiValue => switch (this) {
+        CorrectionKind.entrada => 'entrada',
+        CorrectionKind.inicioComida => 'inicio_comida',
+        CorrectionKind.finComida => 'fin_comida',
+        CorrectionKind.salida => 'salida',
+      };
+
+  String get label => switch (this) {
+        CorrectionKind.entrada => 'Entrada',
+        CorrectionKind.inicioComida => 'Inicio de comida',
+        CorrectionKind.finComida => 'Fin de comida',
+        CorrectionKind.salida => 'Salida',
+      };
+}
+
+enum CorrectionStatus { pendiente, aprobado, rechazado }
+
+CorrectionStatus correctionStatusFromString(String? v) => switch (v) {
+      'aprobado' => CorrectionStatus.aprobado,
+      'rechazado' => CorrectionStatus.rechazado,
+      _ => CorrectionStatus.pendiente,
+    };
+
+extension CorrectionStatusInfo on CorrectionStatus {
+  String get apiValue => switch (this) {
+        CorrectionStatus.pendiente => 'pendiente',
+        CorrectionStatus.aprobado => 'aprobado',
+        CorrectionStatus.rechazado => 'rechazado',
+      };
+
+  String get label => switch (this) {
+        CorrectionStatus.pendiente => 'Pendiente',
+        CorrectionStatus.aprobado => 'Aprobada',
+        CorrectionStatus.rechazado => 'Rechazada',
+      };
+}
+
+/// Solicitud de corrección de asistencia.
+class AttendanceCorrection {
+  final int id;
+  final String employeeId;
+  final String? employeeName;
+  final DateTime? workDate;
+  final CorrectionKind kind;
+  final String kindLabel;
+
+  /// Hora pedida, formato `HH:MM`.
+  final String requestedTime;
+  final String reason;
+  final CorrectionStatus status;
+  final String? reviewNote;
+  final DateTime? createdAt;
+  final DateTime? resolvedAt;
+
+  AttendanceCorrection({
+    required this.id,
+    required this.employeeId,
+    required this.employeeName,
+    required this.workDate,
+    required this.kind,
+    required this.kindLabel,
+    required this.requestedTime,
+    required this.reason,
+    required this.status,
+    required this.reviewNote,
+    required this.createdAt,
+    required this.resolvedAt,
+  });
+
+  factory AttendanceCorrection.fromJson(Map<String, dynamic> json) {
+    DateTime? d(String k) => DateTime.tryParse(json[k]?.toString() ?? '');
+    return AttendanceCorrection(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      employeeId: json['employeeId']?.toString() ?? '',
+      employeeName: json['employeeName']?.toString(),
+      workDate: d('workDate'),
+      kind: correctionKindFromString(json['kind']?.toString()),
+      kindLabel: json['kindLabel']?.toString() ?? '',
+      requestedTime: json['requestedTime']?.toString() ?? '',
+      reason: json['reason']?.toString() ?? '',
+      status: correctionStatusFromString(json['status']?.toString()),
+      reviewNote: json['reviewNote']?.toString(),
+      createdAt: d('createdAt'),
+      resolvedAt: d('resolvedAt'),
+    );
+  }
+
+  String get workDateLabel {
+    final d = workDate;
+    if (d == null) return '';
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+}
+
+// vinculación de dispositivo / biometría
+
+enum AttendanceDeviceState { none, trusted, pending, unknown }
+
+AttendanceDeviceState attendanceDeviceStateFrom(String? raw) {
+  switch (raw) {
+    case 'none':
+      return AttendanceDeviceState.none;
+    case 'trusted':
+      return AttendanceDeviceState.trusted;
+    case 'pending':
+      return AttendanceDeviceState.pending;
+    default:
+      return AttendanceDeviceState.unknown;
+  }
+}
+
+/// Estado del dispositivo actual respecto de la cuenta (POST /attendance/device/status).
+class AttendanceDeviceStatus {
+  const AttendanceDeviceStatus({
+    required this.state,
+    this.model,
+    this.osVersion,
+    this.via,
+  });
+
+  final AttendanceDeviceState state;
+  final String? model;
+  final String? osVersion;
+  final String? via;
+
+  factory AttendanceDeviceStatus.fromJson(Map<String, dynamic> j) {
+    final dev = j['device'];
+    final d = dev is Map ? Map<String, dynamic>.from(dev) : const <String, dynamic>{};
+    return AttendanceDeviceStatus(
+      state: attendanceDeviceStateFrom(j['state'] as String?),
+      model: d['model'] as String?,
+      osVersion: d['osVersion'] as String?,
+      via: d['via'] as String?,
+    );
+  }
+}
+
+/// Fila de la pestaña "Solicitudes pendientes" del panel del director.
+class DeviceRequestRow {
+  const DeviceRequestRow({
+    required this.id,
+    required this.employeeId,
+    required this.employeeName,
+    required this.platform,
+    required this.attempts,
+    required this.firstSeen,
+    required this.lastSeen,
+    this.model,
+    this.osVersion,
+  });
+
+  final int id;
+  final String employeeId;
+  final String employeeName;
+  final String platform;
+  final int attempts;
+  final String firstSeen;
+  final String lastSeen;
+  final String? model;
+  final String? osVersion;
+
+  factory DeviceRequestRow.fromJson(Map<String, dynamic> j) {
+    final emp = j['employee'];
+    final e = emp is Map ? Map<String, dynamic>.from(emp) : const <String, dynamic>{};
+    return DeviceRequestRow(
+      id: (j['id'] as num).toInt(),
+      employeeId: (e['id'] ?? '').toString(),
+      employeeName: (e['name'] ?? '').toString(),
+      platform: (j['platform'] ?? '').toString(),
+      attempts: (j['attempts'] as num?)?.toInt() ?? 1,
+      firstSeen: (j['firstSeen'] ?? '').toString(),
+      lastSeen: (j['lastSeen'] ?? '').toString(),
+      model: j['model'] as String?,
+      osVersion: j['osVersion'] as String?,
+    );
+  }
+}
+
+/// Dispositivo confiado de un empleado (pestaña "Dispositivos confiados").
+class TrustedDeviceInfo {
+  const TrustedDeviceInfo({this.model, this.osVersion, this.platform, this.enrolledAt, this.via});
+
+  final String? model;
+  final String? osVersion;
+  final String? platform;
+  final String? enrolledAt;
+  final String? via;
+
+  factory TrustedDeviceInfo.fromJson(Map<String, dynamic> j) => TrustedDeviceInfo(
+        model: j['model'] as String?,
+        osVersion: j['osVersion'] as String?,
+        platform: j['platform'] as String?,
+        enrolledAt: j['enrolledAt'] as String?,
+        via: j['via'] as String?,
+      );
+}
+
+/// Fila de la pestaña "Dispositivos" del director (`GET /admin/attendance/trusted-devices`).
+class TrustedDeviceRow {
+  const TrustedDeviceRow({
+    required this.employeeId,
+    required this.employeeName,
+    this.model,
+    this.osVersion,
+    this.platform,
+    this.enrolledAt,
+    this.via,
+  });
+
+  final String employeeId;
+  final String employeeName;
+  final String? model;
+  final String? osVersion;
+  final String? platform;
+  final String? enrolledAt;
+  final String? via;
+
+  factory TrustedDeviceRow.fromJson(Map<String, dynamic> j) => TrustedDeviceRow(
+        employeeId: (j['employeeId'] ?? '').toString(),
+        employeeName: (j['employeeName'] ?? '').toString(),
+        model: j['model'] as String?,
+        osVersion: j['osVersion'] as String?,
+        platform: j['platform'] as String?,
+        enrolledAt: j['enrolledAt'] as String?,
+        via: j['via'] as String?,
+      );
+}
+
+/// Anomalía de dispositivo para revisión del director.
+class DeviceAnomaly {
+  const DeviceAnomaly({
+    required this.type,
+    required this.employeeId,
+    required this.employeeName,
+    required this.detail,
+    this.at,
+  });
+
+  final String type;
+  final String employeeId;
+  final String employeeName;
+  final String detail;
+  final String? at;
+
+  factory DeviceAnomaly.fromJson(Map<String, dynamic> j) => DeviceAnomaly(
+        type: (j['type'] ?? '').toString(),
+        employeeId: (j['employeeId'] ?? '').toString(),
+        employeeName: (j['employeeName'] ?? '').toString(),
+        detail: (j['detail'] ?? '').toString(),
+        at: j['at'] as String?,
+      );
+}

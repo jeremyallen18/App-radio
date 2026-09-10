@@ -1,0 +1,297 @@
+/* =============================================
+   pages/seccionazul-hero.css
+   Sección Azul, parte 1/3: portada del directorio (cabecera + pie de
+   edicion) e indice de giros.
+
+   La pagina se llama asi por la Seccion Amarilla, el directorio impreso
+   mexicano, y se compone como uno: cabecera de publicacion, pie de
+   imprenta con los datos del tiraje y pestañas de giro. Nada de tarjetas
+   ni de cifras decorativas en degradado -- la identidad la llevan la
+   tipografia condensada de las entradas y la linea de puntos (ver
+   pages/seccionazul-grid.css).
+   Sigue en pages/seccionazul-grid.css.
+   ============================================= */
+
+.dir {
+    /* Tokens propios de la pagina. Todo se queda en la familia azul: el
+       sitio solo usa azul/negro/blanco, asi que los giros se distinguen
+       por tono, no por matiz (--dir-accent llega inline desde el PHP). */
+    --dir-accent: var(--brand-cyan, #38bdf8);
+    --dir-rule: rgba(147, 180, 217, 0.18);
+    --dir-plate: rgba(147, 180, 217, 0.06);
+
+    /* Zona premium: los patrocinadores se guardan aqui, asi que el
+       directorio deja de vivir en una columna angosta y reclama casi
+       todo el ancho de la ventana -- mas cerca de una vitrina que de
+       una pagina de guia telefonica. */
+    max-width: min(1680px, 95vw);
+    margin: 0 auto;
+    padding: var(--page-shell-padding);
+    padding-inline: clamp(20px, 4vw, 72px);
+    position: relative;
+}
+
+/* Condensada para todo lo que en un directorio va compuesto en columna
+   (cabecera y nombres de las entradas); monoespaciada para los datos.
+   Ambas se cargan solo en esta pagina, ver $pageExtraHead. */
+.dir-masthead-title,
+.dir-section-name,
+.dir-entry-name,
+#sz-dossier-title {
+    font-family: "Archivo Narrow", "Inter", sans-serif;
+}
+
+.dir-masthead-over,
+.dir-colophon,
+.dir-index-tab b,
+.dir-section-count,
+.sz-dossier-label,
+.sz-dossier-tag {
+    font-family: "JetBrains Mono", "SFMono-Regular", monospace;
+}
+
+/* =========================================================
+   PORTADA
+   Entra sola, sin esperar scroll (esta arriba del pliegue): el
+   kicker se desvanece, el titulo se "escribe" con un barrido de
+   izquierda a derecha (clip-path) y el subtitulo llega palabra por
+   palabra. Todo con @keyframes puras -- nada de IntersectionObserver
+   aqui, asi que no hay riesgo de que un clip-path inicial en el propio
+   elemento observado deje al titulo bloqueado para siempre (ver el
+   mismo gesto en pages/eventos.js, donde SI se observa por scroll).
+   ========================================================= */
+.dir-masthead {
+    position: relative;
+    isolation: isolate;
+    padding-bottom: var(--space-7);
+    border-bottom: 2px solid var(--dir-accent);
+}
+
+/* Resplandor ambiental detras del titulo: dos manchas de luz azul/cian
+   que respiran muy lento, la unica licencia "premium" sobre el fondo
+   continuo del sitio. */
+.dir-masthead-glow {
+    position: absolute;
+    inset: -15% -10% -10%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 46% 60% at 18% 20%, color-mix(in srgb, var(--brand-cyan) 20%, transparent), transparent 70%),
+        radial-gradient(ellipse 38% 50% at 82% 70%, color-mix(in srgb, var(--brand-deep-blue, #0a1931) 55%, var(--brand-cyan) 12%), transparent 72%);
+    opacity: 0;
+    animation: dir-glow-in 1.4s var(--ease-out) 0.1s forwards, dir-glow-breathe 9s ease-in-out 1.5s infinite;
+}
+
+@keyframes dir-glow-in {
+    to { opacity: 1; }
+}
+
+@keyframes dir-glow-breathe {
+    0%, 100% { transform: scale(1); opacity: 0.85; }
+    50% { transform: scale(1.06); opacity: 1; }
+}
+
+.dir-masthead-over {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--dir-accent);
+    margin-bottom: var(--space-3);
+}
+
+.dir-masthead-over i,
+.dir-masthead-over svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+}
+
+.dir-masthead-title {
+    /* Cabecera de publicacion: grande, condensada y muy apretada, como el
+       lomo de un directorio impreso -- pero ahora ocupando mas y con el
+       trazo "escrito" al cargar, no plantado de golpe. */
+    font-size: clamp(3.4rem, 12vw, 9rem);
+    font-weight: 700;
+    line-height: 0.86;
+    letter-spacing: -0.03em;
+    text-transform: uppercase;
+    color: var(--text-main);
+    margin-bottom: var(--space-5);
+}
+
+.dir-reveal-sweep {
+    display: inline-block;
+    clip-path: inset(0 100% 0 0);
+    animation: dir-sweep 1.1s var(--ease-out) 0.35s forwards;
+}
+
+@keyframes dir-sweep {
+    to { clip-path: inset(0 0 0 0); }
+}
+
+.dir-masthead-sub {
+    max-width: 60ch;
+    color: var(--soft-text);
+    line-height: 1.65;
+    font-size: var(--text-lg);
+}
+
+/* Palabra por palabra: cada <span> nace desplazada y opaca y sube a su
+   sitio con un retraso proporcional a --w (ver pages/seccionazul.php). */
+.dir-word {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(0.4em);
+    animation: dir-word-in 0.6s var(--ease-out) forwards;
+    animation-delay: calc(0.75s + var(--w, 0) * 28ms);
+}
+
+@keyframes dir-word-in {
+    to { opacity: 1; transform: none; }
+}
+
+.dir-anim {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: dir-anim-in 0.7s var(--ease-out) forwards;
+    animation-delay: calc(0.15s + var(--anim-order, 0) * 70ms);
+}
+
+@keyframes dir-anim-in {
+    to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dir-masthead-glow,
+    .dir-reveal-sweep,
+    .dir-word,
+    .dir-anim {
+        animation: none;
+        opacity: 1;
+        transform: none;
+        clip-path: none;
+    }
+}
+
+/* Pie de imprenta: los datos del tiraje, compuestos como una ficha
+   tecnica y no como cifras decorativas -- pero con el peso de una
+   cifra de patrocinio: mas grandes y con un resplandor tenue. */
+.dir-colophon {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-7);
+    margin-top: var(--space-7);
+}
+
+.dir-colophon div {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 4px;
+}
+
+.dir-colophon dt {
+    font-size: 0.68rem;
+    font-weight: 400;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-text);
+}
+
+.dir-colophon dd {
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    font-weight: 700;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 24px color-mix(in srgb, var(--dir-accent) 45%, transparent);
+}
+
+/* =========================================================
+   INDICE DE GIROS — las pestañas de un directorio impreso: rectangulos
+   al ras, sin pildoras ni redondeos, marcados por la regla inferior.
+   ========================================================= */
+.dir-index {
+    position: sticky;
+    top: 92px;
+    z-index: var(--z-dropdown);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 10px 0 0;
+    margin-bottom: var(--space-8);
+    background: linear-gradient(to bottom, var(--bg-dark, #050a14) 82%, transparent);
+    border-bottom: 1px solid var(--dir-rule);
+}
+
+.dir-index-tab {
+    --dir-accent: var(--brand-cyan, #38bdf8);
+    position: relative;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+    padding: 9px 14px 11px;
+    border: 0;
+    background: transparent;
+    color: var(--muted-text);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color var(--duration-base) var(--ease-out),
+                background var(--duration-base) var(--ease-out);
+}
+
+.dir-index-tab::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: var(--dir-accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--duration-base) var(--ease-out);
+}
+
+.dir-index-tab:hover {
+    color: var(--text-main);
+    background: var(--dir-plate);
+}
+
+.dir-index-tab.is-active {
+    color: var(--text-main);
+    background: var(--dir-plate);
+}
+
+.dir-index-tab.is-active::after {
+    transform: scaleX(1);
+}
+
+.dir-index-tab b {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--dir-accent);
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+    .dir-index {
+        position: static;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .dir-index::-webkit-scrollbar {
+        display: none;
+    }
+
+    .dir-index-tab {
+        flex: 0 0 auto;
+    }
+}
