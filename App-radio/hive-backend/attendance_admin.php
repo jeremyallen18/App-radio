@@ -509,6 +509,27 @@ function attendance_device_anomalies(PDO $pdo, int $days): array {
             ];
         }
     }
+
+    // Verificación por credencial del dispositivo (PIN/patrón) en vez de huella
+    // o rostro, de forma repetida. La spec habla de "≥3 días laborales
+    // CONSECUTIVOS"; aquí se aproxima con ≥3 días DISTINTOS dentro de la
+    // ventana, que es suficiente para levantar la bandera de revisión y evita
+    // recorrer el calendario laboral en SQL.
+    $st = $pdo->prepare(
+        "SELECT a.employee_id, u.name, COUNT(DISTINCT a.work_date) c
+         FROM attendance a JOIN users u ON u.id = a.employee_id
+         WHERE a.biometric_result = 'skipped' AND a.event_time >= ?
+         GROUP BY a.employee_id, u.name HAVING c >= 3"
+    );
+    $st->execute([$since]);
+    foreach ($st->fetchAll() as $r) {
+        $out[] = [
+            'type' => 'biometric_skipped_streak', 'employeeId' => $r['employee_id'],
+            'employeeName' => $r['name'],
+            'detail' => (int) $r['c'] . ' días con verificación por PIN',
+            'at' => null,
+        ];
+    }
     return $out;
 }
 
@@ -558,6 +579,29 @@ function adminAttendanceDeviceAnomalies(PDO $pdo) {
     require_role($admin, ['director']);
     $days = (int) ($_GET['days'] ?? 30);
     json_response(['success' => true, 'anomalies' => attendance_device_anomalies($pdo, $days)]);
+}
+
+// GET /admin/attendance/trusted-devices — pestaña "Dispositivos" del director:
+// quién tiene qué dispositivo vinculado y desde cuándo (spec §4.1).
+function adminAttendanceTrustedDevices(PDO $pdo) {
+    $admin = attendance_admin_guard($pdo);
+    require_role($admin, ['director']);
+    $st = $pdo->query(
+        "SELECT d.employee_id, u.name AS employee_name, d.model, d.os_version,
+                d.platform, d.enrolled_at, d.enrolled_via
+         FROM attendance_trusted_devices d JOIN users u ON u.id = d.employee_id
+         ORDER BY u.name ASC"
+    );
+    $rows = array_map(static fn($r) => [
+        'employeeId'   => $r['employee_id'],
+        'employeeName' => $r['employee_name'],
+        'model'        => $r['model'],
+        'osVersion'    => $r['os_version'],
+        'platform'     => $r['platform'],
+        'enrolledAt'   => $r['enrolled_at'],
+        'via'          => $r['enrolled_via'],
+    ], $st->fetchAll());
+    json_response(['success' => true, 'devices' => $rows]);
 }
 
 function adminAttendanceEmployeeDevice(PDO $pdo, string $employeeId) {

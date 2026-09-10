@@ -89,10 +89,14 @@ class AttendanceApi {
   }
 
   /// Estado del dispositivo actual respecto de la cuenta.
+  ///
+  /// Es POST: los identificadores del dispositivo van en el cuerpo, nunca en la
+  /// query string (acabarían en los logs de acceso del servidor web).
   static Future<AttendanceDeviceStatus> deviceStatus(DeviceIdentity device) async {
-    final uri = Uri.parse('$kBaseUrl/attendance/device/status')
-        .replace(queryParameters: device.toBody());
-    final res = await _get(uri);
+    final res = await _post(
+      Uri.parse('$kBaseUrl/attendance/device/status'),
+      device.toBody(),
+    );
     return AttendanceDeviceStatus.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
@@ -286,6 +290,16 @@ class AttendanceApi {
     return ((decoded['anomalies'] as List?) ?? const [])
         .whereType<Map>()
         .map((e) => DeviceAnomaly.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  /// Dispositivo vinculado de cada empleado (pestaña "Dispositivos").
+  static Future<List<TrustedDeviceRow>> adminTrustedDevices() async {
+    final res = await _get(Uri.parse('$kBaseUrl/admin/attendance/trusted-devices'));
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    return ((decoded['devices'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((e) => TrustedDeviceRow.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
 

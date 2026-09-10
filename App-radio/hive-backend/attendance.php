@@ -502,6 +502,18 @@ function attendance_insert_event(PDO $pdo, string $employeeId, string $workDate,
     return ['type' => $type, 'timestamp' => $now];
 }
 
+// Evidencia de dispositivo + biometría que se guarda con cada evento. La arman
+// igual los cinco handlers de fichaje a partir de attendance_verify_device() y
+// attendance_check_biometric().
+function attendance_evidence(array $deviceInfo, array $bio): array {
+    return [
+        'device_key'       => $deviceInfo['key'],
+        'device_status'    => $deviceInfo['status'],
+        'biometric_result' => $bio['result'],
+        'biometric_type'   => $bio['type'],
+    ];
+}
+
 // ---- endpoints: empleado -------------------------------------------
 
 function attendanceEntry(PDO $pdo) {
@@ -538,19 +550,18 @@ function attendanceEntry(PDO $pdo) {
             'Todavía es pronto. Podrás registrar tu entrada desde las ' . date('H:i', $opensAt) . '.');
     }
 
-    attendance_verify_location($pdo, 'entrada', $lat, $lng, $overrideLoc);
-
+    // El dispositivo se verifica ANTES de la geocerca: así un intento desde un
+    // equipo no autorizado deja solicitud pendiente / anomalía aunque además
+    // esté fuera de la zona (spec §1.2).
     $deviceInfo = attendance_verify_device($pdo, $user['id'], $body);
     $bio = attendance_check_biometric($body, 'entrada');
 
+    attendance_verify_location($pdo, 'entrada', $lat, $lng, $overrideLoc);
+
     // Congela el horario del día ANTES de crear la entrada.
     attendance_snapshot_schedule($pdo, $user['id'], $workDate, $override['entry_time'] ?? null);
-    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'entrada', $body, [
-        'device_key'       => $deviceInfo['key'],
-        'device_status'    => $deviceInfo['status'],
-        'biometric_result' => $bio['result'],
-        'biometric_type'   => $bio['type'],
-    ]);
+    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'entrada', $body,
+        attendance_evidence($deviceInfo, $bio));
 
     $events = attendance_events_for($pdo, $user['id'], $workDate);
     json_response([
@@ -597,12 +608,8 @@ function attendanceMealStart(PDO $pdo) {
     $body = request_body();
     $deviceInfo = attendance_verify_device($pdo, $user['id'], $body);
     $bio = attendance_check_biometric($body, 'inicio_comida'); // no exige biometría
-    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'inicio_comida', $body, [
-        'device_key'       => $deviceInfo['key'],
-        'device_status'    => $deviceInfo['status'],
-        'biometric_result' => $bio['result'],
-        'biometric_type'   => $bio['type'],
-    ]);
+    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'inicio_comida', $body,
+        attendance_evidence($deviceInfo, $bio));
     $events = attendance_events_for($pdo, $user['id'], $workDate);
     json_response([
         'success'    => true,
@@ -647,12 +654,8 @@ function attendanceMealSkip(PDO $pdo) {
     $body = request_body();
     $deviceInfo = attendance_verify_device($pdo, $user['id'], $body);
     $bio = attendance_check_biometric($body, 'sin_comida');
-    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'sin_comida', $body, [
-        'device_key'       => $deviceInfo['key'],
-        'device_status'    => $deviceInfo['status'],
-        'biometric_result' => $bio['result'],
-        'biometric_type'   => $bio['type'],
-    ]);
+    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'sin_comida', $body,
+        attendance_evidence($deviceInfo, $bio));
     $events = attendance_events_for($pdo, $user['id'], $workDate);
     json_response([
         'success'    => true,
@@ -685,16 +688,15 @@ function attendanceMealEnd(PDO $pdo) {
     // Terminar la hora de comida exige estar de vuelta en el lugar de asistencia.
     $body = request_body();
     [$lat, $lng] = attendance_coords_from_body($body);
-    attendance_verify_location($pdo, 'fin_comida', $lat, $lng);
 
+    // Dispositivo antes que geocerca (spec §1.2): ver attendanceEntry.
     $deviceInfo = attendance_verify_device($pdo, $user['id'], $body);
     $bio = attendance_check_biometric($body, 'fin_comida'); // no exige biometría
-    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'fin_comida', $body, [
-        'device_key'       => $deviceInfo['key'],
-        'device_status'    => $deviceInfo['status'],
-        'biometric_result' => $bio['result'],
-        'biometric_type'   => $bio['type'],
-    ]);
+
+    attendance_verify_location($pdo, 'fin_comida', $lat, $lng);
+
+    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'fin_comida', $body,
+        attendance_evidence($deviceInfo, $bio));
     $events = attendance_events_for($pdo, $user['id'], $workDate);
     $day = attendance_day_summary($pdo, $user, $workDate, $events);
 
@@ -740,12 +742,8 @@ function attendanceExit(PDO $pdo) {
     $body = request_body();
     $deviceInfo = attendance_verify_device($pdo, $user['id'], $body);
     $bio = attendance_check_biometric($body, 'salida'); // exige biometría
-    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'salida', $body, [
-        'device_key'       => $deviceInfo['key'],
-        'device_status'    => $deviceInfo['status'],
-        'biometric_result' => $bio['result'],
-        'biometric_type'   => $bio['type'],
-    ]);
+    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'salida', $body,
+        attendance_evidence($deviceInfo, $bio));
     $events = attendance_events_for($pdo, $user['id'], $workDate);
     json_response([
         'success'    => true,
@@ -755,13 +753,17 @@ function attendanceExit(PDO $pdo) {
     ]);
 }
 
-// GET /attendance/device/status — la app lo llama al abrir "Mi asistencia"
+// POST /attendance/device/status — la app lo llama al abrir "Mi asistencia"
 // para pintar el botón de fichar según el estado del dispositivo actual.
+//
+// Es POST (no GET) a propósito: los identificadores del dispositivo viajan en
+// el cuerpo, nunca en la query string, para que no queden escritos en los logs
+// de acceso del servidor web.
 function attendanceDeviceStatus(PDO $pdo) {
     $user = require_auth($pdo);
     attendance_require_worker($user);
 
-    $dev = attendance_device_from_body($_GET);
+    $dev = attendance_device_from_body(request_body());
     $state = attendance_device_state_for($pdo, $user['id'], $dev);
     $trusted = attendance_trusted_device_for($pdo, $user['id']);
 

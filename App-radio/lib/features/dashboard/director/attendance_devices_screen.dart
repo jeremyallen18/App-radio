@@ -25,8 +25,9 @@ class _AttendanceDevicesScreenState extends State<AttendanceDevicesScreen> {
 
   Future<_DevicesData> _load() async {
     final requests = await AttendanceApi.adminDeviceRequests();
+    final trusted = await AttendanceApi.adminTrustedDevices();
     final anomalies = await AttendanceApi.adminDeviceAnomalies();
-    return _DevicesData(requests, anomalies);
+    return _DevicesData(requests, trusted, anomalies);
   }
 
   void _reload() => setState(() => _future = _load());
@@ -66,35 +67,64 @@ class _AttendanceDevicesScreenState extends State<AttendanceDevicesScreen> {
   /// nada, o `null` si el director canceló el rechazo.
   Future<String?> _askNote() async {
     final ctrl = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Motivo del rechazo (opcional)'),
-        content: TextField(controller: ctrl, maxLength: 255, maxLines: 3),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-            child: const Text('Rechazar'),
-          ),
-        ],
-      ),
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Motivo del rechazo (opcional)'),
+          content: TextField(controller: ctrl, maxLength: 255, maxLines: 3),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+              child: const Text('Rechazar'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      ctrl.dispose();
+    }
+  }
+
+  /// Desvincula el dispositivo de un empleado: su próximo fichaje vinculará el
+  /// que use en ese momento (trust-on-first-use).
+  Future<void> _resetDevice(TrustedDeviceRow row) async {
+    final ok = await showAppConfirmDialog(
+      context,
+      title: 'Restablecer dispositivo',
+      message: 'Se desvinculará el dispositivo de ${row.employeeName}. '
+          'Su próximo registro vinculará el dispositivo que use.',
+      confirmLabel: 'Restablecer',
     );
+    if (ok != true) return;
+    try {
+      await AttendanceApi.adminResetEmployeeDevice(row.employeeId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Dispositivo restablecido.')),
+      );
+      _reload();
+    } on AttendanceException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: AppScaffold(
         appBar: AppBar(
           leading: const BackButton(),
           title: const Text('Dispositivos de asistencia'),
           bottom: const TabBar(tabs: [
             Tab(text: 'Solicitudes'),
+            Tab(text: 'Dispositivos'),
             Tab(text: 'Anomalías'),
           ]),
         ),
@@ -113,6 +143,7 @@ class _AttendanceDevicesScreenState extends State<AttendanceDevicesScreen> {
             final data = snap.data!;
             return TabBarView(children: [
               _RequestsTab(rows: data.requests, onResolve: _resolve, onRefresh: _reload),
+              _TrustedTab(rows: data.trusted, onReset: _resetDevice, onRefresh: _reload),
               _AnomaliesTab(items: data.anomalies),
             ]);
           },
@@ -123,8 +154,9 @@ class _AttendanceDevicesScreenState extends State<AttendanceDevicesScreen> {
 }
 
 class _DevicesData {
-  const _DevicesData(this.requests, this.anomalies);
+  const _DevicesData(this.requests, this.trusted, this.anomalies);
   final List<DeviceRequestRow> requests;
+  final List<TrustedDeviceRow> trusted;
   final List<DeviceAnomaly> anomalies;
 }
 
@@ -194,6 +226,76 @@ class DeviceRequestCard extends StatelessWidget {
                 TextButton(onPressed: onReject, child: const Text('Rechazar')),
                 const SizedBox(width: 8),
                 TextButton(onPressed: onApprove, child: const Text('Aprobar')),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TrustedTab extends StatelessWidget {
+  const _TrustedTab({
+    required this.rows,
+    required this.onReset,
+    required this.onRefresh,
+  });
+
+  final List<TrustedDeviceRow> rows;
+  final void Function(TrustedDeviceRow) onReset;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    if (rows.isEmpty) {
+      return const Center(
+        child: Text('Ningún empleado tiene un dispositivo vinculado todavía.'),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: () async => onRefresh(),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: rows.length,
+        itemBuilder: (_, i) => TrustedDeviceCard(
+          row: rows[i],
+          onReset: () => onReset(rows[i]),
+        ),
+      ),
+    );
+  }
+}
+
+/// Tarjeta del dispositivo vinculado de un empleado, con la acción de
+/// restablecer (desvincular) que solo puede ejecutar el director.
+class TrustedDeviceCard extends StatelessWidget {
+  const TrustedDeviceCard({super.key, required this.row, required this.onReset});
+
+  final TrustedDeviceRow row;
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context) {
+    final via = row.via == 'director' ? 'aprobado por el director' : 'primer uso';
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(row.employeeName, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Text('${row.model ?? 'Dispositivo'} · ${row.osVersion ?? row.platform ?? ''}',
+                style: Theme.of(context).textTheme.bodySmall),
+            Text('Vinculado ${row.enrolledAt} · $via',
+                style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(onPressed: onReset, child: const Text('Restablecer')),
               ],
             ),
           ],

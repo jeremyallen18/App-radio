@@ -22,6 +22,24 @@ void main() {
     expect(find.widgetWithText(TextButton, 'Rechazar'), findsOneWidget);
   });
 
+  testWidgets('TrustedDeviceCard muestra empleado, modelo y Restablecer', (t) async {
+    final row = const TrustedDeviceRow(
+      employeeId: 'e1', employeeName: 'Luis Gómez', model: 'Galaxy S23',
+      osVersion: 'Android 14', platform: 'android',
+      enrolledAt: '2026-09-01 08:00:00', via: 'director',
+    );
+    var reset = 0;
+    await t.pumpWidget(MaterialApp(
+      home: Scaffold(body: TrustedDeviceCard(row: row, onReset: () => reset++)),
+    ));
+    expect(find.text('Luis Gómez'), findsOneWidget);
+    expect(find.textContaining('Galaxy S23'), findsOneWidget);
+    expect(find.textContaining('aprobado por el director'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'Restablecer'), findsOneWidget);
+    await t.tap(find.widgetWithText(TextButton, 'Restablecer'));
+    expect(reset, 1);
+  });
+
   testWidgets('AnomalyTile muestra tipo legible y detalle', (t) async {
     final a = const DeviceAnomaly(
       type: 'frequent_device_change', employeeId: 'e1', employeeName: 'Ana',

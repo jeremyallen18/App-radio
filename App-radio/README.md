@@ -330,6 +330,7 @@ Vive en [`hive-backend/`](hive-backend/), dentro de este repo. Localmente, Apach
   WHERE u.role IN ('employee','manager') AND es.employee_id IS NULL AND u.email_verified_at IS NOT NULL;
   ```
 - Registrar el cron `*/5 * * * *` de `cron_attendance_reminders.php` **antes** de anunciar la función; sin él los recordatorios solo llegan al abrir "Mi asistencia" (respaldo perezoso), no de forma proactiva.
+- Registrar también el cron **diario** `cron_cleanup_device_requests.php`: purga las solicitudes de vinculación de dispositivo ya resueltas con más de 180 días (la retención que promete el aviso de privacidad). Las `pending` nunca se borran.
 - Una **salida anticipada** (antes de `exit_time`) no la puede registrar el trabajador: el endpoint responde `409 EXIT_TOO_EARLY` y debe resolverse con una corrección del director.
 - En el **reporte mensual**, `lateMinutes` suma solo el atraso de los días marcados como tardanza (los que superan la tolerancia), no el delta bruto de todos los días.
 

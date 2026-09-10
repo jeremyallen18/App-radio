@@ -1,6 +1,6 @@
 <?php
 // Endpoints del trabajador para la vinculación de dispositivo:
-//   GET  /attendance/device/status
+//   POST /attendance/device/status
 //   POST /attendance/device/request
 //
 // Mecanismo: se levanta el backend real con el servidor embebido de PHP
@@ -89,7 +89,10 @@ function http_req(string $method, string $path, string $token, ?array $json = nu
 }
 
 // --- 1) status sin dispositivo confiado => state:none ------------------
-$r = http_req('GET', '/attendance/device/status?deviceKey=K1&deviceUuid=U1&platform=android', $token);
+// POST con los identificadores en el CUERPO: nunca en la query string (no deben
+// acabar en los logs de acceso del servidor web).
+$r = http_req('POST', '/attendance/device/status', $token,
+    ['deviceKey' => 'K1', 'deviceUuid' => 'U1', 'platform' => 'android']);
 check('status responde 200', $r['status'] === 200);
 check('status: success true', ($r['json']['success'] ?? null) === true);
 check('status: state === "none" sin dispositivo confiado', ($r['json']['state'] ?? null) === 'none');
@@ -127,8 +130,13 @@ check('attempts se incrementó a 2', (int) $a->fetchColumn() === 2);
 // Sin dispositivo confiado, el estado sigue siendo "none" aunque exista una
 // solicitud pendiente: "pending" solo aplica cuando hay OTRO dispositivo
 // confiado (ver attendance_device_state_for). Aquí no se ha hecho enroll.
-$r = http_req('GET', '/attendance/device/status?deviceKey=K1&deviceUuid=U1&platform=android', $token);
+$r = http_req('POST', '/attendance/device/status', $token,
+    ['deviceKey' => 'K1', 'deviceUuid' => 'U1', 'platform' => 'android']);
 check('status: sigue "none" (no hay dispositivo confiado)', ($r['json']['state'] ?? null) === 'none');
+
+// La ruta ya NO acepta GET: los identificadores no viajan por la URL.
+$rGet = http_req('GET', '/attendance/device/status?deviceKey=K1&platform=android', $token);
+check('status por GET ya no está enrutado', $rGet['status'] === 404);
 
 echo "\n$pass passed, $fail failed\n";
 exit($fail === 0 ? 0 : 1);

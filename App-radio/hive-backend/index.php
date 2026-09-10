@@ -187,7 +187,8 @@ $routes = [
     ['POST', '#^/attendance/meal/skip/?$#',                   'attendanceMealSkip'],
     ['POST', '#^/attendance/meal/end/?$#',                    'attendanceMealEnd'],
     ['POST', '#^/attendance/exit/?$#',                        'attendanceExit'],
-    ['GET',  '#^/attendance/device/status/?$#',               'attendanceDeviceStatus'],
+    // POST: los identificadores del dispositivo viajan en el cuerpo, no en la URL.
+    ['POST', '#^/attendance/device/status/?$#',               'attendanceDeviceStatus'],
     ['POST', '#^/attendance/device/request/?$#',              'attendanceDeviceRequest'],
     ['GET',  '#^/attendance/today/?$#',                       'attendanceToday'],
     ['GET',  '#^/attendance/status/?$#',                      'attendanceToday'],
@@ -207,6 +208,7 @@ $routes = [
     ['GET',  '#^/admin/attendance/device-requests/?$#',                 'adminAttendanceDeviceRequests'],
     ['POST', '#^/admin/attendance/device-requests/([^/]+)/resolve/?$#', 'adminAttendanceDeviceRequestResolve'],
     ['GET',  '#^/admin/attendance/device-anomalies/?$#',                'adminAttendanceDeviceAnomalies'],
+    ['GET',  '#^/admin/attendance/trusted-devices/?$#',                 'adminAttendanceTrustedDevices'],
     ['GET',  '#^/admin/attendance/([^/]+)/device/?$#',                  'adminAttendanceEmployeeDevice'],
     ['POST', '#^/admin/attendance/([^/]+)/device/reset/?$#',            'adminAttendanceEmployeeDeviceReset'],
     ['GET',  '#^/admin/attendance/?$#',                       'adminAttendanceList'],
