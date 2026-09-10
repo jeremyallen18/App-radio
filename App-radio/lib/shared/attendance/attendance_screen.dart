@@ -333,6 +333,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   AttendancePrimaryAction(
                     day: day,
                     submitting: _submitting,
+                    // Con una solicitud pendiente el backend rechazaría el
+                    // fichaje (409 UNKNOWN_DEVICE): mejor no dejar dispararlo.
+                    blocked: _deviceState == AttendanceDeviceState.pending,
                     onPerform: _perform,
                   ),
                   const SizedBox(height: AppSpacing.md),

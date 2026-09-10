@@ -544,7 +544,7 @@ AttendanceDeviceState attendanceDeviceStateFrom(String? raw) {
 }
 
 /// Estado del dispositivo actual respecto de la cuenta (para pintar el botón
-/// de fichar). Ver GET /attendance/device/status.
+/// de fichar). Ver POST /attendance/device/status.
 class AttendanceDeviceStatus {
   const AttendanceDeviceStatus({
     required this.state,
@@ -622,6 +622,38 @@ class TrustedDeviceInfo {
   final String? via;
 
   factory TrustedDeviceInfo.fromJson(Map<String, dynamic> j) => TrustedDeviceInfo(
+        model: j['model'] as String?,
+        osVersion: j['osVersion'] as String?,
+        platform: j['platform'] as String?,
+        enrolledAt: j['enrolledAt'] as String?,
+        via: j['via'] as String?,
+      );
+}
+
+/// Fila de la pestaña "Dispositivos" del director: qué dispositivo tiene
+/// vinculado cada empleado (`GET /admin/attendance/trusted-devices`).
+class TrustedDeviceRow {
+  const TrustedDeviceRow({
+    required this.employeeId,
+    required this.employeeName,
+    this.model,
+    this.osVersion,
+    this.platform,
+    this.enrolledAt,
+    this.via,
+  });
+
+  final String employeeId;
+  final String employeeName;
+  final String? model;
+  final String? osVersion;
+  final String? platform;
+  final String? enrolledAt;
+  final String? via;
+
+  factory TrustedDeviceRow.fromJson(Map<String, dynamic> j) => TrustedDeviceRow(
+        employeeId: (j['employeeId'] ?? '').toString(),
+        employeeName: (j['employeeName'] ?? '').toString(),
         model: j['model'] as String?,
         osVersion: j['osVersion'] as String?,
         platform: j['platform'] as String?,

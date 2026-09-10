@@ -228,11 +228,17 @@ class AttendancePrimaryAction extends StatelessWidget {
     required this.day,
     required this.submitting,
     required this.onPerform,
+    this.blocked = false,
   });
 
   final AttendanceDay day;
   final bool submitting;
   final void Function(AttendanceAction) onPerform;
+
+  /// El dispositivo está a la espera de que el director lo autorice: el botón
+  /// se deshabilita (sin spinner) porque el backend rechazaría el fichaje con
+  /// 409 UNKNOWN_DEVICE. El aviso lo da AttendanceDeviceBanner, arriba.
+  final bool blocked;
 
   @override
   Widget build(BuildContext context) {
@@ -272,12 +278,14 @@ class AttendancePrimaryAction extends StatelessWidget {
     final hint = attendanceAvailabilityHint(action, day.schedule,
         nowMinutes: now.hour * 60 + now.minute);
 
+    final disabled = submitting || blocked;
+
     return Column(
       children: [
         AppButton(
           label: action.buttonLabel,
           loading: submitting,
-          onPressed: submitting ? null : () => onPerform(action),
+          onPressed: disabled ? null : () => onPerform(action),
         ),
         if (hint != null) ...[
           const SizedBox(height: AppSpacing.xs),
@@ -290,7 +298,7 @@ class AttendancePrimaryAction extends StatelessWidget {
         if (showSkipMeal) ...[
           const SizedBox(height: AppSpacing.sm),
           TextButton(
-            onPressed: submitting
+            onPressed: disabled
                 ? null
                 : () => onPerform(AttendanceAction.saltarComida),
             child: const Text('Hoy no tomaré hora de comida'),

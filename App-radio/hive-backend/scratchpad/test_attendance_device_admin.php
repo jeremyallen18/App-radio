@@ -135,5 +135,56 @@ foreach ($an as $a) {
 check('anomalia frequent_device_change detectada', $hasFreq);
 check('anomalia first_use_after_history detectada', $hasFirstUse);
 
+// anomalia biometric_skipped_streak: 3 dias DISTINTOS con biometric_result='skipped'
+$pdo->prepare('DELETE FROM attendance WHERE employee_id = ?')->execute([$emp]);
+$ins = $pdo->prepare(
+    "INSERT INTO attendance (employee_id, type, work_date, event_time, biometric_result)
+     VALUES (?, 'entrada', ?, ?, 'skipped')"
+);
+foreach ([2, 3, 4] as $i) {
+    $d = date('Y-m-d', time() - $i * 86400);
+    $ins->execute([$emp, $d, $d . ' 09:00:00']);
+}
+$anB = attendance_device_anomalies($pdo, 30);
+$hasSkipped = false; $skippedDetail = '';
+foreach ($anB as $a) {
+    if ($a['type'] === 'biometric_skipped_streak' && $a['employeeId'] === $emp) {
+        $hasSkipped = true; $skippedDetail = $a['detail'];
+    }
+}
+check('anomalia biometric_skipped_streak detectada', $hasSkipped);
+check('biometric_skipped_streak informa 3 dias', str_contains($skippedDetail, '3 días'));
+
+// con solo 2 dias distintos NO debe dispararse
+$pdo->prepare("DELETE FROM attendance WHERE employee_id = ? AND work_date = ?")
+    ->execute([$emp, date('Y-m-d', time() - 4 * 86400)]);
+$an2 = attendance_device_anomalies($pdo, 30);
+$still = false;
+foreach ($an2 as $a) {
+    if ($a['type'] === 'biometric_skipped_streak' && $a['employeeId'] === $emp) $still = true;
+}
+check('biometric_skipped_streak NO se dispara con 2 dias', $still === false);
+
+// trusted-devices: la consulta del handler devuelve la fila con el nombre del empleado
+$pdo->prepare(
+    "INSERT INTO attendance_trusted_devices
+       (employee_id, device_key, device_uuid, platform, model, os_version, app_version,
+        enrolled_at, enrolled_via, approved_by)
+     VALUES (?, ?, NULL, 'android', 'Pixel 8', 'Android 15', '1.0.0', NOW(), 'director', NULL)
+     ON DUPLICATE KEY UPDATE model = VALUES(model), enrolled_via = VALUES(enrolled_via)"
+)->execute([$emp, hash('sha256', 'TRUSTKEY')]);
+$stTd = $pdo->query(
+    "SELECT d.employee_id, u.name AS employee_name, d.model, d.os_version,
+            d.platform, d.enrolled_at, d.enrolled_via
+     FROM attendance_trusted_devices d JOIN users u ON u.id = d.employee_id
+     ORDER BY u.name ASC"
+)->fetchAll();
+$td = null;
+foreach ($stTd as $r) { if ($r['employee_id'] === $emp) $td = $r; }
+check('trusted-devices: incluye la fila del empleado', $td !== null);
+check('trusted-devices: trae el nombre del empleado', ($td['employee_name'] ?? null) === 'Emp');
+check('trusted-devices: trae modelo y via', ($td['model'] ?? null) === 'Pixel 8'
+    && ($td['enrolled_via'] ?? null) === 'director');
+
 echo "\n$pass passed, $fail failed\n";
 exit($fail === 0 ? 0 : 1);

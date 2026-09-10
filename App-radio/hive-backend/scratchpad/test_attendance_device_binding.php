@@ -61,6 +61,17 @@ check('match por uuid si key ausente',
 check('no-match si key distinta y sin uuid',
     attendance_device_matches($t, attendance_device_from_body(['deviceKey' => 'KEY-Z', 'platform' => 'android'])) === false);
 
+// --- fallback por uuid como SEGUNDA oportunidad, aunque la petición traiga key:
+// simula una fila enrolada en el primer uso cuando el plugin no dio key (se
+// guardó el uuid como device_key) y hoy la app sí manda una key real.
+$trustedUuidOnly = [
+    'device_key'  => hash('sha256', 'U-ONLY'),
+    'device_uuid' => hash('sha256', 'U-ONLY'),
+];
+check('match por uuid aunque la petición traiga key distinta',
+    attendance_device_matches($trustedUuidOnly, attendance_device_from_body(
+        ['deviceKey' => 'REALKEY', 'deviceUuid' => 'U-ONLY', 'platform' => 'android'])) === true);
+
 // --- dispositivo desconocido crea solicitud + estado ---
 attendance_device_upsert_request($pdo, $empId,
     attendance_device_from_body(['deviceKey' => 'KEY-B', 'deviceUuid' => 'UUID-B', 'platform' => 'android', 'model' => 'Pixel 7']));
@@ -89,6 +100,36 @@ $b = attendance_check_biometric(['biometricResult' => 'ok', 'biometricType' => '
 check('biometría ok en entrada pasa', $b['result'] === 'ok' && $b['type'] === 'face');
 $b2 = attendance_check_biometric([], 'inicio_comida');
 check('biometría no exigida en inicio_comida', $b2['result'] === null);
+
+// --- sin identidad de dispositivo => 422 DEVICE_INFO_REQUIRED ---------
+// La app antigua (sin deviceKey/deviceUuid) se RECHAZA: no se deja pasar ni se
+// enrola nada. attendance_verify_device corta con json_response(), que hace
+// exit, así que se ejercita en un proceso hijo (patrón _child_* / NO_HALT).
+$empId2 = 'tmpdev' . substr(bin2hex(random_bytes(9)), 0, 18);
+$pdo->prepare(
+  "INSERT INTO users (id, name, email, password, role, email_verified_at)
+   VALUES (?, 'Tmp Dev 2', ?, 'x', 'employee', NOW())"
+)->execute([$empId2, $empId2 . '@test.local']);
+register_shutdown_function('cleanup', $pdo, $empId2);
+
+$childNoDev = __DIR__ . '/_child_no_device_info.php';
+file_put_contents($childNoDev, <<<'PHP'
+<?php
+require __DIR__ . '/../config.php';
+require __DIR__ . '/../helpers.php';
+require __DIR__ . '/../attendance_device.php';
+attendance_verify_device($pdo, $argv[1], []);
+echo "NO_HALT";
+PHP);
+$outNoDev = (string) shell_exec(
+    escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($childNoDev) . ' ' . escapeshellarg($empId2) . ' 2>&1');
+@unlink($childNoDev);
+check('sin dispositivo: responde DEVICE_INFO_REQUIRED', str_contains($outNoDev, 'DEVICE_INFO_REQUIRED'));
+check('sin dispositivo: success:false', str_contains($outNoDev, '"success":false'));
+check('sin dispositivo: cortó antes de terminar', !str_contains($outNoDev, 'NO_HALT'));
+$noRow = $pdo->prepare('SELECT COUNT(*) FROM attendance_trusted_devices WHERE employee_id = ?');
+$noRow->execute([$empId2]);
+check('sin dispositivo: no enroló ninguna fila confiada', (int) $noRow->fetchColumn() === 0);
 
 echo "\n$pass passed, $fail failed\n";
 exit($fail === 0 ? 0 : 1);

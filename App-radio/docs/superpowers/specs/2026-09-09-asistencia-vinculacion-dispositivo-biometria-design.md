@@ -113,7 +113,7 @@ para guardarse como evidencia inmutable.
 
 ### 1.3 Estado del dispositivo para la UI
 
-`GET /attendance/device/status` responde `state ∈ {trusted, none, pending, unknown}`
+`POST /attendance/device/status` responde `state ∈ {trusted, none, pending, unknown}`
 para que la app pinte el botón antes de que el trabajador toque fichar:
 - `trusted` → botón normal.
 - `none` → botón normal + nota "Este dispositivo se vinculará a tu cuenta al fichar".
@@ -186,7 +186,8 @@ ALTER TABLE attendance
   `osVersion?`, `appVersion?`, `biometricResult?` (`ok|skipped|failed`),
   `biometricType?`, `locationAccuracy?`. Nuevos códigos de error:
   `UNKNOWN_DEVICE` (409), `BIOMETRIC_REQUIRED` (409).
-- `GET /attendance/device/status` → `{ state: trusted|none|pending|unknown, device?: {model, osVersion, enrolledAt, via} }`.
+- `POST /attendance/device/status` (los identificadores van en el cuerpo, no en la
+  query string) → `{ state: trusted|none|pending|unknown, device?: {model, osVersion, enrolledAt, via} }`.
 - `POST /attendance/device/request` — alta explícita del dispositivo actual
   bloqueado; crea/actualiza `attendance_device_requests` a `pending`. Idempotente.
 
@@ -278,8 +279,9 @@ distinto, o intentos `UNKNOWN_DEVICE`.
   se solicita la verificación del sistema operativo (biometría o código). La
   empresa no accede a datos biométricos."*
 - **Retención**: filas de `attendance_device_requests` resueltas
-  (`approved`/`rejected`) se purgan a los 180 días vía cron (patrón
-  `hive-backend/cron_cleanup_unverified.php`). La fila de
+  (`approved`/`rejected`) se purgan a los 180 días vía cron
+  (`hive-backend/cron_cleanup_device_requests.php`, patrón de
+  `hive-backend/cron_cleanup_unverified.php`; programarlo una vez al día). La fila de
   `attendance_trusted_devices` vive mientras el empleado esté activo
   (`ON DELETE CASCADE`). Las columnas de evidencia en `attendance` siguen la
   retención de la asistencia.

@@ -40,13 +40,15 @@ function attendance_trusted_device_for(PDO $pdo, string $employeeId): ?array {
     return $st->fetch() ?: null;
 }
 
-// ¿El dispositivo de la petición es el confiado? Coincide por device_key; si la
-// petición no trae key (el plugin falló), se acepta la coincidencia por uuid.
+// ¿El dispositivo de la petición es el confiado? Coincide por device_key y, como
+// SEGUNDA oportunidad (no condicionada a que falte la key), también por uuid: la
+// fila confiada pudo enrolarse con el uuid como device_key porque el plugin no
+// devolvió key en el primer uso, y hoy sí la devuelve.
 function attendance_device_matches(array $trusted, array $dev): bool {
     if ($dev['key'] !== null && hash_equals((string) $trusted['device_key'], $dev['key'])) {
         return true;
     }
-    if ($dev['key'] === null && $dev['uuid'] !== null && $trusted['device_uuid'] !== null
+    if ($dev['uuid'] !== null && $trusted['device_uuid'] !== null
         && hash_equals((string) $trusted['device_uuid'], $dev['uuid'])) {
         return true;
     }
@@ -56,6 +58,11 @@ function attendance_device_matches(array $trusted, array $dev): bool {
 // Inserta o reemplaza el dispositivo confiado del empleado (es 1 solo).
 function attendance_device_enroll(PDO $pdo, string $employeeId, array $dev, string $via, ?string $approvedBy = null): void {
     $key = $dev['key'] ?? $dev['uuid'];
+    // Defensivo: sin identificador no hay nada que enrolar (attendance_verify_device
+    // ya corta antes con DEVICE_INFO_REQUIRED, así que esto no debería alcanzarse).
+    if ($key === null) {
+        return;
+    }
     $st = $pdo->prepare(
         'REPLACE INTO attendance_trusted_devices
            (employee_id, device_key, device_uuid, platform, model, os_version, app_version,
@@ -96,12 +103,21 @@ function attendance_device_upsert_request(PDO $pdo, string $employeeId, array $d
 }
 
 // Paso del pipeline de fichaje. Devuelve
-//   ['status' => 'trusted'|'first_use'|'director_approved', 'key' => <hash|null>]
-// o corta la petición con code=UNKNOWN_DEVICE (409) si hay un dispositivo
-// confiado distinto.
+//   ['status' => 'trusted'|'first_use'|'director_approved', 'key' => <hash>]
+// o corta la petición con:
+//   - DEVICE_INFO_REQUIRED (422) si la app no manda ningún identificador de
+//     dispositivo (build antigua): se rechaza el fichaje, no se deja pasar.
+//   - UNKNOWN_DEVICE (409) si hay un dispositivo confiado distinto.
 function attendance_verify_device(PDO $pdo, string $employeeId, array $body): array {
     $dev = attendance_device_from_body($body);
     $key = $dev['key'] ?? $dev['uuid'];
+    if ($key === null) {
+        json_response([
+            'success' => false,
+            'code'    => 'DEVICE_INFO_REQUIRED',
+            'message' => 'Actualiza la aplicación para poder registrar tu asistencia.',
+        ], 422);
+    }
     $trusted = attendance_trusted_device_for($pdo, $employeeId);
 
     if (!$trusted) {
