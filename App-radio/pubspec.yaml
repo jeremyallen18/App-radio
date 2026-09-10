@@ -77,6 +77,20 @@ dependencies:
   just_audio_background: ^0.0.1-beta.13
   image_picker: ^1.2.3
   geolocator: ^14.0.3
+  # Identidad estable del dispositivo para la vinculación del fichaje de
+  # asistencia (lib/core/device/device_identity.dart). device_info_plus da
+  # modelo/SO; android_id da el Settings.Secure.ANDROID_ID (device_info_plus
+  # ya no lo expone); package_info_plus da la versión de la app para la
+  # evidencia que ve el director.
+  # Versiones finales resueltas para el SDK/deps de este proyecto:
+  #   device_info_plus 13.2.0, android_id 0.4.1, package_info_plus 10.2.1
+  # package_info_plus se fija en ^10.0.0 (no ^8.1.1): geolocator 14.0.3 ->
+  # geolocator_linux 0.2.6 exige package_info_plus ^10.0.0.
+  # device_info_plus se fija en ^13.0.0 (no ^11.2.0): share_plus 13.3.0 exige
+  # win32 ^6.0.1 y device_info_plus <13 arrastra win32 ^5.x, que choca.
+  device_info_plus: ^13.0.0
+  android_id: ^0.4.0
+  package_info_plus: ^10.0.0
   # Elegir cualquier archivo de oficina (PDF, Word, Excel, ...) para el
   # apartado "Documentos" de Recursos del equipo
   # (lib/shared/resources/team_documents_screen.dart). La descarga reutiliza
