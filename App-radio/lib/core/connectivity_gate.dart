@@ -4,11 +4,9 @@ import 'package:http/http.dart' as http;
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/core/api_config.dart';
 
-/// Envuelve el árbol de la app y cubre todo con [OfflineView] cuando el
-/// backend no responde. Se apoya en el mismo `http` que ya usa el resto de
-/// la app (en vez de un plugin de conectividad nuevo) para no depender de
-/// permisos ni de si el SO reporta "conectado" a una red que en realidad no
-/// tiene salida a `kBaseUrl`.
+/// Cubre la app con [OfflineView] cuando el backend no responde. Sondea con el
+/// mismo `http` de la app (no un plugin de conectividad) para probar salida real
+/// a `kBaseUrl`.
 class ConnectivityGate extends StatefulWidget {
   const ConnectivityGate({super.key, required this.child});
 
@@ -29,8 +27,7 @@ class _ConnectivityGateState extends State<ConnectivityGate>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _check();
-    // Solo reintenta mientras está offline: si el backend responde, las
-    // propias pantallas ya reportan cualquier error puntual de red.
+    // Solo reintenta mientras está offline.
     _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (_offline) _check();
     });

@@ -1,13 +1,6 @@
-// Modelos de los anuncios internos de la empresa (Radio Doliv). Alimentados
-// por /internal-announcements del backend PHP
-// (hive-backend/internal_announcements.php).
-//
-// El DIRECTOR publica un anuncio y TODA la audiencia lo recibe de inmediato
-// (no hay ventana de vigencia). Puede ser 'general' o por áreas. El resto lo
-// ve en su tablero de inicio y, si el anuncio lo pide (una reunión), confirma
-// asistencia; al confirmar "sí" recibe recordatorios recurrentes hasta la
-// reunión. El director consulta el historial de visualizaciones y
-// confirmaciones.
+// Modelos de anuncios internos (/internal-announcements). El director publica
+// ('general' o por áreas) y la audiencia lo ve en su tablero; si es una reunión
+// confirma asistencia y recibe recordatorios. El director ve el historial.
 
 /// Un departamento al que va dirigido un anuncio por áreas.
 class AnnouncementArea {
@@ -67,8 +60,7 @@ class InternalAnnouncement {
 
   String get areaNames => areas.map((a) => a.name).join(', ');
 
-  /// Reunión con fecha ya pasada (más de un día). El backend además la excluye
-  /// del tablero del resto de la plantilla.
+  /// Reunión con fecha ya pasada (más de un día).
   bool get isFinished =>
       eventAt != null &&
       DateTime.now().isAfter(eventAt!.add(const Duration(days: 1)));

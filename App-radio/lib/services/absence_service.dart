@@ -105,8 +105,7 @@ class AdminAbsenceJustification {
       );
 }
 
-/// Cliente de /absences/* (hive-backend/absences.php). Mismo patrón que
-/// `LeaveApi`; reutiliza [LeaveException] para los errores de negocio.
+/// Cliente de /absences/*; reutiliza [LeaveException] para errores de negocio.
 class AbsenceApi {
   static Future<String> _token() async =>
       (await secureStorage.readSecureData(key) as String?) ?? '';
@@ -144,8 +143,7 @@ class AbsenceApi {
     );
   }
 
-  /// Envía una justificación. La evidencia es OBLIGATORIA (el backend la
-  /// rechaza si falta).
+  /// Envía una justificación. La evidencia es obligatoria.
   static Future<AbsenceJustification> justify({
     required DateTime start,
     required DateTime end,
@@ -175,7 +173,7 @@ class AbsenceApi {
     );
   }
 
-  // ---- director ----------------------------------------------
+  // director
 
   static Future<List<AdminAbsenceJustification>> adminList({String? status}) async {
     final uri = Uri.parse('$kBaseUrl/admin/absences').replace(

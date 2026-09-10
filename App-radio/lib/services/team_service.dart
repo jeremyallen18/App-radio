@@ -8,8 +8,7 @@ import 'package:doliv_social/models/models.dart';
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 
-/// Error de la gestión de equipos/tareas, con mensaje en español listo para
-/// mostrar. El backend responde `{success:false, message}` o `{error}`.
+/// Error de gestión de equipos/tareas, con mensaje en español listo para mostrar.
 class TeamException implements Exception {
   TeamException(this.message);
   final String message;
@@ -59,8 +58,8 @@ void _ensureOk(http.Response res) {
 
 Map<String, dynamic> _body(http.Response res) => jsonDecode(res.body) as Map<String, dynamic>;
 
-/// Equipos = departamentos: crear, asignar manager y miembros (solo director;
-/// el manager también puede agregar/quitar empleados de SU departamento).
+/// Equipos = departamentos: crear, asignar manager y miembros (director; el
+/// manager gestiona empleados de su departamento).
 class TeamApi {
   static Future<List<DepartmentInfo>> listDepartments() async {
     final res = await _get(Uri.parse('$kBaseUrl/department/list'));
@@ -148,7 +147,7 @@ class DeptTaskApi {
       if (departmentId != null && departmentId.isNotEmpty) 'departmentId': departmentId,
       if (status != null) 'status': status.apiValue,
       if (mine) 'mine': '1',
-      // 'none' = tareas de área (sin sub-equipo); un id = las de ese sub-equipo.
+      // 'none' = tareas de área; un id = las de ese sub-equipo.
       if (subTeamId != null && subTeamId.isNotEmpty) 'subTeamId': subTeamId,
     });
     final res = await _get(uri);
@@ -224,8 +223,7 @@ class DeptTaskApi {
     return DeptTask.fromJson(_body(res)['task'] as Map<String, dynamic>);
   }
 
-  /// Marca la tarea como completada. Si [evidence] no es null, la sube como
-  /// `multipart/form-data` (para tareas con `requiresEvidence`).
+  /// Marca la tarea como completada, subiendo [evidence] si se requiere.
   static Future<DeptTask> complete(String id, {File? evidence}) async {
     if (evidence == null) {
       return setStatus(id, DeptTaskStatus.completada);
@@ -277,8 +275,7 @@ class DeptTaskApi {
     return TaskComment.fromJson(_body(res)['comment'] as Map<String, dynamic>);
   }
 
-  /// URL del archivo de evidencia (endpoint autenticado). Úsala con
-  /// [evidenceHeaders] en un `Image.network` o en el visor.
+  /// URL autenticada del archivo de evidencia (usar con [evidenceHeaders]).
   static String evidenceUrl(String id) => '$kBaseUrl/dept-tasks/$id/evidence';
 
   static Future<Map<String, String>> evidenceHeaders() async =>
@@ -288,9 +285,8 @@ class DeptTaskApi {
     await _post(Uri.parse('$kBaseUrl/dept-tasks/$id/delete'), {});
   }
 
-  /// Conteos para las gráficas de progreso: `mine` (asignadas a mí) y
-  /// `dept` (todas las de mi departamento; `hasDept` es false para un
-  /// director sin departamento).
+  /// Conteos para las gráficas de progreso: `mine` y `department` (`hasDept` es
+  /// false para un director sin departamento).
   static Future<
       ({
         int minePending,
@@ -317,10 +313,8 @@ class DeptTaskApi {
     );
   }
 
-  /// Conteos de tareas por estado para CADA departamento de la empresa,
-  /// más los totales. Solo el director tiene acceso: el backend responde
-  /// 403 a cualquier otro rol. Alimenta las gráficas de desempeño por
-  /// departamento del panel del director.
+  /// Conteos de tareas por estado para cada departamento + totales (solo
+  /// director; 403 para el resto).
   static Future<DeptTasksByDepartment> summaryByDepartment() async {
     final res = await _get(Uri.parse('$kBaseUrl/dept-tasks/summary/by-department'));
     final b = _body(res);
@@ -350,8 +344,8 @@ class DeptTaskApi {
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 }
 
-/// Avance de tareas de un departamento (para las gráficas del director).
-/// `pending` incluye las tareas en progreso, igual que el resto de la app.
+/// Avance de tareas de un departamento (gráficas del director). `pending`
+/// incluye las que están en progreso.
 class DepartmentTaskCounts {
   const DepartmentTaskCounts({
     required this.departmentId,
@@ -380,8 +374,8 @@ class DepartmentTaskCounts {
   double get completionRatio => total == 0 ? 0 : done / total;
 }
 
-/// Respuesta de [DeptTaskApi.summaryByDepartment]: una fila por
-/// departamento más los totales de toda la empresa.
+/// Respuesta de [DeptTaskApi.summaryByDepartment]: una fila por departamento
+/// más los totales de la empresa.
 class DeptTasksByDepartment {
   const DeptTasksByDepartment({
     required this.departments,

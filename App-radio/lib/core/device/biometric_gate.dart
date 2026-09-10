@@ -4,9 +4,8 @@ import 'package:local_auth/local_auth.dart';
 
 enum BiometricOutcome { ok, skipped, failed, noLock }
 
-/// Resultado de la verificación del sistema operativo antes de fichar.
-/// `type` es una pista gruesa de qué factor había disponible
-/// ('fingerprint' | 'face' | 'device_credential'), no el factor exacto usado.
+/// Resultado de la verificación del SO antes de fichar. `type` es una pista
+/// gruesa del factor disponible ('fingerprint' | 'face' | 'device_credential').
 class BiometricResult {
   const BiometricResult(this.outcome, this.type);
 
@@ -23,11 +22,8 @@ class BiometricResult {
       };
 }
 
-/// Envuelve `local_auth`. Acepta el PIN/patrón del dispositivo como respaldo
-/// (`biometricOnly: false`); si no hay NINGÚN bloqueo de pantalla devuelve
-/// `noLock` para que la pantalla de asistencia bloquee el fichaje con una
-/// instrucción, en vez de dejar pasar sin verificación (a diferencia del gate
-/// más laxo de "Contenido del sitio web").
+/// Envuelve `local_auth`. Acepta PIN/patrón como respaldo; sin ningún bloqueo
+/// de pantalla devuelve `noLock` para que asistencia bloquee el fichaje.
 class BiometricGate {
   BiometricGate([LocalAuthentication? auth])
       : _auth = auth ?? LocalAuthentication();

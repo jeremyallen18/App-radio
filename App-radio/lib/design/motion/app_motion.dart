@@ -5,18 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:doliv_social/design/tokens/colors.dart';
 import 'package:doliv_social/design/tokens/spacing.dart';
 
-/// Piezas de movimiento compartidas por toda la app. Todo aquí es de bajo
-/// costo: se apoya en los widgets de animación que ya trae Flutter, solo hay
-/// bucles en dos sitios muy acotados (`SkeletonBox` y el pulso del botón de
-/// radio) y **siempre** se respeta la preferencia de "reducir movimiento" del
-/// sistema — cuando está activa, cada animación se resuelve al instante.
-///
-/// La convención de reduce-motion ya la usaba `completion_gauge.dart` con
-/// `MediaQuery.disableAnimationsOf`; aquí se centraliza en
-/// `context.reduceMotion`.
+/// Piezas de movimiento compartidas, de bajo costo (widgets de animación de
+/// Flutter). Siempre respetan "reducir movimiento" vía `context.reduceMotion`:
+/// con la preferencia activa, cada animación se resuelve al instante.
 
-/// Duraciones estándar. Cortas a propósito: el movimiento debe acompañar, no
-/// hacerse notar.
+/// Duraciones estándar. Cortas a propósito.
 class AppDurations {
   AppDurations._();
 
@@ -53,19 +46,15 @@ class AppCurves {
   static const Curve exit = Curves.easeInCubic;
 }
 
-/// `context.reduceMotion` — el usuario pidió menos movimiento en los ajustes
-/// de accesibilidad del sistema. Cuando es `true`, las animaciones deben
-/// aparecer ya en su estado final (sin timers, sin controladores corriendo).
+/// `context.reduceMotion` — el usuario pidió menos movimiento en accesibilidad.
+/// Cuando es `true`, las animaciones deben aparecer ya en su estado final.
 extension AppMotionContext on BuildContext {
   bool get reduceMotion => MediaQuery.maybeOf(this)?.disableAnimations ?? false;
 }
 
-/// Entrada estándar de un widget al montarse: aparece (fade) mientras sube un
-/// poco (slide) y, opcionalmente, escala desde [scaleFrom].
-///
-/// - Con `context.reduceMotion` aparece ya visible, sin animar.
-/// - [delay] permite escalonar listas: `AppFadeIn(delay: index * 40ms, …)`.
-///   Úsese con tope (~6 elementos) para no encadenar decenas de timers.
+/// Entrada estándar al montarse: fade + slide y, opcional, escala desde
+/// [scaleFrom]. Con `reduceMotion` aparece ya visible. [delay] escalona listas
+/// (con tope de ~6 para no encadenar timers).
 class AppFadeIn extends StatefulWidget {
   const AppFadeIn({
     super.key,
@@ -176,12 +165,9 @@ class _AppFadeInState extends State<AppFadeIn>
   }
 }
 
-/// Envuelve un hijo y lo encoge ligeramente mientras está presionado, como
-/// realimentación táctil. Usa un [Listener] (no un GestureDetector que
-/// consuma el gesto), así un [InkWell] interno sigue recibiendo el toque.
-///
-/// Si [onTap] se indica, además dispara ese callback. Con `reduceMotion` no
-/// escala (pero sigue respondiendo al toque).
+/// Encoge el hijo mientras está presionado (realimentación táctil). Usa
+/// [Listener] para no consumir el gesto de un [InkWell] interno. Con
+/// `reduceMotion` no escala pero sigue respondiendo al toque.
 class AppPressable extends StatefulWidget {
   const AppPressable({
     super.key,
@@ -237,9 +223,8 @@ class _AppPressableState extends State<AppPressable> {
   }
 }
 
-/// Transición de página fade + un desplazamiento corto hacia arriba. Se
-/// engancha una sola vez en `AppTheme.dark` (`pageTransitionsTheme`), así
-/// cubre todas las rutas sin tocar cada `Navigator.push`.
+/// Transición de página fade + desplazamiento corto. Enganchada en
+/// `AppTheme` vía `pageTransitionsTheme`, cubre todas las rutas.
 class AppFadeThroughPageTransitionsBuilder extends PageTransitionsBuilder {
   const AppFadeThroughPageTransitionsBuilder();
 
@@ -270,13 +255,8 @@ class AppFadeThroughPageTransitionsBuilder extends PageTransitionsBuilder {
   }
 }
 
-/// Provee un único [AnimationController] en bucle para todos los
-/// [SkeletonBox] que haya debajo, en vez de uno por caja. Envuelve el árbol
-/// de carga de una pantalla:
-///
-/// ```dart
-/// AppSkeletonGroup(child: Column(children: [SkeletonLine(), SkeletonBox(...)]))
-/// ```
+/// Un único [AnimationController] en bucle para todos los [SkeletonBox] debajo,
+/// en vez de uno por caja. Envuelve el árbol de carga de una pantalla.
 class AppSkeletonGroup extends StatefulWidget {
   const AppSkeletonGroup({super.key, required this.child});
 
@@ -329,9 +309,8 @@ class _SkeletonScope extends InheritedWidget {
       oldWidget.animation != animation;
 }
 
-/// Rectángulo de marcador de posición con un barrido de luz. Toma el
-/// controlador de un [AppSkeletonGroup] ancestro si existe; si no, crea el
-/// suyo. Con `reduceMotion` es un rectángulo plano sin animar.
+/// Marcador de posición con barrido de luz. Reutiliza el controlador de un
+/// [AppSkeletonGroup] ancestro o crea el suyo. Con `reduceMotion` es plano.
 class SkeletonBox extends StatefulWidget {
   const SkeletonBox({
     super.key,

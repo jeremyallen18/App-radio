@@ -7,8 +7,7 @@ import 'package:doliv_social/models/leave_request.dart';
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 
-/// Error de la gestión de permisos, con mensaje en español listo para mostrar.
-/// El backend responde `{success:false, message:"..."}` en errores de negocio.
+/// Error de gestión de permisos, con mensaje en español listo para mostrar.
 class LeaveException implements Exception {
   LeaveException(this.message);
   final String message;
@@ -17,8 +16,7 @@ class LeaveException implements Exception {
   String toString() => message;
 }
 
-/// Cliente de /leave-requests/* y /admin/leave-requests/* (hive-backend).
-/// Mismo patrón que `attendance_service.dart` / `directory_api.dart`.
+/// Cliente de /leave-requests/* y /admin/leave-requests/*.
 class LeaveApi {
   static Future<String> _token() async {
     final token = await secureStorage.readSecureData(key);
@@ -32,10 +30,9 @@ class LeaveApi {
   /// URL del endpoint autenticado que sirve la evidencia de una solicitud.
   static String evidenceUrl(String id) => '$kBaseUrl/leave-requests/$id/evidence';
 
-  // ---- empleado -------------------------------------------------
+  // empleado
 
-  /// Crea una solicitud. `evidence` es OBLIGATORIA para incapacidad; el
-  /// backend la rechaza si falta.
+  /// Crea una solicitud. `evidence` es obligatoria para incapacidad.
   static Future<LeaveRequest> create({
     required LeaveType type,
     required DateTime start,
@@ -84,7 +81,7 @@ class LeaveApi {
     return LeaveRequest.fromJson(_body(res)['request'] as Map<String, dynamic>);
   }
 
-  // ---- director ----------------------------------------------
+  // director
 
   static Future<List<LeaveRequest>> adminList({
     LeaveStatus? status,
@@ -107,8 +104,8 @@ class LeaveApi {
     return LeaveRequest.fromJson(_body(res)['request'] as Map<String, dynamic>);
   }
 
-  /// Ausencias del equipo (aprobadas + pendientes por defecto) cuyo rango se
-  /// cruza con [from]..[to]. Opcionalmente acotado a un departamento.
+  /// Ausencias del equipo (aprobadas + pendientes) que cruzan [from]..[to],
+  /// opcionalmente por departamento.
   static Future<List<LeaveCalendarItem>> calendar({
     required DateTime from,
     required DateTime to,
@@ -164,7 +161,7 @@ class LeaveApi {
     return LeaveRequest.fromJson(_body(res)['request'] as Map<String, dynamic>);
   }
 
-  // ---- transporte ------------------------------------------
+  // transporte
 
   static String _ymd(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

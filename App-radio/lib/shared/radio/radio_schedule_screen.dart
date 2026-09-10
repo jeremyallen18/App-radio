@@ -4,8 +4,7 @@ import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/radio_program.dart';
 import 'package:doliv_social/services/radio_service.dart';
 
-/// Parrilla de Radio Doliv: qué programa va a qué hora. Se abre desde el
-/// reproductor. Por defecto muestra el día de hoy; se puede cambiar de día.
+/// Parrilla de Radio Doliv: qué programa va a qué hora, por día de la semana.
 class RadioScheduleScreen extends StatefulWidget {
   const RadioScheduleScreen({super.key});
 

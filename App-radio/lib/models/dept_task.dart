@@ -1,9 +1,5 @@
-// Modelos del flujo jerárquico de tareas por departamento/equipo (Radio Doliv).
-// Alimentados por /dept-tasks/* (hive-backend/dept_tasks.php).
-//
-//   Director  -> crea/edita/borra tareas de cualquier departamento.
-//   Manager   -> tareas y subtareas de su departamento.
-//   Empleado  -> solo cambia el estado (marcar completada).
+// Modelos de tareas jerárquicas por departamento (/dept-tasks/*). Director:
+// todo; manager: su departamento; empleado: solo cambiar de estado.
 
 enum DeptTaskStatus { pendiente, enProgreso, completada }
 
@@ -18,8 +14,7 @@ DeptTaskStatus deptTaskStatusFromString(String? v) {
   }
 }
 
-/// Estado de revisión del manager sobre una tarea que un empleado marcó como
-/// completada (backend: `dept_tasks.review_status`).
+/// Revisión del manager sobre una tarea que el empleado marcó completada.
 enum DeptTaskReviewStatus { sinRevision, pendienteRevision, aprobada, rechazada }
 
 DeptTaskReviewStatus deptTaskReviewStatusFromString(String? v) {
@@ -35,7 +30,7 @@ DeptTaskReviewStatus deptTaskReviewStatusFromString(String? v) {
   }
 }
 
-/// Recurrencia de una tarea (backend: `dept_tasks.recurrence`).
+/// Recurrencia de una tarea.
 enum TaskRecurrence { none, daily, weekdays, weekly, monthly }
 
 TaskRecurrence taskRecurrenceFromString(String? v) => switch (v) {
@@ -98,8 +93,7 @@ class DeptTask {
   final String? parentId;
   final String departmentId;
 
-  /// Sub-equipo al que pertenece la tarea (migración 030), o `null` si es una
-  /// tarea "de área". El backend lo manda como `{id, name}`.
+  /// Sub-equipo de la tarea, o `null` si es una tarea "de área".
   final ({String id, String name})? subTeam;
 
   final String title;
@@ -113,30 +107,26 @@ class DeptTask {
   final TaskUserRef? completedBy;
   final DateTime? completedAt;
 
-  /// Entregada después de su fecha límite (backend: `dept_tasks.completed_late`,
-  /// migración 021). Lo decide el servidor; la app muestra una insignia
-  /// "Retardo". La tarea sigue con estado `completada`.
+  /// Entregada después de su fecha límite (lo decide el servidor; badge "Retardo").
   final bool completedLate;
 
   final DateTime? createdAt;
   final int subtaskCount;
   final int subtaskDoneCount;
 
-  /// Si al marcarla como completada hay que adjuntar evidencia (010).
+  /// Si al completarla hay que adjuntar evidencia.
   final bool requiresEvidence;
 
-  /// Si ya tiene un archivo de evidencia adjunto (se ve con
-  /// `DeptTaskApi.evidenceUrl`).
+  /// Si ya tiene evidencia adjunta.
   final bool hasEvidence;
 
-  /// Revisión del manager (011).
+  /// Revisión del manager.
   final DeptTaskReviewStatus reviewStatus;
   final String reviewStatusLabel;
   final String? reviewNote;
   final TaskUserRef? reviewedBy;
   final DateTime? reviewedAt;
 
-  /// Recurrencia (012).
   final TaskRecurrence recurrence;
   final DateTime? recurrenceUntil;
 
@@ -226,8 +216,7 @@ class DeptTask {
   }
 }
 
-/// Un comentario del hilo de una tarea (backend: `dept_task_comments`,
-/// GET/POST /dept-tasks/{id}/comments).
+/// Un comentario del hilo de una tarea.
 class TaskComment {
   final String id;
   final String body;

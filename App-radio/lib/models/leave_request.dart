@@ -1,7 +1,5 @@
-// Modelos de permisos, vacaciones e incapacidades (Radio Doliv). Alimentados
-// por /leave-requests/* y /admin/leave-requests/* (hive-backend/leave_requests.php).
-// La evidencia nunca llega como ruta: solo `hasEvidence`; se ve por el endpoint
-// autenticado GET /leave-requests/{id}/evidence.
+// Modelos de permisos, vacaciones e incapacidades (/leave-requests/*). La
+// evidencia solo llega como `hasEvidence`; se ve por endpoint autenticado.
 
 import 'package:flutter/material.dart' show IconData, Icons;
 
@@ -112,8 +110,8 @@ class LeaveRequest {
 
   final LeaveEmployee? employee; // solo en el panel del director
 
-  /// Otras ausencias del mismo departamento que se cruzan con estas fechas.
-  /// Solo lo llena `GET /admin/leave-requests/{id}` (vacío en el resto).
+  /// Otras ausencias del departamento que se cruzan con estas fechas (solo lo
+  /// llena `GET /admin/leave-requests/{id}`).
   final List<LeaveCalendarItem> deptOverlaps;
 
   LeaveRequest({
@@ -189,9 +187,8 @@ class LeaveRequest {
   String get approvedRangeLabel => fmtRange(approvedStart, approvedEnd);
 }
 
-/// Una ausencia en el calendario del equipo (GET /admin/leave-requests/calendar
-/// y el campo `deptOverlaps` del detalle). El rango ya viene resuelto: si el
-/// permiso está aprobado son las fechas autorizadas, si no las solicitadas.
+/// Una ausencia en el calendario del equipo. El rango ya viene resuelto
+/// (fechas aprobadas si lo está, si no las solicitadas).
 class LeaveCalendarItem {
   final String id;
   final String employeeId;

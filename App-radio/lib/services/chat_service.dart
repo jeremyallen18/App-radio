@@ -5,16 +5,13 @@ import 'package:http/http.dart' as http;
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 
-/// Utilidades de mensajería directa que se comparten fuera de las pantallas
-/// de chat (p. ej. el contador de no leídos que se pinta sobre el botón
-/// "Mensajes" del tablero). Las pantallas de chat siguen llamando a
-/// `/chat/thread` y `/chat/conversations` directamente.
+/// Utilidades de chat usadas fuera de sus pantallas (p. ej. el contador de no
+/// leídos del tablero).
 class ChatService {
   static Future<String> _token() async =>
       (await secureStorage.readSecureData(key)) ?? '';
 
-  /// Suma de mensajes sin leer en todas las conversaciones del usuario.
-  /// Devuelve 0 ante cualquier error (es un adorno, no debe romper la UI).
+  /// Total de mensajes sin leer en todas las conversaciones. 0 ante error.
   static Future<int> unreadTotal() async {
     try {
       final res = await http.get(

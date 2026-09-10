@@ -16,12 +16,8 @@ class AccountException implements Exception {
   String toString() => message;
 }
 
-/// Autoservicio de cuenta (migración 029) + nombre de la empresa: lo que el
-/// usuario puede cambiar de sí mismo desde el perfil.
-///
-/// - `updateName` / `changePassword` / `requestEmailChange` / `cancelEmailChange`
-///   -> `/user/account/*` (auth.php).
-/// - `updateCompanyName` -> `/company/update` (org.php, solo director).
+/// Autoservicio de cuenta (`/user/account/*`) + nombre de empresa
+/// (`/company/update`, solo director): lo que el usuario cambia desde su perfil.
 class AccountApi {
   static Future<String> _token() async {
     final t = await secureStorage.readSecureData(key);
@@ -64,8 +60,7 @@ class AccountApi {
     return UserProfile.fromJson(json);
   }
 
-  /// Cambia la contraseña. El backend rota el token de acceso; aquí se
-  /// re-guarda para no cerrar la sesión en la siguiente petición.
+  /// Cambia la contraseña y re-guarda el token que rota el backend.
   static Future<void> changePassword({
     required String current,
     required String next,
@@ -82,9 +77,8 @@ class AccountApi {
     }
   }
 
-  /// Pide el cambio de correo: el backend manda un enlace de confirmación al
-  /// correo nuevo y deja `pending_email` hasta que se abra. Devuelve el
-  /// mensaje del servidor para mostrarlo tal cual.
+  /// Pide el cambio de correo (el backend envía enlace de confirmación).
+  /// Devuelve el mensaje del servidor.
   static Future<String> requestEmailChange({
     required String current,
     required String newEmail,

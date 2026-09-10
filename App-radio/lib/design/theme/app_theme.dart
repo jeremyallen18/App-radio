@@ -4,13 +4,8 @@ import 'package:doliv_social/design/tokens/colors.dart';
 import 'package:doliv_social/design/tokens/spacing.dart';
 import 'package:doliv_social/design/tokens/typography.dart';
 
-/// Tema de la app. Toda pantalla nueva debería verse correcta heredando de
-/// aquí, sin declarar un solo color propio.
-///
-/// [dark] y [light] se construyen con [_buildTheme] a partir de la paleta
-/// congelada correspondiente ([AppColors.darkPalette] / [AppColors.lightPalette]),
-/// para que ambos `ThemeData` existan siempre y `MaterialApp` pueda elegir el
-/// correcto vía `themeMode` sin depender del estado global de [AppColors].
+/// Tema de la app; toda pantalla nueva hereda de aquí sin declarar colores.
+/// [dark] y [light] se arman con [_buildTheme] desde las paletas congeladas.
 class AppTheme {
   AppTheme._();
 
@@ -26,10 +21,7 @@ class AppTheme {
     final colorScheme = ColorScheme(
       brightness: brightness,
       primary: AppColors.brandBlue,
-      // `primary` (brandBlue) y `error` son fondos que NO cambian con el
-      // modo, así que lo que va encima (onPrimary/onError) debe quedar fijo
-      // en blanco: p.textPrimary sí cambia y en claro es casi negro,
-      // invisible contra el azul/rojo.
+      // `primary` y `error` no cambian con el modo: su contenido va fijo en blanco.
       onPrimary: AppColors.onBrand,
       secondary: p.accent,
       onSecondary: brightness == Brightness.dark ? p.bgBase : Colors.white,
@@ -50,8 +42,7 @@ class AppTheme {
       splashColor: p.accent.withValues(alpha: 0.12),
       highlightColor: Colors.transparent,
 
-      // Transición de página común (fade + desplazamiento corto).
-      // Respeta "reducir movimiento" (ver el builder).
+      // Transición de página común (fade + desplazamiento corto), respeta "reducir movimiento".
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: AppFadeThroughPageTransitionsBuilder(),
@@ -102,15 +93,11 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.brandBlue,
-          // Fondo del botón siempre azul (brandBlue no cambia con el modo):
-          // el texto/ícono debe quedar fijo en blanco, no en p.textPrimary.
           foregroundColor: AppColors.onBrand,
           disabledBackgroundColor: p.surface,
           disabledForegroundColor: p.textMuted,
-          // Ancho finito a propósito: `Size.fromHeight` fija un ancho MÍNIMO
-          // infinito, que revienta (BoxConstraints "NOT NORMALIZED") en
-          // cualquier botón que además reciba un `maximumSize` explícito
-          // (p. ej. teams.dart) porque min > max.
+          // Ancho mínimo finito: `Size.fromHeight` (mínimo infinito) revienta
+          // los botones que también fijan `maximumSize`.
           minimumSize: const Size(64, 50),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -123,15 +110,13 @@ class AppTheme {
         style: TextButton.styleFrom(foregroundColor: p.accent),
       ),
 
-      // FAB siempre azul de marca con contenido blanco en ambos modos (el
-      // `ColorScheme` sin `fromSeed` no deriva un `primaryContainer` usable).
+      // FAB siempre azul de marca con contenido blanco.
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: AppColors.brandBlue,
         foregroundColor: AppColors.onBrand,
       ),
 
-      // `FilledButton` (no cubierto por elevatedButtonTheme): mismo criterio
-      // que el botón elevado — fondo azul de marca, contenido blanco fijo.
+      // `FilledButton`: mismo criterio que el botón elevado.
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.brandBlue,
@@ -180,10 +165,7 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: p.surface,
         indicatorColor: AppColors.brandBlue,
-        // El "pill" detrás del ítem seleccionado siempre es brandBlue (fijo),
-        // así que su ícono/etiqueta deben quedar fijos en blanco
-        // (AppColors.onBrand): en modo claro p.textPrimary es casi negro y se
-        // pierde contra el azul del indicador.
+        // El indicador siempre es brandBlue: su ícono/etiqueta van fijos en blanco.
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(

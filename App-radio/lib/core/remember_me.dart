@@ -1,15 +1,8 @@
 import 'package:doliv_social/core/session_keys.dart';
 
-/// Recuerda únicamente el estado del check "Recordar" del login entre aperturas
-/// de la app.
-///
-/// El correo y la contraseña NO se guardan aquí: cuando el check está activo, el
-/// login le pide al gestor de contraseñas del sistema (Android Autofill /
-/// iCloud Llavero) que los guarde, y es ese gestor quien los ofrece la próxima
-/// vez. La app nunca los lee ni los repinta en los campos.
-///
-/// Esto no interviene en la permanencia de la sesión: la sesión sobrevive a
-/// cerrar la app y solo termina con "Cerrar sesión".
+/// Persiste solo el estado del check "Recordar" del login. Las credenciales las
+/// guarda el gestor del sistema (Android Autofill / Llavero), no la app. No
+/// afecta a la permanencia de la sesión.
 class RememberMe {
   const RememberMe._();
 

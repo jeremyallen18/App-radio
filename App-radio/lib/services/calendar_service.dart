@@ -7,8 +7,7 @@ import 'package:doliv_social/models/models.dart';
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 
-/// Error del módulo de calendario con un mensaje ya listo para mostrar en
-/// español (mismo contrato que `AttendanceException`).
+/// Error de calendario con mensaje en español listo para mostrar.
 class CalendarException implements Exception {
   CalendarException(this.message);
   final String message;
@@ -16,18 +15,15 @@ class CalendarException implements Exception {
   String toString() => message;
 }
 
-/// Cliente de /calendar y /events (hive-backend/events.php). Mismo patrón de
-/// transporte que `AttendanceApi`.
+/// Cliente de /calendar y /events.
 class CalendarApi {
   static Future<String> _token() async {
     final token = await secureStorage.readSecureData(key);
     return (token as String?) ?? '';
   }
 
-  /// Feed del calendario: actividades a entregar + eventos visibles, en el
-  /// rango `[from, to]`. `scope`: para manager `'department'` (todo su
-  /// departamento) o `null` (solo lo propio); para director `'company'`
-  /// (toda la empresa) o `departmentId` para uno concreto.
+  /// Feed del calendario (actividades + eventos) en `[from, to]`. `scope`:
+  /// manager `'department'`/`null`; director `'company'` o un `departmentId`.
   static Future<({List<CalendarActivity> activities, List<CalendarEvent> events, bool canManage})> feed({
     required DateTime from,
     required DateTime to,
@@ -57,8 +53,7 @@ class CalendarApi {
     );
   }
 
-  /// Crea un evento (solo director). Ver `event_body_or_fail` en el backend
-  /// para las reglas de validación (se replican en el formulario).
+  /// Crea un evento (solo director).
   static Future<CalendarEvent> createEvent(Map<String, dynamic> body) async {
     final res = await _postJson(Uri.parse('$kBaseUrl/events'), body);
     return CalendarEvent.fromJson(
@@ -77,9 +72,8 @@ class CalendarApi {
     await _postJson(Uri.parse('$kBaseUrl/events/$id/delete'), const {});
   }
 
-  /// Lista de departamentos, para el selector de alcance del director. Nunca
-  /// lanza: ante cualquier fallo devuelve una lista vacía (el selector
-  /// simplemente no muestra departamentos).
+  /// Departamentos para el selector de alcance del director. Nunca lanza: ante
+  /// un fallo devuelve lista vacía.
   static Future<List<DepartmentInfo>> departments() async {
     try {
       final res = await http.get(
@@ -96,7 +90,7 @@ class CalendarApi {
     }
   }
 
-  // ---- transporte ---------------------------------------------------
+  // transporte
 
   static String _ymd(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

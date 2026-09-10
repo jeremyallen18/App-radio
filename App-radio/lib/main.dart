@@ -1,7 +1,3 @@
-// app dev starts here
-// only push here in dev branch
-// do not merge in main branch
-
 import 'dart:async';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -37,9 +33,7 @@ import 'package:doliv_social/core/route_refresh.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Push (FCM) solo está configurado para Android (ver firebase_options.dart,
-  // que lanza en otras plataformas). En iOS se omite para no romper el
-  // arranque de la app. Nunca debe impedir llegar a `runApp`.
+  // Push (FCM) solo está configurado para Android por ahora
   final bool supportsPush =
       defaultTargetPlatform == TargetPlatform.android;
   if (supportsPush) {
@@ -51,46 +45,31 @@ void main() async {
     }
   }
 
-  // Formateo de fechas/números en español de México para toda la app
-  // (calendarios, `intl` DateFormat, table_calendar). Debe correr antes de
-  // `runApp` para que el primer frame ya salga localizado.
+  // Formateo de fechas/números en español de México
   Intl.defaultLocale = 'es_MX';
   await initializeDateFormatting('es_MX', null);
 
-  // Carga la preferencia de tema (claro/oscuro) ANTES del primer frame, para
-  // que la app arranque directamente en el modo correcto (sin parpadeo).
+  // Tema (claro/oscuro) antes del primer frame para evitar parpadeo.
   await ThemeController.instance.init();
 
   // `just_audio_background` (controles en notificación / pantalla de
-  // bloqueo). Debe inicializarse ANTES de crear cualquier AudioPlayer (por
-  // eso va antes de tocar RadioPlayer.instance): habilita el foreground
-  // service de Android que mantiene la radio sonando con la app minimizada o
-  // la pantalla bloqueada, con controles en la notificación.
-  //
-  // Si esta inicialización falla (por ejemplo audio_service no puede
-  // registrar su servicio en ciertas versiones/OEMs de Android), NO debe
-  // impedir que la app arranque: se captura el error y se sigue sin los
-  // controles en segundo plano — la radio igual suena desde la app.
+  // bloqueo).
   try {
     await JustAudioBackground.init(
       androidNotificationChannelId: 'com.example.brl_task4.radio',
       androidNotificationChannelName: 'Radio Doliv en vivo',
       androidNotificationOngoing: true,
     );
-    // Solo ahora es seguro usar el tag MediaItem al reproducir la radio.
+    // Ya es seguro usar el tag MediaItem al reproducir.
     radioBackgroundReady = true;
   } catch (e, st) {
     debugPrint('JustAudioBackground.init falló, se continúa sin él: $e\n$st');
   }
-  // Referenciar el singleton aquí (antes de mostrar cualquier pantalla)
-  // dispara su precarga del stream en segundo plano lo antes posible, para
-  // que cuando el usuario llegue a tocar el botón de radio ya esté listo.
+  // Tocar el singleton dispara la precarga del stream lo antes posible.
   RadioPlayer.instance;
   final dynamic storedValue = await secureStorage.readSecureData(key);
-  // La sesión persiste mientras exista el token: sobrevive a cerrar o matar la
-  // app y solo termina cuando el usuario pulsa "Cerrar sesión" (o el backend
-  // rechaza el token). El check "Recuérdame" ya no interviene aquí; solo
-  // decide si el formulario de login aparece con las credenciales precargadas.
+  // La sesión persiste mientras exista el token; solo "Cerrar sesión" o un
+  // token rechazado la terminan.
   final bool hasSession = storedValue != null;
   if (hasSession && supportsPush) {
     unawaited(PushService.instance.init());
@@ -98,8 +77,7 @@ void main() async {
   runApp(MyApp(hasSession: hasSession));
 }
 
-/// Widget de app único: el tema y la tabla de rutas se declaran una sola vez.
-/// [hasSession] decide únicamente la pantalla inicial.
+/// Widget raíz de la app: tema y rutas. [hasSession] elige la pantalla inicial.
 class MyApp extends StatelessWidget {
   const MyApp({super.key, required this.hasSession});
 
@@ -107,8 +85,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // `AnimatedBuilder` re-ejecuta este build cada vez que `ThemeController`
-    // notifica un cambio de modo (claro/oscuro).
+    // Reconstruye al cambiar el modo (claro/oscuro).
     return AnimatedBuilder(
       animation: ThemeController.instance,
       builder: (context, _) => _buildApp(context),
@@ -131,13 +108,9 @@ class MyApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      // Envuelve toda la app en el fondo de marca + el gate de conectividad
-      // (muestra `OfflineView` si el backend no responde). El `KeyedSubtree`
-      // con una `Key` atada al modo fuerza a reconstruir todo el árbol
-      // navegable al alternar el tema, para que cada pantalla vuelva a leer
-      // `AppColors` (getters) con el valor correcto. El costo es que alternar
-      // el tema reinicia la pila de navegación — aceptable para una opción
-      // de ajustes.
+      // Fondo de marca + gate de conectividad. El `KeyedSubtree` atado al modo
+      // reconstruye todo al cambiar de tema (reinicia la navegación) para que
+      // cada pantalla relea `AppColors`.
       builder: (context, child) {
         if (child == null) return const SizedBox.shrink();
         return KeyedSubtree(

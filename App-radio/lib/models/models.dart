@@ -1,8 +1,5 @@
-// Modelos de la estructura organizacional (Radio Doliv): rol de una persona
-// y el departamento al que pertenece. Alimentados por GET /user/me (perfil
-// propio, ver lib/utils/session.dart) y por GET /user/directory y
-// GET /user/profile/{id} (directorio de compañeros, ver
-// lib/screens/directory/directory_api.dart), que devuelven la misma forma.
+// Modelos de la estructura organizacional: rol y departamento de una persona.
+// Alimentados por GET /user/me, /user/directory y /user/profile/{id}.
 
 enum AppRole { director, manager, employee }
 
@@ -18,7 +15,7 @@ AppRole appRoleFromString(String? value) {
 }
 
 extension AppRoleLabel on AppRole {
-  /// Nombre del rol para mostrar en la UI (requisito: 100% en español).
+  /// Nombre del rol para la UI.
   String get label {
     switch (this) {
       case AppRole.director:
@@ -30,7 +27,7 @@ extension AppRoleLabel on AppRole {
     }
   }
 
-  /// Forma corta (una palabra) para espacios estrechos como el chip del header.
+  /// Forma corta (una palabra) para espacios estrechos.
   String get shortLabel {
     switch (this) {
       case AppRole.director:
@@ -79,26 +76,19 @@ class UserProfile {
   final AppRole role;
   final String? position;
 
-  /// Número de control único e intransferible (`SPPRD-0000000`). El alta lo
-  /// autoasigna; solo el director lo corrige. `null` si el backend es anterior
-  /// a la migración 028 o si el autoasignado falló en el alta.
+  /// Número de control único (`SPPRD-0000000`); lo autoasigna el alta y solo el
+  /// director lo corrige. `null` si falta.
   final String? controlNumber;
   final String? photoUrl;
   final DepartmentInfo? department;
 
-  /// Si el correo de esta cuenta está verificado (backend `emailVerified`,
-  /// migración 023). Un backend anterior no manda el campo: en ese caso se
-  /// asume `true` para no mostrar un aviso incorrecto.
+  /// Si el correo está verificado. Si el campo falta, se asume `true`.
   final bool emailVerified;
 
-  /// Sub-equipos que esta persona lidera (migración 030). Solo lo trae
-  /// `GET /user/me` (el perfil propio); vacío en el directorio y en fichas
-  /// ajenas. Sirve para mostrarle al sub-líder su entrada de menú.
+  /// Sub-equipos que esta persona lidera (solo en `GET /user/me`).
   final List<({String id, String name, String departmentId})> ledSubTeams;
 
-  /// Correo nuevo a la espera de confirmarse (migración 029). Solo tiene valor
-  /// en el perfil propio (`GET /user/me`) mientras hay un cambio de correo en
-  /// curso; `null` el resto del tiempo.
+  /// Correo nuevo a la espera de confirmarse (solo en `GET /user/me`).
   final String? pendingEmail;
 
   UserProfile({
@@ -144,8 +134,7 @@ class UserProfile {
     );
   }
 
-  /// Línea que va debajo del nombre en el perfil y en el directorio: el
-  /// puesto concreto si lo tiene y, si no, el rol — nunca vacío.
+  /// Línea bajo el nombre: el puesto si lo tiene, si no el rol.
   String get headline =>
       (position ?? '').isNotEmpty ? position! : role.label;
 
@@ -153,17 +142,13 @@ class UserProfile {
   String get controlNumberLabel =>
       (controlNumber ?? '').isNotEmpty ? controlNumber! : 'Sin asignar';
 
-  /// Si esta persona es quien dirige su propio departamento. El backend
-  /// referencia al manager por correo (`departments.manager_email`), así que
-  /// se compara sin distinguir mayúsculas.
+  /// Si esta persona dirige su propio departamento (compara `manager_email`).
   bool get leadsOwnDepartment =>
       department != null &&
       (department!.managerEmail ?? '').toLowerCase() == email.toLowerCase();
 }
 
-/// Equipo al que pertenece un compañero, tal como lo devuelve
-/// GET /user/profile/{id}. No incluye `teamCode`: el código sirve para
-/// unirse al equipo, así que no se expone en la ficha de otra persona.
+/// Equipo de un compañero (GET /user/profile/{id}); sin `teamCode`.
 class ColleagueTeam {
   final String id;
   final String name;
@@ -180,8 +165,7 @@ class ColleagueTeam {
   }
 }
 
-/// Ficha completa de un compañero: su perfil público más lo que solo trae el
-/// detalle (equipos y antigüedad).
+/// Ficha completa de un compañero: perfil público + equipos y antigüedad.
 class ColleagueProfile {
   final UserProfile user;
   final List<ColleagueTeam> teams;

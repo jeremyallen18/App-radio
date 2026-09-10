@@ -1,10 +1,7 @@
-// Modelos del módulo de asistencia y hora de comida (Radio Doliv). Alimentados
-// por los endpoints /attendance/* y /admin/attendance|schedules del backend
-// PHP (hive-backend/attendance.php). Todos los cálculos vienen resueltos del
-// servidor; aquí solo se transportan y se muestran.
+// Modelos de asistencia y hora de comida. Todos los cálculos los resuelve el
+// backend (/attendance/*, /admin/attendance|schedules); aquí solo se transportan.
 
-/// Estado del ciclo de asistencia del día. Lo determina el backend a partir
-/// de los eventos inmutables; el cliente nunca lo infiere por su cuenta.
+/// Estado del ciclo de asistencia del día, determinado por el backend.
 enum AttendanceState { sinEntrada, enJornada, enComida, jornadaTerminada }
 
 AttendanceState attendanceStateFromString(String? value) {
@@ -20,13 +17,9 @@ AttendanceState attendanceStateFromString(String? value) {
   }
 }
 
-/// Acción que el empleado puede realizar ahora mismo (la que dicta el botón
-/// principal). `null` cuando la jornada ya terminó.
-///
-/// `saltarComida` ("hoy no tomaré hora de comida") NUNCA la devuelve el backend
-/// como `nextAction`: es una acción secundaria opcional que ofrece la app
-/// mientras el siguiente paso es `inicioComida`. Solo deja constancia de que el
-/// trabajador no tomará la comida; no registra salida ni cierra la jornada.
+/// Acción que dicta el botón principal ahora mismo; `null` si la jornada terminó.
+/// `saltarComida` es una acción secundaria opcional (nunca la devuelve el backend
+/// como `nextAction`): solo deja constancia, no cierra la jornada.
 enum AttendanceAction { entrada, inicioComida, finComida, salida, saltarComida }
 
 AttendanceAction? attendanceActionFromString(String? value) {
@@ -47,7 +40,7 @@ AttendanceAction? attendanceActionFromString(String? value) {
 }
 
 extension AttendanceActionInfo on AttendanceAction {
-  /// Texto del botón principal (requisito: 100% en español).
+  /// Texto del botón principal.
   String get buttonLabel {
     switch (this) {
       case AttendanceAction.entrada:
@@ -80,11 +73,11 @@ extension AttendanceActionInfo on AttendanceAction {
   }
 }
 
-/// Permiso aprobado que cubre el día de hoy: la asistencia no se requiere.
-/// Lo devuelve GET /attendance/today (campo `absence`).
+/// Permiso aprobado que cubre hoy (campo `absence` de GET /attendance/today):
+/// la asistencia no se requiere.
 class AttendanceAbsence {
   final String type;      // vacaciones | incapacidad | permiso
-  final String typeLabel; // etiqueta en español
+  final String typeLabel;
   final DateTime? startDate;
   final DateTime? endDate;
 
@@ -118,8 +111,8 @@ class AttendanceAbsence {
   }
 }
 
-/// Lugar de asistencia configurado por el director (geocerca). `entrada` y
-/// `fin_comida` se rechazan si el GPS del trabajador cae fuera del radio.
+/// Geocerca configurada por el director. `entrada` y `fin_comida` se rechazan
+/// si el GPS cae fuera del radio.
 class AttendanceLocationConfig {
   final double latitude;
   final double longitude;
@@ -189,8 +182,7 @@ class AttendanceDay {
   final String? finComida;
   final String? salida;
 
-  /// El trabajador declaró que hoy no tomará hora de comida. Es solo
-  /// constancia: no implica salida ni cierre de jornada.
+  /// El trabajador declaró que hoy no tomará comida (solo constancia).
   final bool mealSkipped;
 
   final int? mealMinutes;
@@ -355,8 +347,7 @@ class AttendancePeriodSummary {
   final int incapacityDays;
   final int permissionDays;
 
-  /// Porcentaje de días trabajados sin llegar tarde. `null` si no trabajó
-  /// ningún día en el periodo.
+  /// % de días trabajados sin llegar tarde; `null` si no trabajó ningún día.
   final int? onTimeRate;
 
   AttendancePeriodSummary({
@@ -419,8 +410,7 @@ class AdminAttendanceSummaryRow {
       );
 }
 
-/// Tipo de fichaje que se pide corregir (mismos valores que
-/// `attendance.type` en el backend).
+/// Tipo de fichaje que se pide corregir (= `attendance.type` en el backend).
 enum CorrectionKind { entrada, inicioComida, finComida, salida }
 
 CorrectionKind correctionKindFromString(String? v) => switch (v) {
@@ -468,8 +458,7 @@ extension CorrectionStatusInfo on CorrectionStatus {
       };
 }
 
-/// Solicitud de corrección de asistencia (tabla
-/// `attendance_correction_requests`).
+/// Solicitud de corrección de asistencia.
 class AttendanceCorrection {
   final int id;
   final String employeeId;
@@ -526,7 +515,7 @@ class AttendanceCorrection {
   }
 }
 
-// ---- vinculación de dispositivo / biometría --------------------------------
+// vinculación de dispositivo / biometría
 
 enum AttendanceDeviceState { none, trusted, pending, unknown }
 
@@ -543,8 +532,7 @@ AttendanceDeviceState attendanceDeviceStateFrom(String? raw) {
   }
 }
 
-/// Estado del dispositivo actual respecto de la cuenta (para pintar el botón
-/// de fichar). Ver POST /attendance/device/status.
+/// Estado del dispositivo actual respecto de la cuenta (POST /attendance/device/status).
 class AttendanceDeviceStatus {
   const AttendanceDeviceStatus({
     required this.state,
@@ -630,8 +618,7 @@ class TrustedDeviceInfo {
       );
 }
 
-/// Fila de la pestaña "Dispositivos" del director: qué dispositivo tiene
-/// vinculado cada empleado (`GET /admin/attendance/trusted-devices`).
+/// Fila de la pestaña "Dispositivos" del director (`GET /admin/attendance/trusted-devices`).
 class TrustedDeviceRow {
   const TrustedDeviceRow({
     required this.employeeId,
