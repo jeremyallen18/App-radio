@@ -465,7 +465,7 @@ function attendance_duplicate_message(string $type): string {
 // uq_attendance_evento (employee_id, work_date, type) cierra esa ventana a
 // nivel de motor: la segunda inserción lanza SQLSTATE 23000 y aquí se traduce
 // al mismo mensaje de negocio en vez de crear un evento duplicado o un 500.
-function attendance_insert_event(PDO $pdo, string $employeeId, string $workDate, string $type, array $body): array {
+function attendance_insert_event(PDO $pdo, string $employeeId, string $workDate, string $type, array $body, array $evidence = []): array {
     [$lat, $lng] = attendance_coords_from_body($body);
     $method = $body['method'] ?? 'gps';
     if (!in_array($method, ['gps', 'qr', 'gps_qr'], true)) {
@@ -473,15 +473,25 @@ function attendance_insert_event(PDO $pdo, string $employeeId, string $workDate,
     }
     $deviceTime = isset($body['deviceTime']) && $body['deviceTime'] !== ''
         ? date('Y-m-d H:i:s', strtotime((string) $body['deviceTime'])) : null;
+    $accuracy = isset($body['locationAccuracy']) && $body['locationAccuracy'] !== ''
+        ? (float) $body['locationAccuracy'] : null;
 
     $now = date('Y-m-d H:i:s');
     $stmt = $pdo->prepare(
         'INSERT INTO attendance
-           (employee_id, type, work_date, event_time, device_time, latitude, longitude, method)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+           (employee_id, type, work_date, event_time, device_time, latitude, longitude,
+            location_accuracy_m, method, device_key, device_status, biometric_result, biometric_type)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     try {
-        $stmt->execute([$employeeId, $type, $workDate, $now, $deviceTime, $lat, $lng, $method]);
+        $stmt->execute([
+            $employeeId, $type, $workDate, $now, $deviceTime, $lat, $lng,
+            $accuracy, $method,
+            $evidence['device_key'] ?? null,
+            $evidence['device_status'] ?? null,
+            $evidence['biometric_result'] ?? null,
+            $evidence['biometric_type'] ?? null,
+        ]);
     } catch (PDOException $e) {
         if ($e->getCode() === '23000') {
             attendance_fail(attendance_duplicate_message($type), 409);
@@ -530,9 +540,17 @@ function attendanceEntry(PDO $pdo) {
 
     attendance_verify_location($pdo, 'entrada', $lat, $lng, $overrideLoc);
 
+    $deviceInfo = attendance_verify_device($pdo, $user['id'], $body);
+    $bio = attendance_check_biometric($body, 'entrada');
+
     // Congela el horario del día ANTES de crear la entrada.
     attendance_snapshot_schedule($pdo, $user['id'], $workDate, $override['entry_time'] ?? null);
-    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'entrada', $body);
+    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'entrada', $body, [
+        'device_key'       => $deviceInfo['key'],
+        'device_status'    => $deviceInfo['status'],
+        'biometric_result' => $bio['result'],
+        'biometric_type'   => $bio['type'],
+    ]);
 
     $events = attendance_events_for($pdo, $user['id'], $workDate);
     json_response([
@@ -576,7 +594,15 @@ function attendanceMealStart(PDO $pdo) {
             'Tu hora de comida empieza a las ' . substr($mealEff, 0, 5) . '. Aún no puedes iniciarla.');
     }
 
-    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'inicio_comida', request_body());
+    $body = request_body();
+    $deviceInfo = attendance_verify_device($pdo, $user['id'], $body);
+    $bio = attendance_check_biometric($body, 'inicio_comida'); // no exige biometría
+    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'inicio_comida', $body, [
+        'device_key'       => $deviceInfo['key'],
+        'device_status'    => $deviceInfo['status'],
+        'biometric_result' => $bio['result'],
+        'biometric_type'   => $bio['type'],
+    ]);
     $events = attendance_events_for($pdo, $user['id'], $workDate);
     json_response([
         'success'    => true,
@@ -618,7 +644,15 @@ function attendanceMealSkip(PDO $pdo) {
         attendance_fail('Ya indicaste que hoy no tomarás hora de comida.');
     }
 
-    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'sin_comida', request_body());
+    $body = request_body();
+    $deviceInfo = attendance_verify_device($pdo, $user['id'], $body);
+    $bio = attendance_check_biometric($body, 'sin_comida');
+    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'sin_comida', $body, [
+        'device_key'       => $deviceInfo['key'],
+        'device_status'    => $deviceInfo['status'],
+        'biometric_result' => $bio['result'],
+        'biometric_type'   => $bio['type'],
+    ]);
     $events = attendance_events_for($pdo, $user['id'], $workDate);
     json_response([
         'success'    => true,
@@ -653,7 +687,14 @@ function attendanceMealEnd(PDO $pdo) {
     [$lat, $lng] = attendance_coords_from_body($body);
     attendance_verify_location($pdo, 'fin_comida', $lat, $lng);
 
-    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'fin_comida', $body);
+    $deviceInfo = attendance_verify_device($pdo, $user['id'], $body);
+    $bio = attendance_check_biometric($body, 'fin_comida'); // no exige biometría
+    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'fin_comida', $body, [
+        'device_key'       => $deviceInfo['key'],
+        'device_status'    => $deviceInfo['status'],
+        'biometric_result' => $bio['result'],
+        'biometric_type'   => $bio['type'],
+    ]);
     $events = attendance_events_for($pdo, $user['id'], $workDate);
     $day = attendance_day_summary($pdo, $user, $workDate, $events);
 
@@ -696,7 +737,15 @@ function attendanceExit(PDO $pdo) {
             'Tu salida es a las ' . substr($exitEff, 0, 5) . '. Aún no puedes registrarla.');
     }
 
-    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'salida', request_body());
+    $body = request_body();
+    $deviceInfo = attendance_verify_device($pdo, $user['id'], $body);
+    $bio = attendance_check_biometric($body, 'salida'); // exige biometría
+    $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'salida', $body, [
+        'device_key'       => $deviceInfo['key'],
+        'device_status'    => $deviceInfo['status'],
+        'biometric_result' => $bio['result'],
+        'biometric_type'   => $bio['type'],
+    ]);
     $events = attendance_events_for($pdo, $user['id'], $workDate);
     json_response([
         'success'    => true,
