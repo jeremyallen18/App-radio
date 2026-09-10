@@ -187,6 +187,8 @@ $routes = [
     ['POST', '#^/attendance/meal/skip/?$#',                   'attendanceMealSkip'],
     ['POST', '#^/attendance/meal/end/?$#',                    'attendanceMealEnd'],
     ['POST', '#^/attendance/exit/?$#',                        'attendanceExit'],
+    ['GET',  '#^/attendance/device/status/?$#',               'attendanceDeviceStatus'],
+    ['POST', '#^/attendance/device/request/?$#',              'attendanceDeviceRequest'],
     ['GET',  '#^/attendance/today/?$#',                       'attendanceToday'],
     ['GET',  '#^/attendance/status/?$#',                      'attendanceToday'],
     ['GET',  '#^/attendance/history/?$#',                     'attendanceHistory'],

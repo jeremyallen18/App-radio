@@ -755,6 +755,50 @@ function attendanceExit(PDO $pdo) {
     ]);
 }
 
+// GET /attendance/device/status — la app lo llama al abrir "Mi asistencia"
+// para pintar el botón de fichar según el estado del dispositivo actual.
+function attendanceDeviceStatus(PDO $pdo) {
+    $user = require_auth($pdo);
+    attendance_require_worker($user);
+
+    $dev = attendance_device_from_body($_GET);
+    $state = attendance_device_state_for($pdo, $user['id'], $dev);
+    $trusted = attendance_trusted_device_for($pdo, $user['id']);
+
+    json_response([
+        'success' => true,
+        'state'   => $state,
+        'device'  => $trusted ? [
+            'model'      => $trusted['model'],
+            'osVersion'  => $trusted['os_version'],
+            'enrolledAt' => $trusted['enrolled_at'],
+            'via'        => $trusted['enrolled_via'],
+        ] : null,
+    ]);
+}
+
+// POST /attendance/device/request — el trabajador pide autorizar el dispositivo
+// actual (bloqueado). Idempotente: crea o actualiza la solicitud a 'pending'.
+function attendanceDeviceRequest(PDO $pdo) {
+    $user = require_auth($pdo);
+    attendance_require_worker($user);
+
+    $dev = attendance_device_from_body(request_body());
+    if (($dev['key'] ?? $dev['uuid']) === null) {
+        attendance_fail('No fue posible identificar este dispositivo. Actualiza la app e inténtalo de nuevo.', 422);
+    }
+    $trusted = attendance_trusted_device_for($pdo, $user['id']);
+    if ($trusted && attendance_device_matches($trusted, $dev)) {
+        json_response(['success' => true, 'state' => 'trusted']);
+    }
+    attendance_device_upsert_request($pdo, $user['id'], $dev);
+    json_response([
+        'success' => true,
+        'state'   => 'pending',
+        'message' => 'Solicitud enviada. El director debe autorizar este dispositivo.',
+    ]);
+}
+
 function attendanceToday(PDO $pdo) {
     $user = require_auth($pdo);
     attendance_require_worker($user);
