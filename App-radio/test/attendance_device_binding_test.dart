@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:doliv_social/core/device/device_identity.dart';
+import 'package:doliv_social/core/device/biometric_gate.dart';
 
 void main() {
   group('DeviceIdentity.toBody', () {
@@ -19,6 +20,18 @@ void main() {
       final body = d.toBody();
       expect(body.containsKey('model'), false);
       expect(body.containsKey('osVersion'), false);
+    });
+  });
+
+  group('BiometricResult', () {
+    test('apiValue y passed según outcome', () {
+      expect(const BiometricResult(BiometricOutcome.ok, 'face').apiValue, 'ok');
+      expect(const BiometricResult(BiometricOutcome.ok, 'face').passed, true);
+      expect(const BiometricResult(BiometricOutcome.skipped, 'device_credential').apiValue, 'skipped');
+      expect(const BiometricResult(BiometricOutcome.skipped, null).passed, true);
+      expect(const BiometricResult(BiometricOutcome.failed, null).apiValue, 'failed');
+      expect(const BiometricResult(BiometricOutcome.failed, null).passed, false);
+      expect(const BiometricResult(BiometricOutcome.noLock, null).passed, false);
     });
   });
 }
