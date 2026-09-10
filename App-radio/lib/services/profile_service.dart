@@ -17,9 +17,8 @@ class ProfileException implements Exception {
   String toString() => message;
 }
 
-/// Datos que alimentan "Mi perfil": el perfil del usuario, los contadores de
-/// tareas y la lista de equipos. Los contadores/equipos son `null`/vacío si su
-/// endpoint falla, igual que antes (la pantalla los muestra como "—").
+/// Datos de "Mi perfil": perfil, contadores de tareas y equipos. Cada parte es
+/// `null`/vacío si su endpoint falla (la pantalla muestra "—").
 class ProfileOverview {
   const ProfileOverview({
     required this.profile,
@@ -34,9 +33,8 @@ class ProfileOverview {
   final List<dynamic> teams;
 }
 
-/// Contadores de toda la organización que ve un director en su perfil
-/// ("Vista general"). Cada campo es `null` si su endpoint falla, y la
-/// pantalla lo pinta como "—".
+/// Contadores de la organización para el perfil del director. Cada campo es
+/// `null` si su endpoint falla (la pantalla muestra "—").
 class DirectorOrgStats {
   const DirectorOrgStats({
     this.areasCount,
@@ -104,10 +102,8 @@ class ProfileApi {
     );
   }
 
-  /// Resumen de organización para el perfil del director: nº de áreas y de
-  /// colaboradores (del listado de departamentos) más los totales de tareas
-  /// de toda la empresa (`dept-tasks/summary/by-department`). Cada mitad
-  /// falla por separado sin tumbar a la otra.
+  /// Resumen de organización para el perfil del director (áreas, colaboradores
+  /// y totales de tareas). Cada mitad falla por separado.
   static Future<DirectorOrgStats> fetchDirectorOrg() async {
     Future<DeptTasksByDepartment?> summary() async {
       try {
@@ -138,8 +134,7 @@ class ProfileApi {
     );
   }
 
-  /// Sube la foto de perfil y devuelve el perfil actualizado. Lanza
-  /// [ProfileException] con el mensaje del backend (o uno genérico) si falla.
+  /// Sube la foto de perfil y devuelve el perfil actualizado.
   static Future<UserProfile> uploadPhoto(String filePath) async {
     try {
       final request = http.MultipartRequest(
@@ -169,10 +164,8 @@ class ProfileApi {
     }
   }
 
-  /// Corrige el número de control de una persona (solo director). [number] es
-  /// el entero de la secuencia; el backend lo formatea a `SPPRD-0000000`.
-  /// Lanza [ProfileException] con el mensaje del backend (formato inválido,
-  /// número ya en uso, etc.).
+  /// Corrige el número de control de una persona (solo director). [number] es el
+  /// entero de la secuencia; el backend lo formatea a `SPPRD-0000000`.
   static Future<UserProfile> updateControlNumber(
       String userId, int number) async {
     try {

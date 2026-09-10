@@ -6,8 +6,7 @@ import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 import 'package:doliv_social/models/company.dart';
 
-/// Error de la gestión de la empresa, con mensaje en español listo para
-/// mostrar. El backend responde `{error}` (o `{message}`).
+/// Error de gestión de la empresa, con mensaje en español listo para mostrar.
 class CompanyException implements Exception {
   CompanyException(this.message);
   final String message;
@@ -16,17 +15,15 @@ class CompanyException implements Exception {
   String toString() => message;
 }
 
-/// La empresa única de Radio Doliv: consultarla y (solo el director, la
-/// primera vez) crearla.
+/// La empresa única de Radio Doliv: consultarla y (solo director) crearla.
 class CompanyApi {
   static Future<String> _token() async {
     final t = await secureStorage.readSecureData(key);
     return (t as String?) ?? '';
   }
 
-  /// `GET /company/info`. Devuelve la empresa, o `null` si todavía no se ha
-  /// creado (el backend responde 404 en ese caso). Lanza [CompanyException]
-  /// ante un fallo real (sin red, 5xx…).
+  /// `GET /company/info` → empresa, o `null` si aún no se creó (404). Lanza
+  /// [CompanyException] ante un fallo real.
   static Future<Company?> fetch() async {
     late final http.Response res;
     try {
@@ -46,8 +43,7 @@ class CompanyApi {
     return Company.fromJson(Map<String, dynamic>.from(company));
   }
 
-  /// `POST /company/create`. Solo funciona si aún no existe (si ya existe el
-  /// backend responde 409).
+  /// `POST /company/create`. Solo si aún no existe (si no, 409).
   static Future<Company> create({
     required String name,
     String? description,

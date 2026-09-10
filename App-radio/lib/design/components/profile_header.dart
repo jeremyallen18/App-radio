@@ -4,14 +4,9 @@ import 'package:doliv_social/design/tokens/colors.dart';
 import 'package:doliv_social/design/tokens/spacing.dart';
 import 'package:doliv_social/design/components/identity_avatar.dart';
 
-/// Encabezado de una ficha de persona: banda de marca, foto encima del
-/// borde, nombre, puesto y las insignias que describen su lugar en la
-/// organización (rol, departamento…).
-///
-/// Lo usan tanto el perfil propio (`home_page/profile.dart`, que además pasa
-/// [onEditPhoto]) como la ficha de un compañero
-/// (`screens/directory/colleague_profile_screen.dart`), para que las dos se
-/// vean como la misma pantalla vista desde distinto lado.
+/// Encabezado de una ficha de persona: banda de marca, foto sobre el borde,
+/// nombre, puesto e insignias. Compartido por el perfil propio (pasa
+/// [onEditPhoto]) y la ficha de un compañero.
 class ProfileHeader extends StatelessWidget {
   const ProfileHeader({
     super.key,
@@ -31,9 +26,7 @@ class ProfileHeader extends StatelessWidget {
   final String headline;
   final String? photoUrl;
 
-  /// Semilla del color de respaldo del avatar. Por defecto el correo o
-  /// nombre que se muestre; sirve para que la misma persona conserve su
-  /// color en el directorio y en su ficha.
+  /// Semilla del color de respaldo del avatar (para que sea estable por persona).
   final String? avatarSeed;
 
   /// Insignias de rol/departamento. Se envuelven en varias líneas si no caben.
@@ -63,9 +56,7 @@ class ProfileHeader extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          // El avatar queda centrado sobre el borde inferior de la banda: la
-          // mitad de arriba encima del degradado y la de abajo sobre la
-          // tarjeta, así que el encabezado se lee como una sola pieza.
+          // El avatar queda centrado sobre el borde inferior de la banda.
           Stack(
             alignment: Alignment.topCenter,
             children: [
@@ -168,8 +159,7 @@ class _Avatar extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Anillo del color de la tarjeta: recorta el avatar contra la banda
-        // de marca para que se lea como una capa encima, no como un parche.
+        // Anillo del color de la tarjeta que recorta el avatar contra la banda.
         Container(
           padding: EdgeInsets.all(ringWidth),
           decoration: BoxDecoration(

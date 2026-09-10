@@ -6,15 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 
-/// Única fuente de verdad para el número de notificaciones sin leer.
-///
-/// Antes cada `MyAppBar` (una instancia por pantalla) pedía el conteo por su
-/// cuenta y solo lo refrescaba al volver de la pantalla de notificaciones
-/// abierta desde ESA campana; distintas pantallas podían mostrar números
-/// distintos. Ahora todas escuchan este singleton y ven el mismo valor.
-///
-/// El número autoritativo lo calcula el backend (`GET /notifications` ->
-/// `unreadCount`); si un backend viejo no lo manda, se cuenta la lista.
+/// Fuente única del número de notificaciones sin leer; todas las campanas
+/// escuchan este singleton. El conteo lo da el backend (`GET /notifications` →
+/// `unreadCount`); si falta, se cuenta la lista.
 class NotificationsController extends ChangeNotifier {
   NotificationsController._();
   static final NotificationsController instance = NotificationsController._();
@@ -63,8 +57,7 @@ class NotificationsController extends ChangeNotifier {
     }
   }
 
-  /// Fija el conteo a partir de una lista ya cargada por la pantalla de
-  /// notificaciones, para no hacer una segunda llamada.
+  /// Fija el conteo desde una lista ya cargada, sin segunda llamada.
   void setUnreadFromList(Iterable notifications) {
     _lastFetch = DateTime.now();
     _setUnread(
@@ -72,8 +65,7 @@ class NotificationsController extends ChangeNotifier {
     );
   }
 
-  /// Fija el conteo a un valor exacto (p. ej. el `unreadCount` que ya
-  /// devolvió el backend en otra llamada).
+  /// Fija el conteo a un valor exacto ya devuelto por el backend.
   void setUnread(int value) {
     _lastFetch = DateTime.now();
     _setUnread(value < 0 ? 0 : value);
@@ -85,8 +77,7 @@ class NotificationsController extends ChangeNotifier {
     _setUnread((_unreadCount - by).clamp(0, _unreadCount));
   }
 
-  /// Al cerrar sesión: borra el contador para que no se filtre a la
-  /// siguiente cuenta que inicie sesión en el mismo dispositivo.
+  /// Al cerrar sesión: borra el contador para no filtrarlo a otra cuenta.
   void clear() {
     _lastFetch = null;
     _setUnread(0);

@@ -6,8 +6,7 @@ import 'package:doliv_social/models/internal_announcement.dart';
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 
-/// Error del módulo de anuncios internos con un mensaje ya listo para mostrar
-/// en español (mismo contrato que `CalendarException`).
+/// Error de anuncios internos con mensaje en español listo para mostrar.
 class InternalAnnouncementException implements Exception {
   InternalAnnouncementException(this.message);
   final String message;
@@ -15,17 +14,15 @@ class InternalAnnouncementException implements Exception {
   String toString() => message;
 }
 
-/// Cliente de /internal-announcements (hive-backend/internal_announcements.php).
-/// Mismo patrón de transporte que `CalendarApi`.
+/// Cliente de /internal-announcements.
 class InternalAnnouncementApi {
   static Future<String> _token() async {
     final token = await secureStorage.readSecureData(key);
     return (token as String?) ?? '';
   }
 
-  /// Tablero de anuncios. El director recibe todos (con agregados); el resto,
-  /// solo los activos y visibles para él, y la llamada cuenta como
-  /// visualización.
+  /// Tablero de anuncios. El director los recibe todos; el resto solo los
+  /// activos visibles, y la llamada cuenta como visualización.
   static Future<({List<InternalAnnouncement> items, bool canManage})> list() async {
     final res = await _get(Uri.parse('$kBaseUrl/internal-announcements'));
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;
@@ -38,8 +35,7 @@ class InternalAnnouncementApi {
     );
   }
 
-  /// Crea un anuncio (solo director). Ver `ia_body_or_fail` en el backend para
-  /// las reglas de validación (se replican en el formulario).
+  /// Crea un anuncio (solo director).
   static Future<InternalAnnouncement> create(Map<String, dynamic> body) async {
     final res = await _postJson(Uri.parse('$kBaseUrl/internal-announcements'), body);
     return InternalAnnouncement.fromJson(
@@ -75,7 +71,7 @@ class InternalAnnouncementApi {
     return AnnouncementViewsReport.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // ---- transporte ---------------------------------------------------
+  // transporte
 
   static Future<http.Response> _get(Uri uri) async {
     late final http.Response res;

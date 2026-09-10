@@ -6,13 +6,8 @@ import 'package:doliv_social/core/audio/radio_player.dart';
 import 'package:doliv_social/design/motion/app_motion.dart';
 import 'package:doliv_social/design/tokens/colors.dart';
 
-/// Control compacto de la transmisión en vivo, en el header de la app (ver
-/// `lib/shared/widgets/appbar.dart`).
-///
-/// - El círculo blanco = reproducir / detener.
-/// - La etiqueta "Doliv en vivo ▾" = abrir [onExpand] (panel con volumen, lo
-///   que suena y la programación del día). Si [onExpand] es null, la etiqueta
-///   no reacciona.
+/// Control compacto de la radio en el header: disco = play/stop; etiqueta
+/// "Doliv en vivo ▾" = abre [onExpand] (si es null, la etiqueta no reacciona).
 class RadioPlayerButton extends StatefulWidget {
   const RadioPlayerButton({super.key, this.onExpand});
 
@@ -79,10 +74,8 @@ class _RadioPlayerButtonState extends State<RadioPlayerButton> {
   }
 }
 
-/// Disco blanco. Triángulo de play / cuadrado de stop en color de fondo.
-/// Mientras suena, el punto verde "en vivo" late con un anillo suave y el
-/// glifo cambia con un cross-fade. El bucle solo corre cuando `playing` es
-/// `true` y se detiene en cuanto para (o con "reducir movimiento").
+/// Disco blanco con play/stop. Al sonar, el punto verde late; el pulso solo
+/// corre con `playing == true` y sin "reducir movimiento".
 class _Disc extends StatefulWidget {
   const _Disc({required this.playing, required this.loading, this.onTap});
 

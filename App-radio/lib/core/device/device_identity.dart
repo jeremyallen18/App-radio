@@ -7,11 +7,10 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import 'package:doliv_social/core/session_keys.dart' show secureStorage;
 
-/// Identidad estable del dispositivo para vincular el fichaje de asistencia a
-/// una sola cuenta. `key` es el `ANDROID_ID` (Android) o el
-/// `identifierForVendor` (iOS) — puede ser nulo si el SO no lo entrega; en ese
-/// caso el backend empareja por `uuid`, un valor aleatorio que la app genera
-/// una vez y guarda en el almacén seguro.
+/// Identidad estable del dispositivo para vincular el fichaje a una cuenta.
+/// `key` = `ANDROID_ID` / `identifierForVendor`; si el SO no lo da, el backend
+/// empareja por `uuid` (aleatorio, generado una vez y guardado en el almacén
+/// seguro).
 class DeviceIdentity {
   const DeviceIdentity({
     required this.key,

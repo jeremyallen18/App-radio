@@ -2,14 +2,10 @@ import 'package:http/http.dart' as http;
 
 import 'package:doliv_social/core/api_config.dart';
 
-/// Llamadas de autenticación que no necesitan token (registro / verificación
-/// de correo). El login vive en `login.dart` por razones históricas.
+/// Llamadas de autenticación sin token (verificación de correo). El login vive
+/// en `login.dart`.
 class AuthApi {
-  /// Pide al backend que reenvíe el correo de verificación. El servidor
-  /// responde 200 con un mensaje neutro exista o no la cuenta (no filtra si
-  /// el correo está registrado) y aplica un límite de envíos.
-  ///
-  /// Devuelve `true` si la petición se completó (200), sin más detalle.
+  /// Pide reenviar el correo de verificación. Devuelve `true` si respondió 200.
   static Future<bool> resendVerification(String email) async {
     try {
       final res = await http.post(

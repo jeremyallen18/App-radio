@@ -1,6 +1,5 @@
-/// La empresa (Radio Doliv). Solo existe un registro; lo crea el director la
-/// primera vez que entra. Lo alimentan `GET /company/info` y
-/// `POST /company/create`, que devuelven la fila tal cual (claves snake_case).
+/// La empresa (registro único; lo crea el director). `GET /company/info` /
+/// `POST /company/create` devuelven la fila tal cual (snake_case).
 class Company {
   final String id;
   final String name;

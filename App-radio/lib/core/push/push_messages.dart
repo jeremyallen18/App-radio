@@ -29,12 +29,9 @@ bool shouldShowLocalNotification(
   return true;
 }
 
-/// Id estable y no negativo (31 bits) para la notificación local, derivado de
-/// `tipo:entidad`, de modo que mensajes repetidos del mismo remitente/entidad
-/// se reemplacen en la bandeja en vez de apilarse. FNV-1a de 32 bits.
-///
-/// Muchos emisores del backend no traen `entityId`; en ese caso se siembra el
-/// hash con `notifId` (único por notificación) para que no colisionen todos.
+/// Id estable (31 bits, FNV-1a) derivado de `tipo:entidad`: los avisos repetidos
+/// de la misma entidad se reemplazan en la bandeja. Sin `entityId`, se siembra
+/// con `notifId` para que no colisionen todos.
 int localNotificationId(Map<String, String> data) {
   final entityId = data['entityId'];
   final entity = (entityId != null && entityId.isNotEmpty)

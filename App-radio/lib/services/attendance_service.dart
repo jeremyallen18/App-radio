@@ -8,16 +8,13 @@ import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/device/device_identity.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 
-/// Error del módulo de asistencia con un mensaje ya listo para mostrar en
-/// español. El backend responde `{success:false, message:"..."}` en los
-/// errores de negocio (estado inválido, director, fuera de zona); aquí solo
-/// se extrae ese `message`. Nunca se exponen detalles técnicos.
+/// Error de asistencia con mensaje en español listo para mostrar (extraído del
+/// `message` del backend).
 class AttendanceException implements Exception {
   AttendanceException(this.message, {this.code});
   final String message;
 
-  /// Código de negocio opcional del backend. `APPROVED_ABSENCE` = el
-  /// trabajador tiene un permiso aprobado para hoy y no debe registrar.
+  /// Código de negocio opcional. `APPROVED_ABSENCE` = hay permiso aprobado hoy.
   final String? code;
 
   bool get isApprovedAbsence => code == 'APPROVED_ABSENCE';
@@ -26,19 +23,17 @@ class AttendanceException implements Exception {
   String toString() => message;
 }
 
-/// Cliente de /attendance/* y /admin/attendance|schedules (hive-backend).
-/// Mismo patrón que `directory_api.dart`.
+/// Cliente de /attendance/* y /admin/attendance|schedules.
 class AttendanceApi {
   static Future<String> _token() async {
     final token = await secureStorage.readSecureData(key);
     return (token as String?) ?? '';
   }
 
-  // ---- empleado ---------------------------------------------------
+  // empleado
 
-  /// Estado de asistencia de hoy del trabajador autenticado: el día, el lugar
-  /// de asistencia configurado por el director, y —si aplica— el permiso
-  /// aprobado que hace que hoy NO se requiera registrar asistencia.
+  /// Estado de asistencia de hoy: día, lugar configurado y, si aplica, el
+  /// permiso aprobado que exime de registrar.
   static Future<({
     AttendanceDay day,
     AttendanceLocationConfig? location,
@@ -51,14 +46,13 @@ class AttendanceApi {
       day: AttendanceDay.fromJson(decoded['day'] as Map<String, dynamic>),
       location: AttendanceLocationConfig.maybe(decoded['location']),
       absence: AttendanceAbsence.maybe(decoded['absence']),
-      // Evento con ubicación que hoy sustituye el lugar y la hora de ENTRADA.
+      // Evento que hoy sustituye el lugar y la hora de entrada.
       entryOverride: EntryOverrideEvent.maybe(decoded['entryOverrideEvent']),
     );
   }
 
-  /// Ejecuta la acción de asistencia indicada (entrada / comida / salida) y
-  /// devuelve el nuevo estado del día. La ubicación es opcional: el backend
-  /// solo la valida si la geocerca está activada.
+  /// Ejecuta una acción de asistencia (entrada/comida/salida) y devuelve el
+  /// nuevo estado del día. La ubicación es opcional (solo se valida con geocerca).
   static Future<AttendanceDay> perform(
     AttendanceAction action, {
     double? latitude,
@@ -88,10 +82,8 @@ class AttendanceApi {
     );
   }
 
-  /// Estado del dispositivo actual respecto de la cuenta.
-  ///
-  /// Es POST: los identificadores del dispositivo van en el cuerpo, nunca en la
-  /// query string (acabarían en los logs de acceso del servidor web).
+  /// Estado del dispositivo actual respecto de la cuenta. POST para no exponer
+  /// los identificadores en la query string.
   static Future<AttendanceDeviceStatus> deviceStatus(DeviceIdentity device) async {
     final res = await _post(
       Uri.parse('$kBaseUrl/attendance/device/status'),
@@ -126,7 +118,7 @@ class AttendanceApi {
         .toList();
   }
 
-  // ---- panel administrativo (director / manager) ----------------
+  // panel administrativo (director / manager)
 
   static Future<List<AdminAttendanceRow>> adminList({DateTime? date}) async {
     final uri = Uri.parse('$kBaseUrl/admin/attendance').replace(
@@ -159,8 +151,7 @@ class AttendanceApi {
         .toList();
   }
 
-  /// Lista de empleados con su horario asignado (o `null` si no tiene). El
-  /// segundo valor indica si el usuario actual puede editar (solo director).
+  /// Empleados con su horario asignado; `canEdit` solo para director.
   static Future<({List<EmployeeScheduleRow> rows, bool canEdit})> adminSchedules() async {
     final res = await _get(Uri.parse('$kBaseUrl/admin/schedules'));
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;
@@ -202,8 +193,7 @@ class AttendanceApi {
     );
   }
 
-  /// Crea o modifica el horario de un empleado (solo director). No altera el
-  /// histórico ya registrado.
+  /// Crea o modifica el horario de un empleado (solo director).
   static Future<EmployeeSchedule> saveSchedule(
     String employeeId, {
     required String entryTime,
@@ -227,8 +217,8 @@ class AttendanceApi {
     );
   }
 
-  /// Asigna el MISMO horario a varios trabajadores en una sola operación
-  /// (solo director). Devuelve cuántos se aplicaron y los ids que no.
+  /// Asigna el mismo horario a varios trabajadores (solo director). Devuelve
+  /// cuántos se aplicaron y los ids que fallaron.
   static Future<({int applied, List<String> failed, String message})>
       bulkSaveSchedule({
     required List<String> employeeIds,
@@ -259,7 +249,7 @@ class AttendanceApi {
     );
   }
 
-  // ---- dispositivos (panel administrativo) ---------------------------
+  // dispositivos (panel administrativo)
 
   static Future<List<DeviceRequestRow>> adminDeviceRequests({String status = 'pending'}) async {
     final uri = Uri.parse('$kBaseUrl/admin/attendance/device-requests')
@@ -314,10 +304,9 @@ class AttendanceApi {
     await _post(Uri.parse('$kBaseUrl/admin/attendance/$employeeId/device/reset'), {});
   }
 
-  // ---- resumen mensual ----------------------------------------------
+  // resumen mensual
 
-  /// Resumen de asistencia del mes ([month] = `YYYY-MM`, por defecto el mes
-  /// en curso) del trabajador autenticado.
+  /// Resumen de asistencia del mes ([month] = `YYYY-MM`, por defecto el actual).
   static Future<AttendancePeriodSummary> summary({String? month}) async {
     final uri = Uri.parse('$kBaseUrl/attendance/summary').replace(
       queryParameters: month != null ? {'month': month} : null,
@@ -350,8 +339,7 @@ class AttendanceApi {
     );
   }
 
-  /// Descarga el reporte mensual y devuelve `(bytes, filename, mime)`.
-  /// [format] = `csv` | `pdf`.
+  /// Descarga el reporte mensual ([format] = `csv` | `pdf`).
   static Future<({List<int> bytes, String filename, String mime})> downloadReport({
     required String format,
     String? month,
@@ -379,7 +367,7 @@ class AttendanceApi {
     );
   }
 
-  // ---- solicitudes de corrección ----------------------------------
+  // solicitudes de corrección
 
   static Future<AttendanceCorrection> createCorrection({
     required DateTime workDate,
@@ -434,7 +422,7 @@ class AttendanceApi {
         .toList();
   }
 
-  // ---- transporte -----------------------------------------------
+  // transporte
 
   static String _ymd(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

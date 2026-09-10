@@ -4,10 +4,27 @@ import 'package:flutter/material.dart';
 
 import 'package:doliv_social/core/audio/radio_player.dart';
 import 'package:doliv_social/design/design.dart';
+import 'package:doliv_social/models/radio_program.dart';
+import 'package:doliv_social/services/radio_service.dart';
 import 'package:doliv_social/shared/radio/radio_schedule_screen.dart';
 
-/// Abre el panel del reproductor de Radio Doliv (play/stop, volumen, lo que
-/// suena ahora y acceso a la programación del día).
+/// Texto del renglón "qué suena": título ICY → programa al aire → "Transmisión
+/// en vivo" → "Fuera del aire", en ese orden de preferencia.
+String radioStatusLine({
+  required String? nowPlaying,
+  required String? onAirProgramTitle,
+  required String? onAirProgramHost,
+  required bool active,
+}) {
+  if (nowPlaying != null && nowPlaying.isNotEmpty) return nowPlaying;
+  if (active && onAirProgramTitle != null && onAirProgramTitle.isNotEmpty) {
+    final host = onAirProgramHost?.trim() ?? '';
+    return host.isEmpty ? onAirProgramTitle : '$onAirProgramTitle · con $host';
+  }
+  return active ? 'Transmisión en vivo' : 'Fuera del aire';
+}
+
+/// Abre el panel del reproductor: play/stop, volumen, qué suena y la parrilla.
 Future<void> showRadioPlayer(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
@@ -32,6 +49,9 @@ class _RadioPlayerSheetState extends State<_RadioPlayerSheet> {
   late double _volume = _radio.volume;
   double? _volumeBeforeMute;
 
+  /// Programa al aire ahora; respaldo cuando el stream no trae canción.
+  RadioProgram? _onAirProgram;
+
   StreamSubscription<RadioPlaybackState>? _stateSub;
   StreamSubscription<String?>? _nowSub;
 
@@ -44,6 +64,25 @@ class _RadioPlayerSheetState extends State<_RadioPlayerSheet> {
     _nowSub = _radio.onNowPlayingChanged.listen((t) {
       if (mounted) setState(() => _nowPlaying = t);
     });
+    _loadOnAirProgram();
+  }
+
+  /// Carga la parrilla y guarda el programa que va al aire ahora.
+  Future<void> _loadOnAirProgram() async {
+    try {
+      final programs = await RadioProgramsApi.list();
+      if (!mounted) return;
+      RadioProgram? onAir;
+      for (final p in programs) {
+        if (p.isOnAirNow()) {
+          onAir = p;
+          break;
+        }
+      }
+      setState(() => _onAirProgram = onAir);
+    } on RadioException {
+      // Sin parrilla, el renglón cae a "Transmisión en vivo".
+    }
   }
 
   @override
@@ -107,8 +146,12 @@ class _RadioPlayerSheetState extends State<_RadioPlayerSheet> {
             ),
             const SizedBox(height: 4),
             Text(
-              _nowPlaying ??
-                  (_isPlaying ? 'Transmisión en vivo' : 'Fuera del aire'),
+              radioStatusLine(
+                nowPlaying: _nowPlaying,
+                onAirProgramTitle: _onAirProgram?.title,
+                onAirProgramHost: _onAirProgram?.host,
+                active: _isPlaying || _isLoading,
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: AppColors.textMuted, fontSize: 13),

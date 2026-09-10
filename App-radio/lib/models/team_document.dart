@@ -51,8 +51,7 @@ class TeamDocument {
     return '${(fileSize / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  /// Ícono + color según el tipo de archivo, para distinguir de un vistazo
-  /// PDFs, hojas de cálculo, presentaciones, etc.
+  /// Ícono + color según la extensión del archivo.
   ({IconData icon, Color color}) get typeStyle {
     switch (extension) {
       case 'pdf':

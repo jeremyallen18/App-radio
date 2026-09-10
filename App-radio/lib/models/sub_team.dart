@@ -1,9 +1,7 @@
 import 'package:doliv_social/models/dept_task.dart' show TaskUserRef;
 
-/// Un sub-equipo dentro de un departamento (migración 030). Lo crea el manager
-/// del área; un empleado del área puede estar en varios. `lead` es un
-/// sub-líder opcional que administra los miembros y las tareas del sub-equipo.
-/// Alimentado por `/subteam/*` (hive-backend/sub_teams.php).
+/// Un sub-equipo dentro de un departamento (`/subteam/*`). Lo crea el manager;
+/// `lead` es un sub-líder opcional que administra miembros y tareas.
 class SubTeam {
   final String id;
   final String departmentId;

@@ -7,13 +7,8 @@ import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 import 'package:doliv_social/models/sub_team.dart';
 import 'package:doliv_social/services/team_service.dart' show TeamException;
 
-/// Sub-equipos de un departamento (migración 030).
-///
-/// - Director / manager del área: `create`, `update`, `delete`, `setLead`.
-/// - Sub-líder: `addMember` / `removeMember` de SU sub-equipo.
-///
-/// Reutiliza [TeamException] para que las pantallas de gestión de equipos
-/// manejen un solo tipo de error.
+/// Sub-equipos de un departamento. Director/manager: crear/editar/borrar/líder;
+/// sub-líder: alta/baja de miembros de su sub-equipo. Reutiliza [TeamException].
 class SubTeamApi {
   static Future<String> _token() async {
     final t = await secureStorage.readSecureData(key);

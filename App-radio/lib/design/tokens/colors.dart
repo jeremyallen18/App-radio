@@ -1,31 +1,18 @@
 import 'package:flutter/material.dart';
 
-/// Paleta de la app, anclada a los colores de marca extraídos de
-/// `assets/logo/logo.png` (azul marino #00356F, azul medio #004691, blanco
-/// #F2F2F2).
-///
-/// La app soporta modo claro y modo oscuro. [AppColors] expone siempre el
-/// color correcto para el modo actual a través de getters: en vez de
-/// `static const Color bgBase = ...` cada token es ahora
-/// `static Color get bgBase => ...`, resuelto según [isDark]. Así TODA la UI
-/// (que ya usa `AppColors.xxx` directamente) cambia de aspecto sin tocar
-/// cada pantalla, apenas [ThemeController] actualiza el modo activo.
-///
-/// Regla de uso: [brandNavy] y [brandBlue] solo sirven como RELLENO (fondos,
-/// botones sólidos) — su contraste como texto/ícono es bajo en ambos modos.
-/// Para texto, íconos, enlaces y bordes usar [accent] o [accentStrong].
+/// Paleta de la app (marca: navy #00356F, azul #004691, blanco #F2F2F2). Los
+/// tokens son getters que resuelven según [isDark], así toda la UI cambia de
+/// modo sin tocar cada pantalla. [brandNavy]/[brandBlue] solo como relleno; para
+/// texto/íconos usar [accent]/[accentStrong].
 class AppColors {
   AppColors._();
 
-  // Modo actual. Lo actualiza [ThemeController]; por defecto oscuro para no
-  // cambiar el comportamiento previo de la app.
+  // Modo actual (lo actualiza [ThemeController]); oscuro por defecto.
   static bool _isDark = true;
   static bool get isDark => _isDark;
   static void setDark(bool value) => _isDark = value;
 
-  // ---------------------------------------------------------------------
-  // Paleta oscura (la original de la app; mismos hex que antes)
-  // ---------------------------------------------------------------------
+  // paleta oscura (la original)
   static const Color _darkBgBase = Color(0xFF0A1730);
   static const Color _darkSurface = Color(0xFF122240);
   static const Color _darkSurfaceBorder = Color(0xFF1E3355);
@@ -41,9 +28,7 @@ class AppColors {
   static const Color _darkWarning = Color(0xFFE8B84D); // 9.67:1 AAA
   static const Color _darkError = Color(0xFFEF6B6B); // 5.93:1 AA
 
-  // ---------------------------------------------------------------------
-  // Paleta clara
-  // ---------------------------------------------------------------------
+  // paleta clara
   static const Color _lightBgBase = Color(0xFFF3F5F9);
   static const Color _lightSurface = Color(0xFFFFFFFF);
   static const Color _lightSurfaceBorder = Color(0xFFDCE2ED);
@@ -61,15 +46,13 @@ class AppColors {
   static const Color _lightWarning = Color(0xFF8A6300); // ~5.1:1 sobre blanco
   static const Color _lightError = Color(0xFFC22A2A); // ~5.6:1 sobre blanco
 
-  // ---------------------------------------------------------------------
-  // Tokens públicos (dinámicos según el modo activo)
-  // ---------------------------------------------------------------------
+  // tokens públicos (dinámicos según el modo activo)
   static Color get bgBase => _isDark ? _darkBgBase : _lightBgBase;
   static Color get surface => _isDark ? _darkSurface : _lightSurface;
   static Color get surfaceBorder =>
       _isDark ? _darkSurfaceBorder : _lightSurfaceBorder;
 
-  // Marca (solo relleno — ver regla de uso arriba). No dependen del modo.
+  // Marca (solo relleno). No dependen del modo.
   static const Color brandNavy = Color(0xFF00356F);
   static const Color brandBlue = Color(0xFF004691);
 
@@ -92,24 +75,14 @@ class AppColors {
         colors: [brandBlue, brandNavy],
       );
 
-  // ---------------------------------------------------------------------
-  // Tokens para texto/íconos sobre fondos de marca (brandBlue, brandNavy,
-  // buttonGradient). Esos fondos son SIEMPRE azules/oscuros, sin importar el
-  // modo, así que lo que va encima NO debe usar [textPrimary]/[textMuted]
-  // (se vuelven casi negros en modo claro y se pierden contra el azul); debe
-  // quedarse fijo en blanco en ambos modos.
-  // ---------------------------------------------------------------------
+  // Texto/íconos sobre fondos de marca (siempre azules): fijos en blanco en
+  // ambos modos, nunca [textPrimary]/[textMuted].
   static const Color onBrand = Colors.white;
   static const Color onBrandMuted = Colors.white70;
-  // Para acentos que necesitan distinguirse un poco del blanco puro (p. ej.
-  // el doble check "leído" del chat) pero siguen sobre fondo de marca.
+  // Acento que se distingue del blanco puro sobre fondo de marca (doble check del chat).
   static const Color onBrandAccent = Color(0xFF6FA9EE);
 
-  // ---------------------------------------------------------------------
-  // Paletas "congeladas" (independientes del modo activo). Las usa
-  // [AppTheme] para construir `ThemeData` claro y oscuro por separado, sin
-  // depender de [_isDark].
-  // ---------------------------------------------------------------------
+  // Paletas "congeladas" (por modo), para que [AppTheme] arme cada `ThemeData`.
   static const AppPalette darkPalette = AppPalette(
     bgBase: _darkBgBase,
     surface: _darkSurface,
@@ -137,9 +110,7 @@ class AppColors {
   );
 }
 
-/// Snapshot inmutable de todos los tokens de color para un modo (claro u
-/// oscuro). Lo usa [AppTheme] para construir cada `ThemeData` sin depender
-/// del modo "activo" global de [AppColors].
+/// Snapshot inmutable de los tokens de color de un modo, para [AppTheme].
 class AppPalette {
   const AppPalette({
     required this.bgBase,

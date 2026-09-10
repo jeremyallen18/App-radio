@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:doliv_social/core/api_config.dart';
 
-/// Un programa de la parrilla de Radio Doliv (tabla `radio_programs`, que
-/// comparte RADIODOLIV_PAGINA). Alimentado por `GET /radio/programs`.
+/// Un programa de la parrilla (`GET /radio/programs`, tabla `radio_programs`
+/// compartida con RADIODOLIV_PAGINA).
 class RadioProgram {
   final int id;
   final String title;

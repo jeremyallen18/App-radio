@@ -9,8 +9,7 @@ import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 import 'package:doliv_social/models/team_document.dart';
 
-/// Excepción con un mensaje ya listo para mostrar en español (mismo patrón
-/// que `DirectoryApi` / `AttendanceApi`).
+/// Excepción con mensaje en español listo para mostrar.
 class DocumentException implements Exception {
   DocumentException(this.message);
   final String message;
@@ -26,16 +25,14 @@ class DownloadedDocument {
   final String? mime;
 }
 
-/// Documento escrito en un archivo local temporal, listo para abrirse con el
-/// visor nativo del sistema (`OpenFilex`).
+/// Documento en un archivo temporal local, listo para `OpenFilex`.
 class OpenedDocument {
   OpenedDocument(this.path);
   final String path;
 }
 
-/// Cliente del apartado "Documentos" de un equipo (endpoints /document/* en
-/// hive-backend). Cualquier miembro lista, sube y descarga; borra quien lo
-/// subió o el líder.
+/// Cliente de "Documentos" de un equipo (`/document/*`). Cualquier miembro
+/// lista/sube/descarga; borra quien lo subió o el líder.
 class DocumentService {
   static Future<String> _token() async =>
       (await secureStorage.readSecureData(key)) ?? '';
@@ -98,18 +95,12 @@ class DocumentService {
     );
   }
 
-  /// Limpia los caracteres que no son válidos como nombre de archivo en el
-  /// sistema de archivos local (se usa para el archivo temporal antes de
-  /// abrirlo con el visor nativo).
+  /// Reemplaza los caracteres inválidos en un nombre de archivo local.
   static String sanitizeFileName(String name) =>
       name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
 
-  /// Descarga el documento y lo escribe en la carpeta temporal del
-  /// dispositivo; devuelve la ruta local para abrirlo con `OpenFilex`. Para
-  /// "guardar como" (elegir carpeta) usa [download].
-  ///
-  /// Lanza [DocumentException] con un mensaje en español si el servidor no
-  /// devuelve el archivo (404 → "El archivo ya no está disponible.").
+  /// Descarga a la carpeta temporal y devuelve la ruta local para `OpenFilex`.
+  /// Para "guardar como" usa [download].
   static Future<OpenedDocument> fetchToTemp(TeamDocument doc) async {
     final DownloadedDocument dl = await download(doc);
     final dir = await getTemporaryDirectory();

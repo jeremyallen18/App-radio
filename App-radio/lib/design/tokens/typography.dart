@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Escala tipográfica de 6 pasos, mapeada sobre [TextTheme] de Material 3.
-/// Pesos tomados de la pantalla ya migrada `login.dart` (w800 títulos,
-/// w500 cuerpo).
+/// Escala tipográfica de 6 pasos, mapeada sobre el [TextTheme] de Material 3.
 class AppTypography {
   AppTypography._();
 

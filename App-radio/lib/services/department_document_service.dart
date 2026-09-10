@@ -10,11 +10,8 @@ import 'package:doliv_social/models/team_document.dart';
 import 'package:doliv_social/services/document_service.dart'
     show DocumentException, DownloadedDocument, OpenedDocument;
 
-/// Cliente de "Documentos por departamento" (endpoints `/department-documents/*`
-/// en hive-backend). El RBAC lo aplica el backend:
-///   - director: lista/sube/renombra/elimina en cualquier departamento;
-///   - manager: lo mismo, solo en el suyo;
-///   - resto: solo `list` + `download` de su departamento.
+/// Cliente de "Documentos por departamento" (`/department-documents/*`). El RBAC
+/// lo aplica el backend (director: todo; manager: su depto; resto: solo leer).
 class DepartmentDocumentService {
   static Future<String> _token() async =>
       (await secureStorage.readSecureData(key)) ?? '';
@@ -106,8 +103,7 @@ class DepartmentDocumentService {
     );
   }
 
-  /// Descarga a la carpeta temporal y devuelve la ruta local, para abrir con
-  /// `OpenFilex` (misma idea que `DocumentService.fetchToTemp`).
+  /// Descarga a la carpeta temporal y devuelve la ruta local, para `OpenFilex`.
   static Future<OpenedDocument> fetchToTemp(TeamDocument doc) async {
     final dl = await download(doc);
     final dir = await getTemporaryDirectory();

@@ -2,12 +2,9 @@ import 'package:geolocator/geolocator.dart';
 
 import 'package:doliv_social/services/attendance_service.dart' show AttendanceException;
 
-/// Obtiene la ubicación actual del dispositivo para verificar el lugar de
-/// asistencia. Pide el permiso si hace falta y traduce cualquier problema a
-/// un [AttendanceException] con mensaje en español listo para mostrar.
-///
-/// Se llama SOLO al registrar entrada o al terminar la hora de comida — nunca
-/// se rastrea la ubicación de forma continua.
+/// Ubicación actual para verificar el lugar de asistencia: pide permiso y
+/// traduce los fallos a [AttendanceException] en español. Solo se llama al
+/// fichar entrada o fin de comida; nunca hay rastreo continuo.
 class AttendanceLocation {
   static Future<({double latitude, double longitude, double accuracyM})>
       current() async {

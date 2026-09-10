@@ -1,10 +1,7 @@
-// Modelos del calendario (Radio Doliv). Alimentados por GET /calendar y
-// GET /events del backend PHP (hive-backend/events.php).
-//
-// - CalendarActivity: una tarea a entregar (tabla `tasks`) con fecha límite.
-// - CalendarEvent: un evento creado por el director, 'general' o por áreas.
-//   Si `hasLocation`, ese día sustituye el lugar y la hora de ENTRADA de
-//   asistencia para los miembros de las áreas asignadas.
+// Modelos del calendario (GET /calendar, GET /events).
+// - CalendarActivity: tarea a entregar con fecha límite.
+// - CalendarEvent: evento del director ('general' o por áreas); con `hasLocation`
+//   sustituye ese día el lugar y la hora de entrada de las áreas asignadas.
 
 class CalendarActivity {
   final String description;
@@ -117,9 +114,8 @@ class CalendarEvent {
       );
 }
 
-/// Evento con ubicación que hoy sustituye el lugar y la hora de ENTRADA de
-/// asistencia del trabajador. Lo devuelve GET /attendance/today
-/// (campo `entryOverrideEvent`).
+/// Evento que hoy sustituye el lugar y la hora de entrada de asistencia
+/// (campo `entryOverrideEvent` de GET /attendance/today).
 class EntryOverrideEvent {
   final String title;
   final String? entryTime; // "HH:MM"

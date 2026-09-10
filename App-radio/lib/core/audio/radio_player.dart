@@ -3,31 +3,30 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 
-/// URL del stream en vivo de Radio Doliv (Zeno.FM), tomada de la página web
-/// oficial (`RADIODOLIV_PAGINA/script.js` -> `STREAM_URL`).
+/// Stream en vivo de Radio Doliv (Zeno.FM), igual que `RADIODOLIV_PAGINA/script.js`.
 const String kRadioStreamUrl = 'https://stream.zeno.fm/vrfurwfubkhtv';
 
-/// `true` solo si `JustAudioBackground.init()` terminó bien en `main.dart`.
-/// Cuando falla (por ejemplo, `audio_service` no puede registrar su servicio
-/// en ciertas versiones de Android), la reproducción NO debe usar el tag
-/// `MediaItem`: `just_audio_background` no está interceptando el player y ese
-/// tag haría que `setAudioSource` lance una excepción. En ese caso la radio
-/// suena igual, solo sin controles en la notificación / pantalla de bloqueo.
+/// `true` solo si `JustAudioBackground.init()` funcionó en `main.dart`. Si falló,
+/// usar el tag `MediaItem` haría que `setAudioSource` lance excepción.
 bool radioBackgroundReady = false;
 
-/// Estado simplificado de reproducción, expuesto para no acoplar el resto
-/// de la app a la API interna de `just_audio`.
+/// Estado de reproducción, desacoplado de la API interna de `just_audio`.
 enum RadioPlaybackState { stopped, loading, playing, paused, error }
 
-/// Fuente de audio con los metadatos (título/artista) que se muestran en la
-/// notificación y en la pantalla de bloqueo mientras suena en segundo
-/// plano. `just_audio_background` (inicializado en `main.dart`) necesita
-/// este `tag` para poder armar esos controles.
+/// Limpia el título de los metadatos ICY: guion suelto o vacío ⇒ `null` (sin
+/// metadatos), para que la UI muestre el programa al aire en su lugar.
+String? normalizeIcyTitle(String? raw) {
+  final t = raw?.trim();
+  if (t == null || t.isEmpty) return null;
+  if (RegExp(r'^[\s\-–—]+$').hasMatch(t)) return null;
+  return t;
+}
+
+/// Fuente de audio del stream; el `tag` alimenta los controles en segundo plano.
 AudioSource _buildRadioSource() {
   return AudioSource.uri(
     Uri.parse(kRadioStreamUrl),
-    // Sin `just_audio_background` inicializado, el tag `MediaItem` no se puede
-    // procesar y rompe la reproducción — se omite y la radio suena normal.
+    // Sin `just_audio_background` activo el tag rompe la reproducción; se omite.
     tag: radioBackgroundReady
         ? const MediaItem(
             id: 'radio_doliv_live',
@@ -38,25 +37,12 @@ AudioSource _buildRadioSource() {
   );
 }
 
-/// Reproductor de radio en vivo compartido por toda la app.
+/// Reproductor de radio en vivo, singleton compartido por toda la app.
 ///
-/// Es un singleton a propósito: `MyAppBar` (donde vive el botón de radio)
-/// se reconstruye cada vez que se navega a una pantalla nueva, y si cada
-/// instancia creara su propio reproductor la transmisión se cortaría al
-/// cambiar de pantalla. Con un único reproductor global, la radio sigue
-/// sonando en segundo plano sin importar por dónde navegue el usuario.
-///
-/// Usa `just_audio` (no `audioplayers`) específicamente para este stream:
-/// su motor en Android (ExoPlayer) sí entiende el protocolo ICY/Icecast que
-/// manda Zeno.fm (metadatos de canción intercalados en el audio); el
-/// `MediaPlayer` nativo de Android que usa `audioplayers` lo rechaza con
-/// `MEDIA_ERROR_UNKNOWN`.
-///
-/// Además, va de la mano con `just_audio_background` (inicializado antes
-/// que nada en `main.dart`, vía `JustAudioBackground.init(...)`), que
-/// registra un foreground service en Android para que la radio siga
-/// sonando con la app minimizada o la pantalla bloqueada, con controles de
-/// play/pausa en la notificación y en el lock screen.
+/// Singleton para que la transmisión no se corte al navegar (el botón vive en
+/// `MyAppBar`, que se reconstruye por pantalla). Usa `just_audio` porque su
+/// ExoPlayer entiende el ICY/Icecast de Zeno.fm; `audioplayers` lo rechaza. Va
+/// con `just_audio_background` para sonar con la app en segundo plano.
 class RadioPlayer {
   RadioPlayer._internal() {
     unawaited(_preload());
@@ -77,8 +63,7 @@ class RadioPlayer {
   StreamSubscription<PlayerState>? _playerStateSub;
   StreamSubscription<IcyMetadata?>? _icySub;
 
-  /// Emite cada vez que cambia el estado de reproducción, para que el
-  /// widget del botón se actualice solo.
+  /// Emite en cada cambio de estado de reproducción.
   Stream<RadioPlaybackState> get onStateChanged => _stateController.stream;
 
   RadioPlaybackState get state => _state;
@@ -88,19 +73,19 @@ class RadioPlayer {
   /// Volumen actual (0.0 – 1.0).
   double get volume => _volume;
 
-  /// Cambia el volumen del stream en vivo. Se limita a [0, 1].
+  /// Ajusta el volumen del stream, limitado a [0, 1].
   Future<void> setVolume(double value) async {
     _volume = value.clamp(0.0, 1.0);
     await _player.setVolume(_volume);
   }
 
-  /// Título de lo que suena ahora (metadatos ICY del stream de Zeno.fm), o
-  /// `null` si aún no llegó ninguno / la radio está detenida.
+  /// Título de lo que suena ahora (ICY), o `null` si no hay / está detenida.
   String? get nowPlaying => _nowPlaying;
 
-  /// Emite el título ICY cada vez que cambia la canción/segmento.
+  /// Emite el título ICY en cada cambio de canción/segmento.
   Stream<String?> get onNowPlayingChanged => _nowPlayingController.stream;
 
+  /// Traduce el estado de `just_audio` al enum propio y lo publica.
   void _onPlayerState(PlayerState playerState) {
     RadioPlaybackState next;
     if (playerState.playing) {
@@ -116,47 +101,39 @@ class RadioPlayer {
     _state = next;
     _stateController.add(next);
 
-    // Al cortar la transmisión, lo que "sonaba" deja de tener sentido.
+    // Al cortar, lo que "sonaba" deja de tener sentido.
     if (next == RadioPlaybackState.stopped && _nowPlaying != null) {
       _nowPlaying = null;
       _nowPlayingController.add(null);
     }
   }
 
+  /// Publica el título ICY normalizado cuando cambia.
   void _onIcy(IcyMetadata? icy) {
-    // Zeno.fm manda el título de la canción/segmento en `icy.info.title`.
-    final title = icy?.info?.title?.trim();
-    final next = (title == null || title.isEmpty) ? null : title;
+    final next = normalizeIcyTitle(icy?.info?.title);
     if (next == _nowPlaying) return;
     _nowPlaying = next;
     _nowPlayingController.add(next);
   }
 
+  /// Se suscribe a los streams del player y precarga la conexión (DNS/TLS) para
+  /// que el primer tap se sienta rápido. Idempotente.
   Future<void> _preload() {
     return _preloadFuture ??= () async {
       _playerStateSub ??= _player.playerStateStream.listen(_onPlayerState);
       _icySub ??= _player.icyMetadataStream.listen(_onIcy);
       try {
-        // Precarga la conexión (DNS/TLS) para que el primer tap del
-        // usuario se sienta más rápido; no evita que toggle() vuelva a
-        // pedir la URL después, eso es intencional (ver toggle()).
         await _player.setAudioSource(_buildRadioSource(), preload: true);
       } catch (_) {
-        // Si la precarga silenciosa falla (sin red, etc.), no pasa nada:
-        // toggle() vuelve a intentar cuando el usuario toque el botón.
+        // Sin red, etc.: `toggle()` reintenta al tocar el botón.
       }
     }();
   }
 
-  /// Alterna entre reproducir y detener el stream en vivo.
+  /// Alterna reproducir / detener.
   ///
-  /// A propósito NO usamos `pause()`/`resume()`: para un stream en vivo eso
-  /// dejaría el buffer "congelado" en el momento en que se pausó, así que
-  /// al reanudar se escucharía justo donde se quedó (como una pausa de
-  /// video), no lo que está sonando ahora. En vez de eso, al "pausar"
-  /// cortamos la conexión por completo (`stop`), y al volver a dar play se
-  /// pide la URL de nuevo — igual que hace la radio de verdad, siempre
-  /// conecta al punto actual de la transmisión.
+  /// Usa `stop` (no `pause`) y vuelve a pedir la URL en cada play: un stream en
+  /// vivo pausado se quedaría congelado en ese punto en vez de seguir en directo.
   Future<void> toggle() async {
     if (isPlaying || _state == RadioPlaybackState.loading) {
       await _player.stop();
@@ -167,8 +144,6 @@ class RadioPlayer {
     _stateController.add(_state);
 
     try {
-      // Siempre se vuelve a pedir la fuente (no se reutiliza la conexión
-      // anterior) para garantizar que conecta al instante en vivo actual.
       await _player.setAudioSource(_buildRadioSource(), preload: true);
       await _player.play();
     } catch (e) {
@@ -178,14 +153,13 @@ class RadioPlayer {
     }
   }
 
-  /// Corta la transmisión si está sonando o cargando. Idempotente: no pasa
-  /// nada si ya está detenida. Se llama, por ejemplo, al cerrar sesión.
+  /// Corta la transmisión si está activa. Idempotente (p. ej. al cerrar sesión).
   Future<void> stop() async {
     if (_state == RadioPlaybackState.stopped) return;
     try {
       await _player.stop();
     } catch (_) {
-      // Si el reproductor ya no está disponible, no hay nada que cortar.
+      // El reproductor ya no está disponible: nada que cortar.
     }
   }
 }

@@ -14,8 +14,7 @@ import 'package:doliv_social/core/session_keys.dart' show secureStorage, key;
 import 'package:doliv_social/firebase_options.dart';
 import 'package:doliv_social/shared/notifications/notification_router.dart';
 
-/// Navigator global: enruta un push tocado cuando no hay BuildContext a mano
-/// (app abierta desde frío).
+/// Navigator global: enruta un push tocado sin BuildContext a mano.
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 const AndroidNotificationChannel _channel = AndroidNotificationChannel(
@@ -28,8 +27,7 @@ const AndroidNotificationChannel _channel = AndroidNotificationChannel(
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
 
-/// `Firebase.initializeApp` es un error si se llama dos veces con la app por
-/// defecto; este guard lo hace idempotente (main + background handler + init).
+/// Inicializa Firebase de forma idempotente (main + background handler + init).
 Future<void> ensureFirebaseInitialized() async {
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp(
@@ -38,7 +36,7 @@ Future<void> ensureFirebaseInitialized() async {
   }
 }
 
-/// Handler de segundo plano / app cerrada. DEBE ser top-level y estar anotado.
+/// Handler de push en segundo plano / app cerrada. Debe ser top-level y anotado.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
@@ -59,15 +57,14 @@ class PushService {
   String? _activeChatPeerEmail;
   String? _lastToken;
 
-  // Se guardan para que un segundo paso por `_wireOnce()` (posible si un
-  // `await` posterior lanza y `init()` reintenta) no duplique la suscripción.
+  // Guardadas para que un reintento de `_wireOnce()` no duplique la suscripción.
   StreamSubscription<RemoteMessage>? _onMessageSub;
   StreamSubscription<RemoteMessage>? _onMessageOpenedAppSub;
 
-  /// Lo fija/limpia la pantalla de un hilo de chat (Task 10).
+  /// Lo fija/limpia la pantalla de un hilo de chat abierto.
   void setActiveChatPeer(String? email) => _activeChatPeerEmail = email;
 
-  /// Se llama UNA vez tras iniciar sesión (ya hay token de sesión guardado).
+  /// Se llama una vez tras iniciar sesión (ya hay token guardado).
   Future<void> init() async {
     try {
       await ensureFirebaseInitialized();
@@ -77,7 +74,7 @@ class PushService {
       final status = settings.authorizationStatus;
       if (status == AuthorizationStatus.denied ||
           status == AuthorizationStatus.deniedPermanently) {
-        return; // la app funciona sin push; no se vuelve a preguntar
+        return; // funciona sin push; no se vuelve a preguntar
       }
 
       final token = await FirebaseMessaging.instance.getToken();
@@ -90,15 +87,12 @@ class PushService {
     }
   }
 
-  /// Inicializa el plugin de notificaciones locales y crea el canal
-  /// `doliv_default`. Idempotente y barato en repeticiones: lo llaman tanto el
-  /// wiring de primer plano como `handleRemoteMessage` (que también corre en el
-  /// isolate de segundo plano, donde `_wireOnce()` nunca se ejecuta).
+  /// Inicializa notificaciones locales y crea el canal `doliv_default`.
+  /// Idempotente; lo llaman el wiring de primer plano y `handleRemoteMessage`
+  /// (que también corre en el isolate de segundo plano).
   Future<void> _ensureLocalNotifications() async {
     if (_localReady) return;
 
-    // flutter_local_notifications 22: `initialize` recibe `settings` con nombre
-    // (antes era posicional) y `show` es totalmente nombrado.
     await _localNotifications.initialize(
       settings: const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
@@ -130,8 +124,7 @@ class PushService {
     await _ensureLocalNotifications();
     await _handleColdStartLaunch();
 
-    // Listeners de FCM: solo tienen sentido en el isolate de primer plano.
-    // Se registran con guarda de campo para no re-suscribir en un reintento.
+    // Listeners de FCM (solo isolate de primer plano), con guarda anti-reintento.
     _onMessageSub ??= FirebaseMessaging.onMessage.listen(handleRemoteMessage);
     _onMessageOpenedAppSub ??= FirebaseMessaging.onMessageOpenedApp.listen(
       (m) => _routeTo(normalizePushData(_asObjectMap(m.data))),
@@ -142,17 +135,13 @@ class PushService {
       _routeTo(normalizePushData(_asObjectMap(initial.data)));
     }
 
-    // Solo se marca como cableado tras completar todo el wiring, para que un
-    // reintento de `init()` tras un fallo vuelva a intentarlo.
+    // Se marca cableado solo al final, para que un reintento de `init()` insista.
     _wired = true;
   }
 
-  /// Arranque en frío: los mensajes son data-only, así que FCM nunca dibuja una
-  /// notificación de bandeja y `onMessageOpenedApp` / `getInitialMessage()` no
-  /// disparan. La única notificación tocable es la de flutter_local_notifications
-  /// y, en frío, `onDidReceiveNotificationResponse` tampoco corre: hay que
-  /// consultar `getNotificationAppLaunchDetails()`. Se hace una sola vez y nunca
-  /// en el isolate de segundo plano (este método solo lo llama `_wireOnce()`).
+  /// Arranque en frío: como los push son data-only, la notificación tocable es
+  /// la local y su callback no corre en frío; hay que leer
+  /// `getNotificationAppLaunchDetails()`. Una sola vez, nunca en segundo plano.
   Future<void> _handleColdStartLaunch() async {
     if (_coldStartHandled) return;
     _coldStartHandled = true;
@@ -163,8 +152,7 @@ class PushService {
       if ((launch?.didNotificationLaunchApp ?? false) &&
           p != null &&
           p.isNotEmpty) {
-        // Enrutar DESPUÉS de que exista el navigator: en el arranque
-        // `appNavigatorKey.currentContext` es null.
+        // Enrutar tras el primer frame: al arranque aún no hay navigator.
         WidgetsBinding.instance.addPostFrameCallback((_) {
           try {
             _routeTo(normalizePushData(
@@ -176,8 +164,8 @@ class PushService {
     } catch (_) {}
   }
 
-  /// Refresca el badge y, salvo que el hilo esté abierto, dibuja la
-  /// notificación local. Público porque también lo llama el background handler.
+  /// Refresca el badge y, salvo que el hilo esté abierto, dibuja la notificación
+  /// local. Público: también lo llama el background handler.
   Future<void> handleRemoteMessage(
     RemoteMessage message, {
     bool background = false,
@@ -185,16 +173,14 @@ class PushService {
     try {
       final data = normalizePushData(_asObjectMap(message.data));
 
-      // En el isolate de segundo plano ningún widget escucha el controlador:
-      // refrescar allí es una ronda HTTP autenticada desperdiciada.
+      // En segundo plano nadie escucha el controlador: refrescar sería HTTP en balde.
       if (!background) {
         unawaited(NotificationsController.instance.refresh(force: true));
       }
 
       if (!shouldShowLocalNotification(data, _activeChatPeerEmail)) return;
 
-      // En el isolate de segundo plano `_wireOnce()` nunca corrió: hay que
-      // asegurar el plugin y el canal antes de `.show()`.
+      // En segundo plano `_wireOnce()` no corrió: asegurar plugin y canal.
       await _ensureLocalNotifications();
 
       final title =
@@ -214,8 +200,7 @@ class PushService {
             importance: Importance.high,
             priority: Priority.high,
             tag: tag,
-            // Mensajes largos y títulos de evento/rango de fechas se expanden
-            // al deslizar en vez de cortarse.
+            // Los mensajes largos se expanden al deslizar en vez de cortarse.
             styleInformation: BigTextStyleInformation(body, contentTitle: title),
           ),
         ),
@@ -230,7 +215,6 @@ class PushService {
     try {
       final context = appNavigatorKey.currentContext;
       if (context == null) return;
-      // NotificationRouter lee 'type' / 'entityType' / 'entityId'.
       NotificationRouter.open(context, data);
     } catch (e) {
       debugPrint('PushService._routeTo failed: $e');
@@ -238,9 +222,7 @@ class PushService {
   }
 
   Future<void> _registerToken(String token) async {
-    // Corre también desde `onTokenRefresh.listen(...)`: cualquier fallo aquí
-    // (secure storage, red, valor inesperado) NO debe volverse un error async
-    // sin capturar.
+    // También corre desde `onTokenRefresh`: ningún fallo debe escapar sin captura.
     try {
       _lastToken = token;
       final auth = await _sessionToken();
@@ -251,7 +233,7 @@ class PushService {
         body: {'token': token, 'platform': 'android'},
       );
     } catch (e) {
-      // se reintenta en el próximo arranque de la app
+      // se reintenta en el próximo arranque
       debugPrint('PushService._registerToken failed: $e');
     }
   }

@@ -3,14 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:doliv_social/design/tokens/colors.dart';
 
-/// Controla el modo de tema (claro/oscuro) de toda la app.
-///
-/// Es un singleton simple (sin paquetes de estado extra) que:
-/// - guarda la preferencia del usuario con `shared_preferences`,
-/// - mantiene [AppColors] sincronizado con el modo activo (para todo el
-///   código que usa `AppColors.xxx` directamente), y
-/// - notifica a quien esté escuchando (ver `main.dart`) para forzar un
-///   refresco de toda la UI cuando el modo cambia.
+/// Singleton del modo de tema (claro/oscuro): persiste la preferencia, mantiene
+/// [AppColors] sincronizado y notifica para refrescar la UI.
 class ThemeController extends ChangeNotifier {
   ThemeController._();
 
@@ -24,9 +18,8 @@ class ThemeController extends ChangeNotifier {
 
   bool _initialized = false;
 
-  /// Carga la preferencia guardada (si existe). Se llama una vez en `main()`,
-  /// antes de `runApp`, para que la primera pantalla ya se muestre en el modo
-  /// correcto (sin parpadeo).
+  /// Carga la preferencia guardada. Se llama una vez en `main()`, antes de
+  /// `runApp`, para evitar parpadeo.
   Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
@@ -34,8 +27,7 @@ class ThemeController extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       _isDark = prefs.getBool(_prefsKey) ?? true;
     } catch (_) {
-      // Si no hay almacenamiento disponible (p. ej. primer arranque en
-      // ciertos entornos de test), se mantiene el modo oscuro por defecto.
+      // Sin almacenamiento: se queda en oscuro por defecto.
     }
     AppColors.setDark(_isDark);
   }
@@ -51,8 +43,7 @@ class ThemeController extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_prefsKey, _isDark);
     } catch (_) {
-      // Persistencia best-effort: si falla, el modo igual queda activo para
-      // la sesión actual.
+      // Persistencia best-effort; el modo igual queda activo esta sesión.
     }
   }
 }
