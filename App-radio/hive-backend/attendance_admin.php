@@ -407,3 +407,181 @@ function adminLocationSave(PDO $pdo) {
     ]);
 }
 
+// ---- dispositivos de asistencia (solo director) ----------------------
+
+// Núcleo testable: resuelve una solicitud. Devuelve 'approved' | 'rejected'.
+function attendance_device_admin_resolve(PDO $pdo, array $admin, int $id, string $decision, ?string $note): string {
+    $st = $pdo->prepare('SELECT * FROM attendance_device_requests WHERE id = ?');
+    $st->execute([$id]);
+    $req = $st->fetch();
+    if (!$req) {
+        attendance_fail('La solicitud no existe.', 404);
+    }
+    if ($req['status'] !== 'pending') {
+        attendance_fail('Esta solicitud ya fue resuelta.', 409);
+    }
+    if ($decision === 'approve') {
+        attendance_device_enroll($pdo, $req['employee_id'], [
+            'key'        => $req['device_key'],
+            'uuid'       => $req['device_uuid'],
+            'platform'   => $req['platform'],
+            'model'      => $req['model'],
+            'osVersion'  => $req['os_version'],
+            'appVersion' => $req['app_version'],
+        ], 'director', $admin['id']);
+    }
+    $status = $decision === 'approve' ? 'approved' : 'rejected';
+    $pdo->prepare(
+        'UPDATE attendance_device_requests
+         SET status = ?, resolved_by = ?, resolved_at = NOW(), note = ?
+         WHERE id = ?'
+    )->execute([$status, $admin['id'], $note, $id]);
+    return $status;
+}
+
+// Núcleo testable: borra el dispositivo confiado del empleado y cierra sus
+// solicitudes pendientes.
+function attendance_device_admin_reset(PDO $pdo, string $employeeId, string $adminId): void {
+    $pdo->prepare('DELETE FROM attendance_trusted_devices WHERE employee_id = ?')->execute([$employeeId]);
+    $pdo->prepare(
+        "UPDATE attendance_device_requests
+         SET status = 'rejected', resolved_by = ?, resolved_at = NOW()
+         WHERE employee_id = ? AND status = 'pending'"
+    )->execute([$adminId, $employeeId]);
+}
+
+// Núcleo testable: lista de anomalías de los últimos $days días.
+function attendance_device_anomalies(PDO $pdo, int $days): array {
+    $days  = max(1, min(180, $days));
+    $since = date('Y-m-d H:i:s', time() - $days * 86400);
+    $out   = [];
+
+    $st = $pdo->prepare(
+        "SELECT r.employee_id, u.name, r.model, r.attempts, r.last_seen
+         FROM attendance_device_requests r JOIN users u ON u.id = r.employee_id
+         WHERE r.last_seen >= ? AND r.status IN ('pending','rejected')
+         ORDER BY r.last_seen DESC"
+    );
+    $st->execute([$since]);
+    foreach ($st->fetchAll() as $r) {
+        $out[] = [
+            'type' => 'unknown_device_attempt', 'employeeId' => $r['employee_id'],
+            'employeeName' => $r['name'],
+            'detail' => trim(($r['model'] ?? 'Dispositivo') . ' · ' . (int) $r['attempts'] . ' intento(s)'),
+            'at' => $r['last_seen'],
+        ];
+    }
+
+    $st = $pdo->prepare(
+        "SELECT r.employee_id, u.name, COUNT(*) c
+         FROM attendance_device_requests r JOIN users u ON u.id = r.employee_id
+         WHERE r.status = 'approved' AND r.resolved_at >= ?
+         GROUP BY r.employee_id, u.name HAVING c > 1"
+    );
+    $st->execute([$since]);
+    foreach ($st->fetchAll() as $r) {
+        $out[] = [
+            'type' => 'frequent_device_change', 'employeeId' => $r['employee_id'],
+            'employeeName' => $r['name'],
+            'detail' => (int) $r['c'] . ' cambios de dispositivo en ' . $days . ' días',
+            'at' => null,
+        ];
+    }
+
+    $st = $pdo->query(
+        "SELECT d.employee_id, u.name, d.enrolled_at, d.device_key
+         FROM attendance_trusted_devices d JOIN users u ON u.id = d.employee_id
+         WHERE d.enrolled_via = 'first_use'"
+    );
+    foreach ($st->fetchAll() as $r) {
+        $q = $pdo->prepare(
+            'SELECT 1 FROM attendance
+             WHERE employee_id = ? AND device_key IS NOT NULL AND device_key <> ?
+             LIMIT 1'
+        );
+        $q->execute([$r['employee_id'], $r['device_key']]);
+        if ($q->fetch()) {
+            $out[] = [
+                'type' => 'first_use_after_history', 'employeeId' => $r['employee_id'],
+                'employeeName' => $r['name'],
+                'detail' => 'Alta por primer uso con historial previo de otro dispositivo',
+                'at' => $r['enrolled_at'],
+            ];
+        }
+    }
+    return $out;
+}
+
+// ---- handlers HTTP ----
+
+function adminAttendanceDeviceRequests(PDO $pdo) {
+    $admin = attendance_admin_guard($pdo);
+    require_role($admin, ['director']);
+    $status = in_array($_GET['status'] ?? '', ['pending', 'approved', 'rejected'], true)
+        ? $_GET['status'] : 'pending';
+    $st = $pdo->prepare(
+        'SELECT r.*, u.name AS employee_name
+         FROM attendance_device_requests r JOIN users u ON u.id = r.employee_id
+         WHERE r.status = ? ORDER BY r.last_seen DESC'
+    );
+    $st->execute([$status]);
+    $rows = array_map(static fn($r) => [
+        'id'         => (int) $r['id'],
+        'employee'   => ['id' => $r['employee_id'], 'name' => $r['employee_name']],
+        'platform'   => $r['platform'],
+        'model'      => $r['model'],
+        'osVersion'  => $r['os_version'],
+        'appVersion' => $r['app_version'],
+        'attempts'   => (int) $r['attempts'],
+        'firstSeen'  => $r['first_seen'],
+        'lastSeen'   => $r['last_seen'],
+        'status'     => $r['status'],
+    ], $st->fetchAll());
+    json_response(['success' => true, 'requests' => $rows]);
+}
+
+function adminAttendanceDeviceRequestResolve(PDO $pdo, string $id) {
+    $admin = attendance_admin_guard($pdo);
+    require_role($admin, ['director']);
+    $body = request_body();
+    $decision = $body['decision'] ?? '';
+    if (!in_array($decision, ['approve', 'reject'], true)) {
+        attendance_fail('Decisión inválida.', 422);
+    }
+    $note = mb_substr(trim((string) ($body['note'] ?? '')), 0, 255);
+    $status = attendance_device_admin_resolve($pdo, $admin, (int) $id, $decision, $note === '' ? null : $note);
+    json_response(['success' => true, 'status' => $status]);
+}
+
+function adminAttendanceDeviceAnomalies(PDO $pdo) {
+    $admin = attendance_admin_guard($pdo);
+    require_role($admin, ['director']);
+    $days = (int) ($_GET['days'] ?? 30);
+    json_response(['success' => true, 'anomalies' => attendance_device_anomalies($pdo, $days)]);
+}
+
+function adminAttendanceEmployeeDevice(PDO $pdo, string $employeeId) {
+    $admin = attendance_admin_guard($pdo);
+    require_role($admin, ['director']);
+    $emp = attendance_admin_target($pdo, $admin, $employeeId);
+    $d = attendance_trusted_device_for($pdo, $emp['id']);
+    json_response(['success' => true, 'device' => $d ? [
+        'model'      => $d['model'],
+        'osVersion'  => $d['os_version'],
+        'platform'   => $d['platform'],
+        'enrolledAt' => $d['enrolled_at'],
+        'via'        => $d['enrolled_via'],
+    ] : null]);
+}
+
+function adminAttendanceEmployeeDeviceReset(PDO $pdo, string $employeeId) {
+    $admin = attendance_admin_guard($pdo);
+    require_role($admin, ['director']);
+    $emp = attendance_admin_target($pdo, $admin, $employeeId);
+    attendance_device_admin_reset($pdo, $emp['id'], $admin['id']);
+    json_response([
+        'success' => true,
+        'message' => 'Dispositivo restablecido. El siguiente registro vinculará el nuevo dispositivo.',
+    ]);
+}
+
