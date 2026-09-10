@@ -6,7 +6,10 @@ import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/attendance.dart';
 import 'package:doliv_social/models/calendar_event.dart';
 import 'package:doliv_social/services/attendance_service.dart';
+import 'package:doliv_social/core/device/biometric_gate.dart';
+import 'package:doliv_social/core/device/device_identity.dart';
 import 'package:doliv_social/core/location/attendance_location.dart';
+import 'package:doliv_social/shared/attendance/attendance_device_banner.dart';
 import 'package:doliv_social/shared/attendance/attendance_format.dart';
 import 'package:doliv_social/shared/attendance/attendance_history_screen.dart';
 import 'package:doliv_social/shared/attendance/attendance_status_cards.dart';
@@ -40,6 +43,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   /// Eventos que exigen estar físicamente en el lugar de asistencia.
   static const _geofenced = {AttendanceAction.entrada, AttendanceAction.finComida};
+
+  /// Eventos que exigen verificación biométrica del SO antes de la red.
+  static const _biometricActions = {AttendanceAction.entrada, AttendanceAction.salida};
+
+  AttendanceDeviceState _deviceState = AttendanceDeviceState.trusted;
+  DeviceIdentity? _device;
 
   @override
   void initState() {
@@ -75,6 +84,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         _error = e.message;
         _loading = false;
       });
+      return;
+    }
+
+    // Estado del dispositivo (best-effort): si falla, se deja en 'trusted'
+    // para no bloquear la UI; el backend sigue siendo la capa autoritativa
+    // al fichar.
+    try {
+      _device ??= await DeviceIdentity.current();
+      final st = await AttendanceApi.deviceStatus(_device!);
+      if (!mounted) return;
+      setState(() => _deviceState = st.state);
+    } catch (_) {
+      // Se asume 'trusted'; no se altera el estado.
     }
   }
 
@@ -101,15 +123,45 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     setState(() => _submitting = true);
 
+    // Verificación biométrica del SO para entrada y salida, ANTES de la red.
+    String? bioResult;
+    String? bioType;
+    if (_biometricActions.contains(action)) {
+      final r = await BiometricGate().verify(
+        action == AttendanceAction.entrada
+            ? 'Confirma tu identidad para registrar tu entrada'
+            : 'Confirma tu identidad para registrar tu salida',
+      );
+      if (r.outcome == BiometricOutcome.noLock) {
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        _snack('Configura una huella, rostro o PIN en tu dispositivo para '
+            'registrar tu asistencia.');
+        return;
+      }
+      if (!r.passed) {
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        _snack('Verificación cancelada, inténtalo de nuevo.');
+        return;
+      }
+      bioResult = r.apiValue;
+      bioType = r.type;
+    }
+
+    _device ??= await DeviceIdentity.current();
+
     // La entrada y el fin de la hora de comida exigen ubicación: se pide el
     // GPS y se manda al backend, que valida contra el lugar de asistencia.
     double? lat;
     double? lng;
+    double? acc;
     try {
       if (_geofenced.contains(action)) {
         final pos = await AttendanceLocation.current();
         lat = pos.latitude;
         lng = pos.longitude;
+        acc = pos.accuracyM;
       }
     } on AttendanceException catch (e) {
       if (!mounted) return;
@@ -119,7 +171,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
 
     try {
-      final day = await AttendanceApi.perform(action, latitude: lat, longitude: lng);
+      final day = await AttendanceApi.perform(
+        action,
+        latitude: lat,
+        longitude: lng,
+        locationAccuracy: acc,
+        device: _device,
+        biometricResult: bioResult,
+        biometricType: bioType,
+      );
       if (!mounted) return;
       setState(() {
         _day = day;
@@ -131,10 +191,34 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (!mounted) return;
       setState(() => _submitting = false);
       _snack(e.message);
+      if (e.code == 'UNKNOWN_DEVICE') {
+        setState(() => _deviceState = AttendanceDeviceState.unknown);
+      }
       // Si el backend indica un permiso aprobado, o el estado cambió, se
       // recarga para reflejar "asistencia no requerida" y no dejar un botón
       // que ya no aplica.
       _load();
+    }
+  }
+
+  Future<void> _requestDevice() async {
+    final device = _device;
+    if (device == null) return;
+    setState(() => _submitting = true);
+    try {
+      final state = await AttendanceApi.requestDevice(device);
+      if (!mounted) return;
+      setState(() {
+        _deviceState = state;
+        _submitting = false;
+      });
+      _snack(state == AttendanceDeviceState.trusted
+          ? 'Este dispositivo ya está autorizado.'
+          : 'Solicitud enviada. El director debe autorizar este dispositivo.');
+    } on AttendanceException catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      _snack(e.message);
     }
   }
 
@@ -233,6 +317,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 AttendanceScheduleCard(day: day),
                 const SizedBox(height: AppSpacing.xl),
                 if (_absence == null) ...[
+                  AttendanceDeviceBanner(
+                    state: _deviceState,
+                    onRequest: _requestDevice,
+                  ),
                   AttendancePrimaryAction(
                     day: day,
                     submitting: _submitting,
