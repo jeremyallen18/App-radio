@@ -17,6 +17,7 @@ import 'package:doliv_social/shared/resources/department_documents_picker.dart';
 import 'package:doliv_social/features/dashboard/director/attendance_corrections_screen.dart';
 import 'package:doliv_social/features/dashboard/director/attendance_report_screen.dart';
 import 'package:doliv_social/features/dashboard/director/admin_location_screen.dart';
+import 'package:doliv_social/features/dashboard/director/attendance_devices_screen.dart';
 import 'package:doliv_social/features/dashboard/director/admin_schedule_screen.dart';
 import 'package:doliv_social/features/dashboard/director/leave_calendar_screen.dart';
 import 'package:doliv_social/features/dashboard/director/admin_leave_screen.dart';
@@ -388,6 +389,12 @@ List<AppMenuSection> _directorSections(void Function(Widget) push) {
           title: 'Lugar de asistencia',
           subtitle: 'Geocerca para entrada y comida',
           onTap: () => push(const AdminLocationScreen()),
+        ),
+        AppMenuEntry(
+          icon: Icons.devices_outlined,
+          title: 'Dispositivos de asistencia',
+          subtitle: 'Autorizar el dispositivo de cada empleado y ver anomalías',
+          onTap: () => push(const AttendanceDevicesScreen()),
         ),
         AppMenuEntry(
           icon: Icons.summarize_outlined,
