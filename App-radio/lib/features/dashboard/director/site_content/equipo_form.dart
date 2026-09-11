@@ -20,25 +20,62 @@ class EquipoFormScreen extends StatefulWidget {
 
 class _EquipoFormScreenState extends State<EquipoFormScreen> {
   final _api = SiteContentApi('equipo');
+  final _programasApi = SiteContentApi('programas');
   final _picker = ImagePicker();
 
-  late final _name = TextEditingController(text: widget.item?['name']?.toString() ?? '');
-  late final _role = TextEditingController(text: widget.item?['role']?.toString() ?? '');
-  late final _category = TextEditingController(text: widget.item?['category']?.toString() ?? '');
-  late final _accent = TextEditingController(text: widget.item?['accent']?.toString() ?? '');
-  late final _shortDesc = TextEditingController(text: widget.item?['short_desc']?.toString() ?? '');
-  late final _bio = TextEditingController(text: widget.item?['bio']?.toString() ?? '');
-  late final _path = TextEditingController(text: widget.item?['path']?.toString() ?? '');
-  late final _interests = TextEditingController(text: widget.item?['interests']?.toString() ?? '');
-  late final _sortOrder = TextEditingController(text: widget.item?['sort_order']?.toString() ?? '0');
+  late final _name =
+      TextEditingController(text: widget.item?['name']?.toString() ?? '');
+  late final _role =
+      TextEditingController(text: widget.item?['role']?.toString() ?? '');
+  late final _category =
+      TextEditingController(text: widget.item?['category']?.toString() ?? '');
+  late final _accent =
+      TextEditingController(text: widget.item?['accent']?.toString() ?? '');
+  late final _shortDesc =
+      TextEditingController(text: widget.item?['short_desc']?.toString() ?? '');
+  late final _bio =
+      TextEditingController(text: widget.item?['bio']?.toString() ?? '');
+  late final _path =
+      TextEditingController(text: widget.item?['path']?.toString() ?? '');
+  late final _interests =
+      TextEditingController(text: widget.item?['interests']?.toString() ?? '');
+  late final _sortOrder = TextEditingController(
+      text: widget.item?['sort_order']?.toString() ?? '0');
+  late Set<int> _selectedProgramIds =
+      _parseProgramIds(widget.item?['program_ids']);
 
   File? _newImage;
   bool _submitting = false;
+  late final Future<List<SiteLinkOption>> _programsFuture =
+      _loadProgramOptions();
 
   bool get _isEditing => widget.item != null;
 
+  static Set<int> _parseProgramIds(dynamic value) {
+    if (value is! List) return <int>{};
+    return value
+        .map((v) => int.tryParse(v.toString()))
+        .whereType<int>()
+        .toSet();
+  }
+
+  /// Trae todos los programas para ofrecerlos como vínculo "conduce este
+  /// programa" — la selección se guarda como la lista completa vigente.
+  Future<List<SiteLinkOption>> _loadProgramOptions() async {
+    final items = await _programasApi.list();
+    return items.map((item) {
+      final schedule = (item['schedule'] ?? '').toString();
+      return SiteLinkOption(
+        id: int.parse(item['id'].toString()),
+        label: (item['title'] ?? '').toString(),
+        subtitle: schedule.isEmpty ? null : schedule,
+      );
+    }).toList();
+  }
+
   Future<void> _pickImage() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    final picked =
+        await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked == null) return;
     setState(() => _newImage = File(picked.path));
   }
@@ -82,12 +119,15 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
       'bio': _bio.text,
       'path': _path.text,
       'interests': _interests.text,
-      'sort_order': _sortOrder.text.trim().isEmpty ? '0' : _sortOrder.text.trim(),
+      'sort_order':
+          _sortOrder.text.trim().isEmpty ? '0' : _sortOrder.text.trim(),
+      'program_ids': _selectedProgramIds.join(','),
     };
 
     try {
       if (_isEditing) {
-        await _api.update(widget.item!['id'].toString(), fields, imageFile: _newImage);
+        await _api.update(widget.item!['id'].toString(), fields,
+            imageFile: _newImage);
       } else {
         await _api.create(fields, imageFile: _newImage);
       }
@@ -140,6 +180,26 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
             iconColor: SiteFieldColors.green,
             controller: _category,
             hintText: 'Ej. locutores',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          FutureBuilder<List<SiteLinkOption>>(
+            future: _programsFuture,
+            builder: (context, snapshot) {
+              final options = snapshot.data ?? const [];
+              return SiteMultiLinkPickerField(
+                icon: Icons.podcasts_outlined,
+                label: 'Programas que conduce',
+                iconColor: SiteFieldColors.blue,
+                options: options,
+                selectedIds: _selectedProgramIds,
+                onChanged: (ids) => setState(() => _selectedProgramIds = ids),
+                helperText: snapshot.connectionState == ConnectionState.waiting
+                    ? 'Cargando programas…'
+                    : null,
+                emptyMessage:
+                    'Todavía no hay programas creados. Créalos primero en Programación.',
+              );
+            },
           ),
           const SizedBox(height: AppSpacing.md),
           SiteFormField(

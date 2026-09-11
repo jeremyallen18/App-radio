@@ -18,27 +18,53 @@ class ProgramaFormScreen extends StatefulWidget {
   State<ProgramaFormScreen> createState() => _ProgramaFormScreenState();
 }
 
+/// Convierte un valor dinámico que llega de la API (int, String o null) al
+/// id entero que usan los selectores de vínculo.
+int? _parseSiteId(dynamic value) {
+  if (value == null) return null;
+  return int.tryParse(value.toString());
+}
+
 class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
   final _api = SiteContentApi('programas');
+  final _equipoApi = SiteContentApi('equipo');
   final _picker = ImagePicker();
 
-  late final _title = TextEditingController(text: widget.item?['title']?.toString() ?? '');
-  late final _modalTitle = TextEditingController(text: widget.item?['modal_title']?.toString() ?? '');
-  late final _host = TextEditingController(text: widget.item?['host']?.toString() ?? '');
-  late final _schedule = TextEditingController(text: widget.item?['schedule']?.toString() ?? '');
-  late final _slotStart = TextEditingController(text: widget.item?['slot_start']?.toString() ?? '');
-  late final _slotEnd = TextEditingController(text: widget.item?['slot_end']?.toString() ?? '');
-  late final _weekdays = TextEditingController(text: widget.item?['weekdays']?.toString() ?? '');
-  late final _badgeIcon = TextEditingController(text: widget.item?['badge_icon']?.toString() ?? '');
-  late final _badgeTime = TextEditingController(text: widget.item?['badge_time']?.toString() ?? '');
-  late final _badgeLabel = TextEditingController(text: widget.item?['badge_label']?.toString() ?? '');
-  late final _accent = TextEditingController(text: widget.item?['accent']?.toString() ?? '');
-  late final _icon = TextEditingController(text: widget.item?['icon']?.toString() ?? '');
-  late final _categories = TextEditingController(text: widget.item?['categories']?.toString() ?? '');
-  late final _cardDesc = TextEditingController(text: widget.item?['card_desc']?.toString() ?? '');
-  late final _indexDesc = TextEditingController(text: widget.item?['index_desc']?.toString() ?? '');
-  late final _summary = TextEditingController(text: widget.item?['summary']?.toString() ?? '');
-  late final _sortOrder = TextEditingController(text: widget.item?['sort_order']?.toString() ?? '0');
+  late final _title =
+      TextEditingController(text: widget.item?['title']?.toString() ?? '');
+  late final _modalTitle = TextEditingController(
+      text: widget.item?['modal_title']?.toString() ?? '');
+  late final _host =
+      TextEditingController(text: widget.item?['host']?.toString() ?? '');
+  late int? _hostTeamId = _parseSiteId(widget.item?['host_team_id']);
+  late final _schedule =
+      TextEditingController(text: widget.item?['schedule']?.toString() ?? '');
+  late final _slotStart =
+      TextEditingController(text: widget.item?['slot_start']?.toString() ?? '');
+  late final _slotEnd =
+      TextEditingController(text: widget.item?['slot_end']?.toString() ?? '');
+  late final _weekdays =
+      TextEditingController(text: widget.item?['weekdays']?.toString() ?? '');
+  late final _badgeIcon =
+      TextEditingController(text: widget.item?['badge_icon']?.toString() ?? '');
+  late final _badgeTime =
+      TextEditingController(text: widget.item?['badge_time']?.toString() ?? '');
+  late final _badgeLabel = TextEditingController(
+      text: widget.item?['badge_label']?.toString() ?? '');
+  late final _accent =
+      TextEditingController(text: widget.item?['accent']?.toString() ?? '');
+  late final _icon =
+      TextEditingController(text: widget.item?['icon']?.toString() ?? '');
+  late final _categories =
+      TextEditingController(text: widget.item?['categories']?.toString() ?? '');
+  late final _cardDesc =
+      TextEditingController(text: widget.item?['card_desc']?.toString() ?? '');
+  late final _indexDesc =
+      TextEditingController(text: widget.item?['index_desc']?.toString() ?? '');
+  late final _summary =
+      TextEditingController(text: widget.item?['summary']?.toString() ?? '');
+  late final _sortOrder = TextEditingController(
+      text: widget.item?['sort_order']?.toString() ?? '0');
 
   File? _newImage;
   bool _submitting = false;
@@ -46,9 +72,31 @@ class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
   bool get _isEditing => widget.item != null;
 
   Future<void> _pickImage() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    final picked =
+        await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked == null) return;
     setState(() => _newImage = File(picked.path));
+  }
+
+  /// Trae los integrantes de Equipo para ofrecerlos como locutor real a
+  /// vincular con este programa (en vez de solo escribir un nombre a mano).
+  Future<List<SiteLinkOption>> _loadHostOptions() async {
+    final items = await _equipoApi.list();
+    return items.map((item) {
+      final role = (item['role'] ?? '').toString();
+      return SiteLinkOption(
+        id: int.parse(item['id'].toString()),
+        label: (item['name'] ?? '').toString(),
+        subtitle: role.isEmpty ? null : role,
+      );
+    }).toList();
+  }
+
+  void _onHostSelected(SiteLinkOption? option) {
+    setState(() {
+      _hostTeamId = option?.id;
+      if (option != null) _host.text = option.label;
+    });
   }
 
   Future<void> _delete() async {
@@ -85,6 +133,7 @@ class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
       'title': _title.text.trim(),
       'modal_title': _modalTitle.text.trim(),
       'host': _host.text.trim(),
+      'host_team_id': _hostTeamId?.toString() ?? '',
       'schedule': _schedule.text.trim(),
       'slot_start': _slotStart.text.trim(),
       'slot_end': _slotEnd.text.trim(),
@@ -98,12 +147,14 @@ class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
       'card_desc': _cardDesc.text.trim(),
       'index_desc': _indexDesc.text.trim(),
       'summary': _summary.text.trim(),
-      'sort_order': _sortOrder.text.trim().isEmpty ? '0' : _sortOrder.text.trim(),
+      'sort_order':
+          _sortOrder.text.trim().isEmpty ? '0' : _sortOrder.text.trim(),
     };
 
     try {
       if (_isEditing) {
-        await _api.update(widget.item!['id'].toString(), fields, imageFile: _newImage);
+        await _api.update(widget.item!['id'].toString(), fields,
+            imageFile: _newImage);
       } else {
         await _api.create(fields, imageFile: _newImage);
       }
@@ -117,6 +168,64 @@ class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _slotStart.addListener(_syncScheduleLabels);
+    _slotEnd.addListener(_syncScheduleLabels);
+    _weekdays.addListener(_syncScheduleLabels);
+    _syncScheduleLabels();
+  }
+
+  void _syncScheduleLabels() {
+    final start = int.tryParse(_slotStart.text.trim());
+    final end = int.tryParse(_slotEnd.text.trim());
+    if (start == null || end == null || start < 0 || start > 23 || end < 0 || end > 23) {
+      return;
+    }
+    final selectedDays = _weekdays.text
+        .split(',')
+        .map(int.tryParse)
+        .whereType<int>()
+        .where((day) => day >= 1 && day <= 7)
+        .toList()
+      ..sort();
+    const dayLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    final daysLabel = selectedDays.isEmpty
+        ? 'Todos los días'
+        : selectedDays.map((day) => dayLabels[day - 1]).join(', ');
+    final timeRange =
+        '${start.toString().padLeft(2, '0')}:00 - ${end.toString().padLeft(2, '0')}:00';
+    final schedule = '$daysLabel | $timeRange';
+    if (_schedule.text != schedule) _schedule.text = schedule;
+    if (_badgeTime.text != timeRange) _badgeTime.text = timeRange;
+  }
+
+  @override
+  void dispose() {
+    _slotStart.removeListener(_syncScheduleLabels);
+    _slotEnd.removeListener(_syncScheduleLabels);
+    _weekdays.removeListener(_syncScheduleLabels);
+    _title.dispose();
+    _modalTitle.dispose();
+    _host.dispose();
+    _schedule.dispose();
+    _slotStart.dispose();
+    _slotEnd.dispose();
+    _weekdays.dispose();
+    _badgeIcon.dispose();
+    _badgeTime.dispose();
+    _badgeLabel.dispose();
+    _accent.dispose();
+    _icon.dispose();
+    _categories.dispose();
+    _cardDesc.dispose();
+    _indexDesc.dispose();
+    _summary.dispose();
+    _sortOrder.dispose();
+    super.dispose();
   }
 
   @override
@@ -155,48 +264,61 @@ class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
             iconColor: SiteFieldColors.teal,
             controller: _host,
             hintText: 'Nombre del conductor o conductora',
+            readOnly: _hostTeamId != null,
+            helperText: _hostTeamId != null
+                ? 'Vinculado a un integrante de Equipo; para cambiar el nombre edítalo ahí.'
+                : null,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SiteLinkPickerField(
+            icon: Icons.badge_outlined,
+            label: 'Vincular con un locutor de Equipo',
+            iconColor: SiteFieldColors.teal,
+            optionsLoader: _loadHostOptions,
+            selectedId: _hostTeamId,
+            selectedLabel: _host.text.trim().isEmpty ? null : _host.text.trim(),
+            onSelected: _onHostSelected,
+            placeholder:
+                'Opcional · toca para elegir a alguien ya registrado en Equipo',
+            emptyMessage:
+                'Todavía no hay integrantes en Equipo. Créalos primero ahí.',
           ),
           const SizedBox(height: AppSpacing.md),
           SiteFormField(
             icon: Icons.schedule_outlined,
-            label: 'Horario',
+            label: 'Horario publicado',
             iconColor: SiteFieldColors.orange,
             controller: _schedule,
-            hintText: 'Ej. Lunes a viernes, 4 a 6 pm',
+            hintText: 'Selecciona la franja horaria',
+            helperText: 'Se genera automáticamente según las horas y los días.',
+            readOnly: true,
           ),
           const SizedBox(height: AppSpacing.md),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: SiteFormField(
-                  icon: Icons.schedule_outlined,
+                child: SiteTimePickerField(
                   label: 'Hora inicio',
-                  iconColor: SiteFieldColors.orange,
                   controller: _slotStart,
-                  hintText: '0-23',
-                  textInputType: TextInputType.number,
+                  hintText: 'Selecciona la hora',
+                  storeHourOnly: true,
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: SiteFormField(
-                  icon: Icons.schedule_outlined,
+                child: SiteTimePickerField(
                   label: 'Hora fin',
-                  iconColor: SiteFieldColors.orange,
                   controller: _slotEnd,
-                  hintText: '0-23',
-                  textInputType: TextInputType.number,
+                  hintText: 'Selecciona la hora',
+                  storeHourOnly: true,
                 ),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
-            icon: Icons.view_week_outlined,
-            label: 'Días de transmisión',
+          SiteWeekdayPickerField(
             controller: _weekdays,
-            hintText: 'ISO 1-7 separados por coma (vacío = todos)',
           ),
           const SizedBox(height: AppSpacing.md),
           SiteFormField(
@@ -207,12 +329,11 @@ class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
             hintText: 'Nombre del ícono',
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
-            icon: Icons.access_time,
+          SiteTimePickerField(
             label: 'Hora de la insignia',
-            iconColor: SiteFieldColors.purple,
             controller: _badgeTime,
-            hintText: 'Texto de la hora',
+            hintText: 'Se sincroniza con la franja',
+            iconColor: SiteFieldColors.purple,
           ),
           const SizedBox(height: AppSpacing.md),
           SiteFormField(

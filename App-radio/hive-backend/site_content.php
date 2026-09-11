@@ -357,6 +357,9 @@ function site_team_with_socials(PDO $pdo, int $id): array {
     $socialsStmt = $pdo->prepare('SELECT label, icon, url FROM team_socials WHERE team_id = ? ORDER BY sort_order ASC, id ASC');
     $socialsStmt->execute([$id]);
     $member['socials'] = $socialsStmt->fetchAll();
+    $programsStmt = $pdo->prepare('SELECT id FROM radio_programs WHERE host_team_id = ? ORDER BY sort_order ASC, id ASC');
+    $programsStmt->execute([$id]);
+    $member['program_ids'] = array_map('intval', $programsStmt->fetchAll(PDO::FETCH_COLUMN));
     return $member;
 }
 
@@ -388,14 +391,60 @@ function siteEquipoList(PDO $pdo) {
     foreach ($socialsStmt->fetchAll() as $s) {
         $byMember[$s['team_id']][] = ['label' => $s['label'], 'icon' => $s['icon'], 'url' => $s['url']];
     }
+    $byHost = site_team_program_ids_by_team($pdo);
     foreach ($rows as &$row) {
         $row['socials'] = $byMember[$row['id']] ?? [];
+        $row['program_ids'] = $byHost[$row['id']] ?? [];
     }
     json_response(['items' => $rows]);
 }
 
 function site_equipo_text(string $field): string {
     return trim(str_replace("\r\n", "\n", $_POST[$field] ?? ''));
+}
+
+// Ids de radio_programs vinculados a cada integrante (host_team_id), en un
+// solo query — se usa para listar y para armar la respuesta de un integrante.
+function site_team_program_ids_by_team(PDO $pdo): array {
+    $rows = $pdo->query('SELECT id, host_team_id FROM radio_programs WHERE host_team_id IS NOT NULL')->fetchAll();
+    $byTeam = [];
+    foreach ($rows as $row) {
+        $byTeam[(int) $row['host_team_id']][] = (int) $row['id'];
+    }
+    return $byTeam;
+}
+
+// Aplica la selección de "programas que conduce" enviada desde el formulario
+// de equipo ($_POST['program_ids'], ids separados por coma). Vincula los
+// programas elegidos a este integrante (sincronizando también el nombre
+// mostrado en `host`) y desvincula los que ya no estén en la lista. Si el
+// campo no llega en la petición, no toca los vínculos existentes.
+function site_sync_team_programs(PDO $pdo, int $teamId, string $teamName): void {
+    if (!array_key_exists('program_ids', $_POST)) return;
+
+    $raw = trim((string) $_POST['program_ids']);
+    $ids = $raw === '' ? [] : array_values(array_unique(array_filter(
+        array_map('intval', explode(',', $raw)),
+        fn($n) => $n > 0
+    )));
+
+    if ($ids !== []) {
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $valid = $pdo->prepare("SELECT id FROM radio_programs WHERE id IN ($placeholders)");
+        $valid->execute($ids);
+        $ids = array_map('intval', $valid->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    if ($ids !== []) {
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $link = $pdo->prepare("UPDATE radio_programs SET host_team_id = ?, host = ? WHERE id IN ($placeholders)");
+        $link->execute(array_merge([$teamId, $teamName], $ids));
+
+        $unlink = $pdo->prepare("UPDATE radio_programs SET host_team_id = NULL WHERE host_team_id = ? AND id NOT IN ($placeholders)");
+        $unlink->execute(array_merge([$teamId], $ids));
+    } else {
+        $pdo->prepare('UPDATE radio_programs SET host_team_id = NULL WHERE host_team_id = ?')->execute([$teamId]);
+    }
 }
 
 function siteEquipoCreate(PDO $pdo) {
@@ -424,6 +473,7 @@ function siteEquipoCreate(PDO $pdo) {
 
     $id = (int) $pdo->lastInsertId();
     site_save_team_socials($pdo, $id);
+    site_sync_team_programs($pdo, $id, $name);
     $pdo->commit();
 
     json_response(['item' => site_team_with_socials($pdo, $id)], 201);
@@ -456,6 +506,7 @@ function siteEquipoUpdate(PDO $pdo, string $id) {
         $id,
     ]);
     site_save_team_socials($pdo, (int) $id);
+    site_sync_team_programs($pdo, (int) $id, $name);
     $pdo->commit();
 
     json_response(['item' => site_team_with_socials($pdo, (int) $id)]);
@@ -476,16 +527,38 @@ function siteProgramasList(PDO $pdo) {
     json_response(['items' => $rows]);
 }
 
-function site_programa_fields(): array {
+function site_programa_fields(PDO $pdo): array {
+    $slotStart = site_programa_hour('slot_start');
+    $slotEnd = site_programa_hour('slot_end');
+    if (($slotStart === null) !== ($slotEnd === null)) {
+        error_response('Indica la hora de inicio y la hora final, o deja ambas vacías.', 400);
+    }
+    if ($slotStart !== null && $slotStart === $slotEnd) {
+        error_response('La hora de inicio y la hora final no pueden ser iguales.', 400);
+    }
+
+    [$hostTeamId, $host] = site_programa_host($pdo);
+
+    $weekdays = site_programa_weekdays();
+    $schedule = trim($_POST['schedule'] ?? '');
+    $badgeTime = trim($_POST['badge_time'] ?? '');
+    if ($slotStart !== null && $slotEnd !== null) {
+        $timeRange = sprintf('%02d:00 - %02d:00', $slotStart, $slotEnd);
+        $daysLabel = site_programa_days_label($weekdays);
+        $schedule = $daysLabel . ' | ' . $timeRange;
+        $badgeTime = $timeRange;
+    }
+
     return [
         trim($_POST['modal_title'] ?? ''),
-        trim($_POST['host'] ?? ''),
-        trim($_POST['schedule'] ?? ''),
-        $_POST['slot_start'] !== '' && isset($_POST['slot_start']) ? (int) $_POST['slot_start'] : null,
-        $_POST['slot_end'] !== '' && isset($_POST['slot_end']) ? (int) $_POST['slot_end'] : null,
-        trim($_POST['weekdays'] ?? '') ?: null,
+        $host,
+        $hostTeamId,
+        $schedule,
+        $slotStart,
+        $slotEnd,
+        $weekdays === [] ? null : implode(',', $weekdays),
         trim($_POST['badge_icon'] ?? ''),
-        trim($_POST['badge_time'] ?? ''),
+        $badgeTime,
         trim($_POST['badge_label'] ?? ''),
         trim($_POST['accent'] ?? ''),
         trim($_POST['icon'] ?? ''),
@@ -497,17 +570,72 @@ function site_programa_fields(): array {
     ];
 }
 
+// Resuelve el conductor del programa. Si llega `host_team_id`, se vincula a
+// un integrante real de `radio_team` y el nombre mostrado (`host`) se toma
+// siempre de ahí, para que nunca queden desincronizados. Sin `host_team_id`,
+// `host` sigue siendo texto libre (compatibilidad con programas antiguos o
+// sin locutor todavía dado de alta en Equipo).
+function site_programa_host(PDO $pdo): array {
+    $raw = trim((string) ($_POST['host_team_id'] ?? ''));
+    if ($raw === '') {
+        return [null, trim($_POST['host'] ?? '')];
+    }
+    if (filter_var($raw, FILTER_VALIDATE_INT) === false) {
+        error_response('host_team_id debe ser un identificador numérico.', 400);
+    }
+    $teamId = (int) $raw;
+    $stmt = $pdo->prepare('SELECT name FROM radio_team WHERE id = ?');
+    $stmt->execute([$teamId]);
+    $name = $stmt->fetchColumn();
+    if ($name === false) {
+        error_response('El locutor seleccionado ya no existe.', 400);
+    }
+    return [$teamId, $name];
+}
+
+function site_programa_hour(string $field): ?int {
+    $raw = trim((string) ($_POST[$field] ?? ''));
+    if ($raw === '') return null;
+    if (filter_var($raw, FILTER_VALIDATE_INT) === false) {
+        error_response("$field debe ser una hora entera entre 0 y 23.", 400);
+    }
+    $hour = (int) $raw;
+    if ($hour < 0 || $hour > 23) {
+        error_response("$field debe estar entre 0 y 23.", 400);
+    }
+    return $hour;
+}
+
+function site_programa_weekdays(): array {
+    $raw = trim((string) ($_POST['weekdays'] ?? ''));
+    if ($raw === '') return [];
+    $days = array_values(array_unique(array_map('intval', explode(',', $raw))));
+    foreach ($days as $day) {
+        if ($day < 1 || $day > 7) {
+            error_response('Los días de transmisión deben estar entre 1 (lunes) y 7 (domingo).', 400);
+        }
+    }
+    sort($days, SORT_NUMERIC);
+    return $days;
+}
+
+function site_programa_days_label(array $days): string {
+    if ($days === []) return 'Todos los días';
+    $labels = [1 => 'Lun', 2 => 'Mar', 3 => 'Mié', 4 => 'Jue', 5 => 'Vie', 6 => 'Sáb', 7 => 'Dom'];
+    return implode(', ', array_map(fn(int $day) => $labels[$day], $days));
+}
+
 function siteProgramaCreate(PDO $pdo) {
     site_require_director($pdo);
     $title = trim($_POST['title'] ?? '');
     if ($title === '') error_response('title es requerido', 400);
 
-    [$modalTitle, $host, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $categories, $cardDesc, $indexDesc, $summary, $sortOrder] = site_programa_fields();
+    [$modalTitle, $host, $hostTeamId, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $categories, $cardDesc, $indexDesc, $summary, $sortOrder] = site_programa_fields($pdo);
     $image = site_handle_image('image', 'programas', $title, '');
     $slug = site_unique_slug($pdo, 'radio_programs', $title);
 
-    $stmt = $pdo->prepare('INSERT INTO radio_programs (slug, title, modal_title, host, schedule, slot_start, slot_end, weekdays, badge_icon, badge_time, badge_label, accent, icon, image, categories, card_desc, index_desc, summary, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    $stmt->execute([$slug, $title, $modalTitle, $host, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $image, $categories, $cardDesc, $indexDesc, $summary, $sortOrder]);
+    $stmt = $pdo->prepare('INSERT INTO radio_programs (slug, title, modal_title, host, host_team_id, schedule, slot_start, slot_end, weekdays, badge_icon, badge_time, badge_label, accent, icon, image, categories, card_desc, index_desc, summary, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $stmt->execute([$slug, $title, $modalTitle, $host, $hostTeamId, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $image, $categories, $cardDesc, $indexDesc, $summary, $sortOrder]);
 
     $id = (int) $pdo->lastInsertId();
     $stmt = $pdo->prepare('SELECT * FROM radio_programs WHERE id = ?');
@@ -525,11 +653,11 @@ function siteProgramaUpdate(PDO $pdo, string $id) {
     $title = trim($_POST['title'] ?? '');
     if ($title === '') error_response('title es requerido', 400);
 
-    [$modalTitle, $host, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $categories, $cardDesc, $indexDesc, $summary, $sortOrder] = site_programa_fields();
+    [$modalTitle, $host, $hostTeamId, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $categories, $cardDesc, $indexDesc, $summary, $sortOrder] = site_programa_fields($pdo);
     $image = site_handle_image('image', 'programas', $title, $existing['image'] ?? '');
 
-    $stmt = $pdo->prepare('UPDATE radio_programs SET title=?, modal_title=?, host=?, schedule=?, slot_start=?, slot_end=?, weekdays=?, badge_icon=?, badge_time=?, badge_label=?, accent=?, icon=?, image=?, categories=?, card_desc=?, index_desc=?, summary=?, sort_order=? WHERE id=?');
-    $stmt->execute([$title, $modalTitle, $host, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $image, $categories, $cardDesc, $indexDesc, $summary, $sortOrder, $id]);
+    $stmt = $pdo->prepare('UPDATE radio_programs SET title=?, modal_title=?, host=?, host_team_id=?, schedule=?, slot_start=?, slot_end=?, weekdays=?, badge_icon=?, badge_time=?, badge_label=?, accent=?, icon=?, image=?, categories=?, card_desc=?, index_desc=?, summary=?, sort_order=? WHERE id=?');
+    $stmt->execute([$title, $modalTitle, $host, $hostTeamId, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $image, $categories, $cardDesc, $indexDesc, $summary, $sortOrder, $id]);
 
     $stmt = $pdo->prepare('SELECT * FROM radio_programs WHERE id = ?');
     $stmt->execute([$id]);

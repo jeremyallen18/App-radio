@@ -60,20 +60,27 @@ class RadioProgram {
   }
 
   /// `true` si el programa se emite el día [isoWeekday] (1 = lunes … 7 = domingo).
-  bool airsOn(int isoWeekday) => weekdays.isEmpty || weekdays.contains(isoWeekday);
+  bool airsOn(int isoWeekday) =>
+      weekdays.isEmpty || weekdays.contains(isoWeekday);
 
   /// `true` si está al aire ahora mismo (día + hora dentro de la franja).
   bool isOnAirNow([DateTime? now]) {
     final n = now ?? DateTime.now();
-    if (!airsOn(n.weekday)) return false;
     final s = slotStart, e = slotEnd;
     if (s == null || e == null) return false;
-    // Franjas que cruzan medianoche (e < s) también se contemplan.
-    return e > s ? (n.hour >= s && n.hour < e) : (n.hour >= s || n.hour < e);
+    final overnight = e <= s;
+    final scheduleWeekday = overnight && n.hour < e
+        ? (n.weekday == DateTime.monday ? DateTime.sunday : n.weekday - 1)
+        : n.weekday;
+    if (!airsOn(scheduleWeekday)) return false;
+    return overnight
+        ? (n.hour >= s || n.hour < e)
+        : (n.hour >= s && n.hour < e);
   }
 
   String get timeLabel =>
-      badgeTime ?? (slotStart != null && slotEnd != null
+      badgeTime ??
+      (slotStart != null && slotEnd != null
           ? '${slotStart!.toString().padLeft(2, '0')}:00 - ${slotEnd!.toString().padLeft(2, '0')}:00'
           : (schedule ?? ''));
 

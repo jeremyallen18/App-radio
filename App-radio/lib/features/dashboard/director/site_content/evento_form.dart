@@ -44,21 +44,6 @@ class _EventoFormScreenState extends State<EventoFormScreen> {
     setState(() => _newImage = File(picked.path));
   }
 
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: now.subtract(const Duration(days: 30)),
-      lastDate: DateTime(now.year + 5),
-    );
-    if (picked == null) return;
-    setState(() {
-      _eventDate.text =
-          '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-    });
-  }
-
   Future<void> _delete() async {
     final item = widget.item;
     if (item == null) return;
@@ -160,14 +145,10 @@ class _EventoFormScreenState extends State<EventoFormScreen> {
             hintText: 'Ej. Plaza principal',
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
-            icon: Icons.calendar_month_outlined,
+          SiteDatePickerField(
             label: 'Fecha del evento',
-            iconColor: SiteFieldColors.green,
             controller: _eventDate,
             hintText: 'Vacío = "Próximamente"',
-            readOnly: true,
-            onTap: _pickDate,
           ),
           const SizedBox(height: AppSpacing.md),
           Row(
@@ -216,12 +197,10 @@ class _EventoFormScreenState extends State<EventoFormScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
-            icon: Icons.schedule_outlined,
+          SiteTimePickerField(
             label: 'Hora',
-            iconColor: SiteFieldColors.orange,
             controller: _timeLabel,
-            hintText: 'Ej. 4:00 PM',
+            hintText: 'Elige la hora de inicio',
           ),
           const SizedBox(height: AppSpacing.md),
           SiteFormField(

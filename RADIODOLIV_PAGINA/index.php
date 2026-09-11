@@ -19,18 +19,20 @@ $events       = array_slice(get_active_events(), 0, 3);
 $team         = get_team();
 $hosts        = array_slice($team, 0, 4);
 
-// Mapa nombre de locutor -> slug del equipo, para que la foto del
+// Mapa host_team_id -> slug/imagen del equipo, para que la foto del
 // reproductor enlace directo a la biografia de quien esta al aire
-// (pages/equipo.php?locutor=slug), su seccion "Conoceme".
-$teamSlugsByHostName = [];
-$teamImagesByHostName = [];
-foreach ($team as $member) {
-    $teamSlugsByHostName[$member['name']] = $member['slug'];
-    $teamImagesByHostName[$member['name']] = $member['image'];
+// (pages/equipo.php?locutor=slug), su seccion "Conoceme". Se resuelve
+// por id (no por el texto libre `host`) porque es el vinculo real que
+// guarda el director desde la app; `host` solo sirve para mostrar el
+// nombre y puede no coincidir si el integrante nunca se vinculo.
+require_once __DIR__ . '/config/db.php';
+$teamById = [];
+foreach (get_pdo()->query('SELECT id, slug, image FROM radio_team')->fetchAll() as $row) {
+    $teamById[(int) $row['id']] = ['slug' => $row['slug'], 'image' => $row['image']];
 }
-function host_profile_url(?string $hostName, array $slugsByName): string {
-    if ($hostName && isset($slugsByName[$hostName])) {
-        return 'pages/equipo.php?locutor=' . urlencode($slugsByName[$hostName]);
+function host_profile_url(?int $hostTeamId, array $teamById): string {
+    if ($hostTeamId !== null && isset($teamById[$hostTeamId])) {
+        return 'pages/equipo.php?locutor=' . urlencode($teamById[$hostTeamId]['slug']);
     }
     return 'pages/equipo.php';
 }
@@ -55,21 +57,25 @@ foreach ($podcasts as $podcast) {
     $episodeCount += count($podcast['episodes']);
 }
 
-// Programa "al aire" segun la hora del servidor, solo como estado inicial:
-// el script al final de la pagina lo corrige con la hora local del visitante
-// (los horarios de la parrilla son de la zona horaria del oyente, no del
-// servidor donde corre PHP). weekdays (1=lunes..7=domingo, ver
-// inc/data/programs.php) filtra los programas que no transmiten todos los
-// dias -- NULL/vacio significa "todos los dias".
-$serverHour = (int) date('G');
-$serverWeekday = (int) date('N');
+// Estado inicial del reproductor en la zona de la emisora. El navegador lo
+// recalcula con la misma zona cada 30 segundos (ver assets/js/pages/index.js).
+$mexicoNow = new DateTime('now', new DateTimeZone('America/Mexico_City'));
+$serverHour = (int) $mexicoNow->format('G');
+$serverWeekday = (int) $mexicoNow->format('N');
 $initialOnAir = null;
 foreach ($programs as $program) {
     $start = $program['slot_start'];
     $end = $program['slot_end'];
+    if ($start === null || $end === null) continue;
     $weekdays = array_filter(array_map('trim', explode(',', (string) ($program['weekdays'] ?? ''))));
-    if ($weekdays && !in_array((string) $serverWeekday, $weekdays, true)) continue;
     $overnight = $end <= $start;
+    // Después de medianoche, una franja 22:00–02:00 pertenece al día en
+    // que comenzó (p. ej. domingo a las 01:00 todavía es la emisión del
+    // sábado), no al día calendario actual.
+    $scheduleWeekday = $overnight && $serverHour < $end
+        ? ($serverWeekday === 1 ? 7 : $serverWeekday - 1)
+        : $serverWeekday;
+    if ($weekdays && !in_array((string) $scheduleWeekday, $weekdays, true)) continue;
     $isCurrent = $overnight
         ? ($serverHour >= $start || $serverHour < $end)
         : ($serverHour >= $start && $serverHour < $end);
@@ -200,7 +206,7 @@ try {
                         </div>
                     </div>
 
-                    <a class="home-player-cover-link" id="onair-host-link" href="<?= h(host_profile_url($initialOnAir['host'] ?? null, $teamSlugsByHostName)) ?>" aria-label="Conoce a <?= h($initialOnAir['host'] ?? 'el equipo de Radio Doliv') ?>">
+                    <a class="home-player-cover-link" id="onair-host-link" href="<?= h(host_profile_url($initialOnAir['host_team_id'] ?? null, $teamById)) ?>" aria-label="Conoce a <?= h($initialOnAir['host'] ?? 'el equipo de Radio Doliv') ?>">
                         <img class="home-player-cover" id="onair-program-image" src="<?= h(asset_url($initialOnAir['image'] ?? 'assets/img/logo/logo.png')) ?>" alt="<?= h($initialOnAir['host'] ?? 'Radio Doliv') ?>">
                     </a>
                 </div>
@@ -210,10 +216,12 @@ try {
                     <strong id="onair-program-name"><?= h($initialOnAir['title'] ?? 'Radio Doliv Music') ?></strong>
                     <p>Con <span id="onair-program-host"><?= h($initialOnAir['host'] ?? 'el equipo de Radio Doliv') ?></span></p>
                     <div class="home-player-action">
-                        <?php 
+                        <?php
                             $hostName = $initialOnAir['host'] ?? null;
-                            $hostImage = ($hostName && isset($teamImagesByHostName[$hostName])) ? $teamImagesByHostName[$hostName] : null;
-                            $hostSlug = ($hostName && isset($teamSlugsByHostName[$hostName])) ? $teamSlugsByHostName[$hostName] : null;
+                            $hostTeamId = isset($initialOnAir['host_team_id']) ? (int) $initialOnAir['host_team_id'] : null;
+                            $hostTeam = $hostTeamId !== null ? ($teamById[$hostTeamId] ?? null) : null;
+                            $hostImage = $hostTeam['image'] ?? null;
+                            $hostSlug = $hostTeam['slug'] ?? null;
                             $hostProfileUrl = $hostSlug ? 'pages/equipo.php?locutor=' . urlencode($hostSlug) : 'pages/equipo.php';
                         ?>
                         <button type="button" class="home-player-request" id="songRequestOpen">
@@ -257,14 +265,18 @@ try {
                 </div>
             </div>
             <ul class="home-schedule">
-                <?php foreach ($programs as $program): ?>
-                <li class="home-schedule-row" data-slot-start="<?= (int) $program['slot_start'] ?>" data-slot-end="<?= (int) $program['slot_end'] ?>" data-slot-weekdays="<?= h($program['weekdays'] ?? '') ?>" data-slot-name="<?= h($program['title']) ?>" data-slot-host="<?= h($program['host']) ?>" data-slot-host-slug="<?= h($teamSlugsByHostName[$program['host']] ?? '') ?>" data-slot-host-image="<?= h(isset($teamImagesByHostName[$program['host']]) ? $teamImagesByHostName[$program['host']] : '') ?>" data-slot-image="<?= h(asset_url($program['image'])) ?>">
+                <?php foreach ($programs as $program):
+                    $hasSlot = $program['slot_start'] !== null && $program['slot_end'] !== null;
+                    $rowHostTeamId = isset($program['host_team_id']) && $program['host_team_id'] !== null ? (int) $program['host_team_id'] : null;
+                    $rowHostTeam = $rowHostTeamId !== null ? ($teamById[$rowHostTeamId] ?? null) : null;
+                ?>
+                <li class="home-schedule-row"<?= $hasSlot ? ' data-slot-start="' . (int) $program['slot_start'] . '" data-slot-end="' . (int) $program['slot_end'] . '"' : '' ?> data-slot-weekdays="<?= h($program['weekdays'] ?? '') ?>" data-slot-name="<?= h($program['title']) ?>" data-slot-host="<?= h($program['host']) ?>" data-slot-host-slug="<?= h($rowHostTeam['slug'] ?? '') ?>" data-slot-host-image="<?= h($rowHostTeam['image'] ?? '') ?>" data-slot-image="<?= h(asset_url($program['image'])) ?>">
                     <span class="home-schedule-time"><?= h($program['badge_time']) ?></span>
                     <span class="home-schedule-name"><?= h($program['title']) ?></span>
                     <span class="home-schedule-host">Con <?= h($program['host']) ?></span>
                 </li>
                 <?php endforeach; ?>
-                <li class="home-schedule-row" data-slot-start="13" data-slot-end="9" data-slot-name="Radio Doliv Music" data-slot-host="el equipo de Radio Doliv" data-slot-host-image="" data-slot-image="<?= h(asset_url('assets/img/logo/logo.png')) ?>">
+                <li class="home-schedule-row" data-slot-fallback="true" data-slot-name="Radio Doliv Music" data-slot-host="el equipo de Radio Doliv" data-slot-host-image="" data-slot-image="<?= h(asset_url('assets/img/logo/logo.png')) ?>">
                     <span class="home-schedule-time">Resto del día</span>
                     <span class="home-schedule-name">Radio Doliv Music</span>
                     <span class="home-schedule-host">Selección continua</span>

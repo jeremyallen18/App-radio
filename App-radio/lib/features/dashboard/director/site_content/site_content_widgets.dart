@@ -407,10 +407,10 @@ class SiteImagePickerField extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       newImage != null
-                          ? 'Nueva imagen seleccionada'
+                          ? 'Archivo listo para subir'
                           : existingImageUrl != null
-                              ? 'Toca para cambiar la imagen'
-                              : 'Toca para elegir una imagen',
+                              ? 'Toca para reemplazar la imagen'
+                              : 'Toca para cargar una imagen',
                       style:
                           TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
@@ -437,6 +437,590 @@ class SiteImagePickerField extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Selector de fecha de solo lectura que abre el calendario nativo y conserva
+/// en el controlador el formato ISO que espera el API.
+class SiteDatePickerField extends StatelessWidget {
+  const SiteDatePickerField({
+    super.key,
+    required this.controller,
+    required this.label,
+    this.hintText,
+    this.iconColor,
+    this.firstDate,
+    this.lastDate,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final String? hintText;
+  final Color? iconColor;
+  final DateTime? firstDate;
+  final DateTime? lastDate;
+
+  DateTime _initialDate() {
+    return DateTime.tryParse(controller.text.trim()) ?? DateTime.now();
+  }
+
+  Future<void> _pick(BuildContext context) async {
+    final now = DateTime.now();
+    final minimum = firstDate ?? now.subtract(const Duration(days: 365));
+    final maximum = lastDate ?? DateTime(now.year + 5);
+    final initial = _initialDate();
+    final safeInitial = initial.isBefore(minimum)
+        ? minimum
+        : initial.isAfter(maximum)
+            ? maximum
+            : initial;
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: safeInitial,
+      firstDate: minimum,
+      lastDate: maximum,
+    );
+    if (selected == null) return;
+    controller.text =
+        '${selected.year}-${selected.month.toString().padLeft(2, '0')}-${selected.day.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SiteFormField(
+      icon: Icons.calendar_month_outlined,
+      iconColor: iconColor ?? SiteFieldColors.teal,
+      label: label,
+      controller: controller,
+      hintText: hintText ?? 'Toca para elegir una fecha',
+      readOnly: true,
+      onTap: () => _pick(context),
+      trailing: Icon(Icons.expand_more, color: AppColors.textMuted),
+    );
+  }
+}
+
+/// Selector de hora nativo. Guarda una etiqueta legible en formato de 24 horas
+/// para que se use directamente en los campos de horario del sitio.
+class SiteTimePickerField extends StatelessWidget {
+  const SiteTimePickerField({
+    super.key,
+    required this.controller,
+    required this.label,
+    this.hintText,
+    this.iconColor,
+    this.storeHourOnly = false,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final String? hintText;
+  final Color? iconColor;
+  final bool storeHourOnly;
+
+  TimeOfDay _initialTime() {
+    final match =
+        RegExp(r'^(\d{1,2})(?::(\d{2}))?').firstMatch(controller.text);
+    final hour = int.tryParse(match?.group(1) ?? '');
+    final minute = int.tryParse(match?.group(2) ?? '') ?? 0;
+    if (hour == null || hour > 23 || minute > 59) return TimeOfDay.now();
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  Future<void> _pick(BuildContext context) async {
+    final selected = await showTimePicker(
+      context: context,
+      initialTime: _initialTime(),
+    );
+    if (selected == null) return;
+    controller.text = storeHourOnly
+        ? selected.hour.toString()
+        : '${selected.hour.toString().padLeft(2, '0')}:${selected.minute.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SiteFormField(
+      icon: Icons.access_time_outlined,
+      iconColor: iconColor ?? SiteFieldColors.orange,
+      label: label,
+      controller: controller,
+      hintText: hintText ?? 'Toca para elegir la hora',
+      readOnly: true,
+      onTap: () => _pick(context),
+      trailing: Icon(Icons.expand_more, color: AppColors.textMuted),
+    );
+  }
+}
+
+/// Selección de días de la semana que guarda el contrato ISO del backend
+/// (1=lunes ... 7=domingo). Sin selección significa todos los días.
+class SiteWeekdayPickerField extends StatefulWidget {
+  const SiteWeekdayPickerField({super.key, required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  State<SiteWeekdayPickerField> createState() => _SiteWeekdayPickerFieldState();
+}
+
+class _SiteWeekdayPickerFieldState extends State<SiteWeekdayPickerField> {
+  static const _days = [
+    (value: 1, label: 'L'),
+    (value: 2, label: 'M'),
+    (value: 3, label: 'X'),
+    (value: 4, label: 'J'),
+    (value: 5, label: 'V'),
+    (value: 6, label: 'S'),
+    (value: 7, label: 'D'),
+  ];
+
+  late Set<int> _selected = _readDays();
+
+  Set<int> _readDays() => widget.controller.text
+      .split(',')
+      .map(int.tryParse)
+      .whereType<int>()
+      .where((day) => day >= 1 && day <= 7)
+      .toSet();
+
+  void _save() {
+    final values = _selected.toList()..sort();
+    widget.controller.text = values.join(',');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: SiteFieldColors.blue.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
+                ),
+                child: Icon(
+                  Icons.calendar_view_week_outlined,
+                  color: SiteFieldColors.blue,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              const Expanded(
+                child: Text(
+                  'Días de transmisión',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  setState(() => _selected.clear());
+                  _save();
+                },
+                child: const Text('Todos'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            _selected.isEmpty
+                ? 'Se transmite todos los días.'
+                : 'Selecciona los días en que se transmite.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            children: _days.map((day) {
+              final selected = _selected.contains(day.value);
+              return ChoiceChip(
+                label: Text(day.label),
+                selected: selected,
+                onSelected: (_) {
+                  setState(() {
+                    selected
+                        ? _selected.remove(day.value)
+                        : _selected.add(day.value);
+                  });
+                  _save();
+                },
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Una opción seleccionable de otro registro del sitio (p. ej. un integrante
+/// de `radio_team` o un `radio_programs`) para los selectores de vínculo.
+class SiteLinkOption {
+  const SiteLinkOption({required this.id, required this.label, this.subtitle});
+
+  final int id;
+  final String label;
+  final String? subtitle;
+}
+
+/// Valor centinela que representa "quitar el vínculo actual" al volver del
+/// bottom sheet de [SiteLinkPickerField] — se distingue por identidad, no
+/// por id, porque -1 podría ser un id real en teoría.
+const SiteLinkOption _siteUnlinkOption = SiteLinkOption(id: -1, label: '');
+
+/// Campo para vincular este registro con OTRO ya existente en el sitio — por
+/// ejemplo, el integrante real de Equipo que conduce un programa. A
+/// diferencia de escribir el nombre a mano, aquí se elige de una lista real
+/// cargada del backend, así el vínculo sigue siendo válido aunque el nombre
+/// del integrante cambie después.
+class SiteLinkPickerField extends StatelessWidget {
+  const SiteLinkPickerField({
+    super.key,
+    required this.icon,
+    required this.label,
+    this.iconColor,
+    required this.optionsLoader,
+    required this.selectedId,
+    required this.selectedLabel,
+    required this.onSelected,
+    this.placeholder = 'Sin vincular · toca para elegir',
+    this.emptyMessage = 'Todavía no hay registros para vincular.',
+  });
+
+  final IconData icon;
+  final String label;
+  final Color? iconColor;
+
+  /// Se llama cada vez que se abre el selector, para traer la lista más
+  /// reciente (los registros pueden haberse creado hace apenas un momento).
+  final Future<List<SiteLinkOption>> Function() optionsLoader;
+  final int? selectedId;
+  final String? selectedLabel;
+  final ValueChanged<SiteLinkOption?> onSelected;
+  final String placeholder;
+  final String emptyMessage;
+
+  Future<void> _openPicker(BuildContext context) async {
+    List<SiteLinkOption> options;
+    try {
+      options = await optionsLoader();
+    } catch (_) {
+      options = const [];
+    }
+    if (!context.mounted) return;
+    final chosen = await showModalBottomSheet<SiteLinkOption>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
+      ),
+      builder: (_) => _SiteLinkPickerSheet(
+        title: label,
+        options: options,
+        selectedId: selectedId,
+        emptyMessage: emptyMessage,
+      ),
+    );
+    if (chosen == null) return;
+    onSelected(identical(chosen, _siteUnlinkOption) ? null : chosen);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasLink = selectedId != null;
+    final color = iconColor ?? SiteFieldColors.teal;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        onTap: () => _openPicker(context),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(
+              color: hasLink ? color : AppColors.surfaceBorder,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 14)),
+                    const SizedBox(height: 2),
+                    Text(
+                      hasLink ? (selectedLabel ?? '') : placeholder,
+                      style: TextStyle(
+                        color:
+                            hasLink ? AppColors.textPrimary : AppColors.textMuted,
+                        fontSize: 13,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (hasLink)
+                IconButton(
+                  icon: Icon(Icons.link_off, color: AppColors.textMuted),
+                  tooltip: 'Quitar vínculo',
+                  onPressed: () => onSelected(null),
+                )
+              else
+                Icon(Icons.expand_more, color: AppColors.textMuted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SiteLinkPickerSheet extends StatefulWidget {
+  const _SiteLinkPickerSheet({
+    required this.title,
+    required this.options,
+    required this.selectedId,
+    required this.emptyMessage,
+  });
+
+  final String title;
+  final List<SiteLinkOption> options;
+  final int? selectedId;
+  final String emptyMessage;
+
+  @override
+  State<_SiteLinkPickerSheet> createState() => _SiteLinkPickerSheetState();
+}
+
+class _SiteLinkPickerSheetState extends State<_SiteLinkPickerSheet> {
+  final _search = TextEditingController();
+  late List<SiteLinkOption> _filtered = widget.options;
+
+  void _filter(String query) {
+    final q = query.trim().toLowerCase();
+    setState(() {
+      _filtered = q.isEmpty
+          ? widget.options
+          : widget.options
+              .where((o) => o.label.toLowerCase().contains(q))
+              .toList();
+    });
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: AppSpacing.lg,
+          right: AppSpacing.lg,
+          top: AppSpacing.lg,
+          bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Vincular · ${widget.title}',
+                style:
+                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            const SizedBox(height: AppSpacing.md),
+            if (widget.options.length > 5) ...[
+              TextField(
+                controller: _search,
+                onChanged: _filter,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Buscar…',
+                  isDense: true,
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.chip),
+                    borderSide: BorderSide(color: AppColors.surfaceBorder),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+            Flexible(
+              child: widget.options.isEmpty
+                  ? Padding(
+                      padding:
+                          const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                      child: Text(widget.emptyMessage,
+                          style: TextStyle(color: AppColors.textMuted)),
+                    )
+                  : ListView(
+                      shrinkWrap: true,
+                      children: [
+                        if (widget.selectedId != null)
+                          ListTile(
+                            leading: Icon(Icons.link_off,
+                                color: AppColors.error),
+                            title: Text('Quitar vínculo',
+                                style: TextStyle(color: AppColors.error)),
+                            onTap: () =>
+                                Navigator.of(context).pop(_siteUnlinkOption),
+                          ),
+                        ..._filtered.map((option) => ListTile(
+                              leading: Icon(
+                                option.id == widget.selectedId
+                                    ? Icons.radio_button_checked
+                                    : Icons.radio_button_unchecked,
+                                color: option.id == widget.selectedId
+                                    ? SiteFieldColors.teal
+                                    : AppColors.textMuted,
+                              ),
+                              title: Text(option.label),
+                              subtitle: option.subtitle != null
+                                  ? Text(option.subtitle!)
+                                  : null,
+                              onTap: () => Navigator.of(context).pop(option),
+                            )),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Selección múltiple de registros vinculados (p. ej. los programas que
+/// conduce un integrante del equipo). A diferencia de [SiteLinkPickerField],
+/// puede marcar varias opciones a la vez mediante chips.
+class SiteMultiLinkPickerField extends StatelessWidget {
+  const SiteMultiLinkPickerField({
+    super.key,
+    required this.icon,
+    required this.label,
+    this.iconColor,
+    required this.options,
+    required this.selectedIds,
+    required this.onChanged,
+    this.helperText,
+    this.emptyMessage = 'Todavía no hay registros para vincular.',
+  });
+
+  final IconData icon;
+  final String label;
+  final Color? iconColor;
+  final List<SiteLinkOption> options;
+  final Set<int> selectedIds;
+  final ValueChanged<Set<int>> onChanged;
+  final String? helperText;
+  final String emptyMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = iconColor ?? SiteFieldColors.teal;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
+                ),
+                child: Icon(icon, color: color),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(label,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+              ),
+              if (selectedIds.isNotEmpty)
+                TextButton(
+                  onPressed: () => onChanged(const {}),
+                  child: const Text('Quitar todos'),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            helperText ??
+                (selectedIds.isEmpty
+                    ? 'No conduce ningún programa todavía.'
+                    : 'Conduce ${selectedIds.length} programa(s).'),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          if (options.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Text(emptyMessage,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            )
+          else
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: options.map((option) {
+                final selected = selectedIds.contains(option.id);
+                return FilterChip(
+                  label: Text(option.label),
+                  selected: selected,
+                  onSelected: (value) {
+                    final updated = Set<int>.from(selectedIds);
+                    value ? updated.add(option.id) : updated.remove(option.id);
+                    onChanged(updated);
+                  },
+                );
+              }).toList(),
+            ),
+        ],
       ),
     );
   }

@@ -74,9 +74,9 @@ if ("IntersectionObserver" in window && revealTargets.length) {
     revealTargets.forEach((target) => target.classList.add("is-visible"));
 }
 
-/* "Suena ahora": corrige el programa al aire con la hora LOCAL del
-   visitante (el valor inicial venia calculado con la hora del
-   servidor, solo como estado por defecto sin JS). */
+/* "Suena ahora": resuelve la parrilla con la hora de Ciudad de México,
+   igual que la página de programas. Nunca usa la zona horaria local del
+   visitante, que podría mostrar una transmisión distinta. */
 const scheduleRows = document.querySelectorAll(".home-schedule-row");
 const onairName = document.getElementById("onair-program-name");
 const onairHost = document.getElementById("onair-program-host");
@@ -85,58 +85,98 @@ const onairHostLink = document.getElementById("onair-host-link");
 const onairHostCard = document.getElementById("onair-host-card");
 const onairHostCardPhoto = document.getElementById("onair-host-card-photo");
 const onairHostCardName = document.getElementById("onair-host-card-name");
-if (scheduleRows.length) {
-    const now = new Date();
-    const currentHour = now.getHours();
-    // getDay() es 0=domingo..6=sabado; weekdays en el markup usa 1=lunes..7=domingo.
-    const currentWeekday = now.getDay() === 0 ? 7 : now.getDay();
-    // Primer match gana: la fila de respaldo "Radio Doliv Music" cubre por
-    // horas cualquier hueco sin programa (ver index.php), asi que sin este
-    // corte pisaria a un programa que si esta al aire ese dia (ej. uno que
-    // solo transmite lunes y jueves, ver weekdays).
-    let hasCurrent = false;
+const mexicoTimeFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Mexico_City",
+    hourCycle: "h23",
+    weekday: "short",
+    hour: "2-digit",
+});
+const mexicoWeekdays = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+
+function mexicoScheduleNow() {
+    const parts = {};
+    mexicoTimeFormatter.formatToParts(new Date()).forEach(({ type, value }) => {
+        parts[type] = value;
+    });
+    return { hour: Number(parts.hour), weekday: mexicoWeekdays[parts.weekday] };
+}
+
+function previousWeekday(weekday) {
+    return weekday === 1 ? 7 : weekday - 1;
+}
+
+function updateOnAirProgram() {
+    if (!scheduleRows.length) return;
+    const now = mexicoScheduleNow();
+    let currentRow = null;
+    let fallbackRow = null;
+
     scheduleRows.forEach((row) => {
+        if (row.dataset.slotFallback === "true") {
+            fallbackRow = row;
+            row.classList.remove("is-current");
+            return;
+        }
+        if (!row.dataset.slotStart || !row.dataset.slotEnd) {
+            row.classList.remove("is-current");
+            return;
+        }
         const weekdaysAttr = row.dataset.slotWeekdays || "";
         const weekdays = weekdaysAttr.split(",").map((d) => d.trim()).filter(Boolean);
-        const isTodayScheduled = !weekdays.length || weekdays.includes(String(currentWeekday));
         const startHour = Number(row.dataset.slotStart);
         const endHour = Number(row.dataset.slotEnd);
         const isOvernight = endHour <= startHour;
-        const isCurrent = !hasCurrent && isTodayScheduled && (isOvernight
-            ? (currentHour >= startHour || currentHour < endHour)
-            : (currentHour >= startHour && currentHour < endHour));
+        const scheduleWeekday = isOvernight && now.hour < endHour
+            ? previousWeekday(now.weekday)
+            : now.weekday;
+        const isScheduled = !weekdays.length || weekdays.includes(String(scheduleWeekday));
+        const isCurrent = currentRow === null && isScheduled && (isOvernight
+            ? (now.hour >= startHour || now.hour < endHour)
+            : (now.hour >= startHour && now.hour < endHour));
         row.classList.toggle("is-current", isCurrent);
-        if (isCurrent) hasCurrent = true;
-        if (isCurrent && onairName && onairHost) {
-            onairName.textContent = row.dataset.slotName;
-            onairHost.textContent = row.dataset.slotHost;
-            if (onairImage && row.dataset.slotImage) onairImage.src = row.dataset.slotImage;
-            if (onairHostCard && onairHostCardPhoto && onairHostCardName) {
-                const hostImage = row.dataset.slotHostImage || "";
-                const hostSlug = row.dataset.slotHostSlug || "";
-                const hostName = row.dataset.slotHost || "el equipo";
-                const base = window.SITE_BASE || "";
-                if (hostImage) {
-                    onairHostCardPhoto.src = hostImage;
-                    onairHostCardPhoto.alt = hostName;
-                    onairHostCard.classList.remove("is-empty");
-                } else {
-                    onairHostCardPhoto.src = "";
-                    onairHostCardPhoto.alt = "";
-                    onairHostCard.classList.add("is-empty");
-                }
-                onairHostCardName.textContent = hostName;
-                onairHostCard.href = hostSlug ? `${base}pages/equipo.php?locutor=${encodeURIComponent(hostSlug)}` : `${base}pages/equipo.php`;
-                onairHostCard.setAttribute("aria-label", `Conoce a ${hostName}`);
-            }
-            if (onairHostLink) {
-                const hostSlug = row.dataset.slotHostSlug || "";
-                const base = window.SITE_BASE || "";
-                onairHostLink.href = hostSlug ? `${base}pages/equipo.php?locutor=${encodeURIComponent(hostSlug)}` : `${base}pages/equipo.php`;
-                onairHostLink.setAttribute("aria-label", `Conoce a ${row.dataset.slotHost}`);
-            }
-        }
+        if (isCurrent) currentRow = row;
     });
+
+    const selectedRow = currentRow || fallbackRow;
+    if (!selectedRow) return;
+    selectedRow.classList.add("is-current");
+    if (onairName && onairHost) {
+        onairName.textContent = selectedRow.dataset.slotName;
+        onairHost.textContent = selectedRow.dataset.slotHost;
+        if (onairImage && selectedRow.dataset.slotImage) {
+            onairImage.src = selectedRow.dataset.slotImage;
+        }
+        if (onairHostCard && onairHostCardPhoto && onairHostCardName) {
+            const hostImage = selectedRow.dataset.slotHostImage || "";
+            const hostSlug = selectedRow.dataset.slotHostSlug || "";
+            const hostName = selectedRow.dataset.slotHost || "el equipo";
+            const base = window.SITE_BASE || "";
+            if (hostImage) {
+                onairHostCardPhoto.src = hostImage;
+                onairHostCardPhoto.alt = hostName;
+                onairHostCard.classList.remove("is-empty");
+            } else {
+                onairHostCardPhoto.src = "";
+                onairHostCardPhoto.alt = "";
+                onairHostCard.classList.add("is-empty");
+            }
+            onairHostCardName.textContent = hostName;
+            onairHostCard.href = hostSlug ? `${base}pages/equipo.php?locutor=${encodeURIComponent(hostSlug)}` : `${base}pages/equipo.php`;
+            onairHostCard.setAttribute("aria-label", `Conoce a ${hostName}`);
+        }
+        if (onairHostLink) {
+            const hostSlug = selectedRow.dataset.slotHostSlug || "";
+            const base = window.SITE_BASE || "";
+            onairHostLink.href = hostSlug ? `${base}pages/equipo.php?locutor=${encodeURIComponent(hostSlug)}` : `${base}pages/equipo.php`;
+            onairHostLink.setAttribute("aria-label", `Conoce a ${selectedRow.dataset.slotHost}`);
+        }
+    }
+}
+
+updateOnAirProgram();
+const onAirTimer = window.setInterval(updateOnAirProgram, 30000);
+if (pageSignal) {
+    pageSignal.addEventListener("abort", () => window.clearInterval(onAirTimer), { once: true });
 }
 
 /* "Pide tu canción": abre el reproductor a modo solicitud (nombre de

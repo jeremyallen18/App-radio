@@ -70,9 +70,16 @@ function runsToday(slot, weekday) {
     return !slot.weekdays.length || slot.weekdays.includes(String(weekday));
 }
 
+function previousWeekday(weekday) {
+    return weekday === 1 ? 7 : weekday - 1;
+}
+
 function isLive(slot, hour, weekday) {
-    if (!runsToday(slot, weekday)) return false;
     const overnight = slot.end <= slot.start;
+    const scheduleWeekday = overnight && hour < slot.end
+        ? previousWeekday(weekday)
+        : weekday;
+    if (!runsToday(slot, scheduleWeekday)) return false;
     return overnight
         ? (hour >= slot.start || hour < slot.end)
         : (hour >= slot.start && hour < slot.end);
@@ -202,7 +209,13 @@ function paintDial(liveSlot, now) {
         const days = (seg.dataset.dialWeekdays || "")
             .split(",").map((d) => d.trim()).filter(Boolean);
         const runsToday = !days.length || days.includes(String(now.weekday));
-        seg.classList.toggle("is-hidden-day", !runsToday);
+        // Una franja nocturna puede haber iniciado ayer y seguir al aire
+        // después de medianoche; debe permanecer visible mientras es la
+        // transmisión actual aunque su día de inicio ya no sea "hoy".
+        seg.classList.toggle(
+            "is-hidden-day",
+            !runsToday && seg.dataset.dialTarget !== liveId
+        );
         seg.classList.toggle("is-live", seg.dataset.dialTarget === liveId);
     });
 }

@@ -40,12 +40,14 @@ class SiteContentApi {
     Map<String, String> fields, {
     File? imageFile,
     String imageField = 'image',
+    Map<String, File> additionalFiles = const {},
   }) {
     return _send(
       http.MultipartRequest('POST', Uri.parse('$kBaseUrl/site/$resource')),
       fields,
       imageFile: imageFile,
       imageField: imageField,
+      additionalFiles: additionalFiles,
     );
   }
 
@@ -54,12 +56,14 @@ class SiteContentApi {
     Map<String, String> fields, {
     File? imageFile,
     String imageField = 'image',
+    Map<String, File> additionalFiles = const {},
   }) {
     return _send(
       http.MultipartRequest('POST', Uri.parse('$kBaseUrl/site/$resource/$id')),
       fields,
       imageFile: imageFile,
       imageField: imageField,
+      additionalFiles: additionalFiles,
     );
   }
 
@@ -78,11 +82,17 @@ class SiteContentApi {
     Map<String, String> fields, {
     File? imageFile,
     required String imageField,
+    required Map<String, File> additionalFiles,
   }) async {
     request.headers['Authorization'] = await _token();
     request.fields.addAll(fields);
     if (imageFile != null) {
       request.files.add(await http.MultipartFile.fromPath(imageField, imageFile.path));
+    }
+    for (final entry in additionalFiles.entries) {
+      request.files.add(
+        await http.MultipartFile.fromPath(entry.key, entry.value.path),
+      );
     }
 
     final streamed = await request.send();
