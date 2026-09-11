@@ -702,12 +702,18 @@ function deptTaskSetStatus(PDO $pdo, string $id) {
     }
 
     if ($status !== 'completada') {
-        // Una tarea aprobada es un cierre definitivo para el empleado. Solo
-        // un manager/director puede reabrirla explícitamente.
-        if ($user['role'] === 'employee'
-            && ($row['review_status'] ?? 'sin_revision') === 'aprobada') {
+        // Reabrir una tarea ya completada queda reservado al flujo formal de
+        // revisión ("Devolver"), que exige un motivo y deja constancia de
+        // quién la reabrió — salvo el propio empleado retractando su entrega
+        // ANTES de que el manager la revise (aún no hay nada que auditar).
+        // Este endpoint, fuera de ese caso, solo mueve libremente el estado
+        // mientras la tarea sigue abierta (pendiente <-> en curso).
+        $isOwnPendingReview = $user['role'] === 'employee'
+            && $row['assigned_to'] === $user['id']
+            && ($row['review_status'] ?? 'sin_revision') === 'pendiente_revision';
+        if (($row['status'] ?? '') === 'completada' && !$isOwnPendingReview) {
             dept_task_fail(
-                'La tarea ya fue aprobada y no puede reabrirse desde tu cuenta.',
+                'Para reabrir una tarea completada usa "Devolver" (revisión), no el cambio de estado directo.',
                 403
             );
         }
@@ -811,15 +817,23 @@ function deptTaskReview(PDO $pdo, string $id) {
         error_response('No tienes permiso para revisar esta tarea', 403);
     }
 
-    if (($row['review_status'] ?? 'sin_revision') !== 'pendiente_revision') {
-        dept_task_fail('Esta tarea no está pendiente de revisión.', 409);
-    }
-
     $body = request_body();
     $decision = trim($body['decision'] ?? '');
     $note = trim($body['note'] ?? '');
     if (!in_array($decision, ['approve', 'reject'], true)) {
         dept_task_fail('Decisión inválida.', 400);
+    }
+
+    // "Aprobar" solo tiene sentido si el empleado la envió a revisión. Para
+    // tareas cerradas directamente (o ya aprobadas) no hay nada que aprobar,
+    // pero SIEMPRE se puede "Devolver" una tarea completada, sin importar
+    // cómo se cerró: es el equivalente a reabrir una tarea en Microsoft Teams.
+    if ($decision === 'approve'
+        && ($row['review_status'] ?? 'sin_revision') !== 'pendiente_revision') {
+        dept_task_fail('Esta tarea no está pendiente de revisión.', 409);
+    }
+    if ($decision === 'reject' && ($row['status'] ?? '') !== 'completada') {
+        dept_task_fail('Solo puedes devolver una tarea que ya está completada.', 409);
     }
 
     if ($decision === 'approve') {
@@ -845,7 +859,7 @@ function deptTaskReview(PDO $pdo, string $id) {
         $message = 'Tarea aprobada.';
     } else {
         if ($note === '') {
-            dept_task_fail('Indica el motivo del rechazo.', 400);
+            dept_task_fail('Indica el motivo de la devolución.', 400);
         }
         $evidencePath = $row['evidence_path'];
         $stmt = $pdo->prepare(
@@ -853,11 +867,11 @@ function deptTaskReview(PDO $pdo, string $id) {
                review_note = ?, reviewed_by = ?, reviewed_at = NOW(),
                completed_by = NULL, completed_at = NULL,
                evidence_path = NULL, evidence_mime = NULL
-             WHERE id = ? AND review_status = 'pendiente_revision'"
+             WHERE id = ? AND status = 'completada'"
         );
         $stmt->execute([$note, $user['id'], $id]);
         if ($stmt->rowCount() === 0) {
-            dept_task_fail('La tarea ya fue revisada.', 409);
+            dept_task_fail('La tarea ya no está completada.', 409);
         }
         if ($evidencePath) {
             @unlink(TASK_EVIDENCE_DIR . basename($evidencePath));

@@ -221,7 +221,11 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
   ///   sin responsable, o de otra persona, no la puede tocar.
   bool _canComplete(DeptTask t) {
     if (_isDirector) return false;
-    if (widget.canManage) return true;
+    if (widget.canManage) {
+      // Reabrir una tarea ya completada es cosa del flujo formal de revisión
+      // ("Devolver"): el checkbox solo sirve para completar tareas abiertas.
+      return !t.isDone;
+    }
     // Una aprobación del manager cierra la tarea para el empleado. Si necesita
     // cambios, la devolución la reabre y permite una nueva entrega.
     if (t.reviewStatus == DeptTaskReviewStatus.aprobada) return false;
@@ -466,11 +470,11 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
   }
 
   Future<void> _cycleStatus(DeptTask t) async {
-    const order = [
-      DeptTaskStatus.pendiente,
-      DeptTaskStatus.enProgreso,
-      DeptTaskStatus.completada
-    ];
+    // Reabrir una tarea completada es cosa del flujo formal de revisión
+    // ("Devolver"), no de este ciclo directo: así queda constancia del
+    // motivo y de quién la reabrió.
+    if (t.isDone) return;
+    const order = [DeptTaskStatus.pendiente, DeptTaskStatus.enProgreso];
     final next = order[(order.indexOf(t.status) + 1) % order.length];
     setState(() => _busy = true);
     try {
