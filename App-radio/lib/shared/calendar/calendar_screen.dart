@@ -59,7 +59,7 @@ class _CalendarScreenState extends State<CalendarScreen>
 
   Future<void> _bootstrap() async {
     final token = await secureStorage.readSecureData(key);
-    final profile = await Session.fetchCurrentUser((token as String?) ?? '');
+    final profile = await Session.fetchCurrentUser(token ?? '');
     if (profile != null) {
       _role = profile.role;
     }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/services/team_service.dart';
+import 'package:doliv_social/shared/home/progress_widgets.dart';
 
 /// Una fila por departamento: nombre, barra apilada (hechas · en progreso ·
 /// pendientes) y el % al final. Tocar la fila abre el tablero del área.
@@ -38,6 +39,7 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasTasks = counts.total > 0;
     final pct = (counts.completionRatio * 100).round();
+    final accent = departmentAccent(counts.departmentId);
 
     return InkWell(
       onTap: onTap,
@@ -46,6 +48,25 @@ class _Row extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
           children: [
+            Container(
+              width: 30,
+              height: 30,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(AppRadius.chip),
+                border: Border.all(color: accent.withValues(alpha: 0.40)),
+              ),
+              child: Text(
+                departmentInitials(counts.departmentName),
+                style: TextStyle(
+                  color: accent,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

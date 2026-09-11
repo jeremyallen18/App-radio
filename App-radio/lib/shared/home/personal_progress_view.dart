@@ -5,6 +5,7 @@ import 'package:doliv_social/shared/home/progress/completion_gauge.dart';
 import 'package:doliv_social/shared/home/progress/progress_sections.dart';
 import 'package:doliv_social/shared/home/progress/progress_stats.dart';
 import 'package:doliv_social/shared/home/progress/weekly_rhythm_chart.dart';
+import 'package:doliv_social/shared/home/progress_widgets.dart';
 
 /// "Tu progreso" para empleados y managers: medidor de avance, ritmo de la
 /// semana, puntualidad y próximas entregas.
@@ -31,7 +32,10 @@ class PersonalProgressView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SectionHeader(title: 'Tu progreso'),
+          const SectionHeader(
+            title: 'Tu progreso',
+            action: LivePulsePill(),
+          ),
           AppCard(
             child: Column(
               children: [

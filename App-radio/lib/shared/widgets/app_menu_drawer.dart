@@ -78,13 +78,36 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
     );
   }
 
+  /// Ícono del menú dentro de un cuadrado redondeado con tinte de acento,
+  /// como en el rediseño.
+  Widget _leadingIcon(IconData icon, {required bool active}) {
+    return Container(
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: active
+            ? AppColors.accent.withValues(alpha: 0.14)
+            : AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+        border: Border.all(
+          color: active
+              ? AppColors.accent.withValues(alpha: 0.28)
+              : AppColors.surfaceBorder,
+        ),
+      ),
+      child: Icon(
+        icon,
+        size: 18,
+        color: active ? AppColors.accent : AppColors.textMuted,
+      ),
+    );
+  }
+
   Widget _entryTile(AppMenuEntry entry) {
     final bool active = entry.enabled && entry.onTap != null;
     return ListTile(
-      leading: Icon(
-        entry.icon,
-        color: active ? AppColors.accent : AppColors.textMuted,
-      ),
+      leading: _leadingIcon(entry.icon, active: active),
       title: Text(
         entry.title,
         style: TextStyle(
@@ -141,30 +164,62 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
                 AppSpacing.lg,
                 AppSpacing.md,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Menú',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppRadius.card),
+                  border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.28)),
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      AppColors.accent.withValues(alpha: 0.18),
+                      AppColors.accent.withValues(alpha: 0.04),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    profile == null
-                        ? 'Cargando...'
-                        : (departmentName != null
-                            ? '${profile.name} · $departmentName'
-                            : profile.name),
-                    style: TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 13,
+                ),
+                child: Row(
+                  children: [
+                    IdentityAvatar(
+                      id: profile?.email ?? profile?.name ?? '?',
+                      label: profile?.name ?? '?',
+                      radius: 22,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            profile?.name ?? 'Cargando…',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            profile == null
+                                ? 'Radio Doliv'
+                                : (departmentName != null
+                                    ? '${profile.role.label} · $departmentName'
+                                    : profile.role.label),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             Divider(color: AppColors.surfaceBorder, height: 1),
@@ -174,7 +229,8 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
                 children: [
                   _sectionTitle('Comunicación'),
                   ListTile(
-                    leading: Icon(Icons.chat_outlined, color: AppColors.accent),
+                    leading: _leadingIcon(Icons.chat_outlined,
+                        active: profile != null),
                     title: Text(
                       'Chat del departamento',
                       style: TextStyle(

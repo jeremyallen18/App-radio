@@ -6,7 +6,12 @@ import 'package:doliv_social/services/attendance_service.dart' show AttendanceEx
 /// traduce los fallos a [AttendanceException] en español. Solo se llama al
 /// fichar entrada o fin de comida; nunca hay rastreo continuo.
 class AttendanceLocation {
-  static Future<({double latitude, double longitude, double accuracyM})>
+  static Future<({
+    double latitude,
+    double longitude,
+    double accuracyM,
+    bool isMocked,
+  })>
       current() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
       throw AttendanceException(
@@ -42,6 +47,7 @@ class AttendanceLocation {
         latitude: pos.latitude,
         longitude: pos.longitude,
         accuracyM: pos.accuracy,
+        isMocked: pos.isMocked,
       );
     } catch (_) {
       throw AttendanceException(

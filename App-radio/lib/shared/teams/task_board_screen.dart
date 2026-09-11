@@ -207,6 +207,9 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
   ///   sin responsable, o de otra persona, no la puede tocar.
   bool _canComplete(DeptTask t) {
     if (widget.canManage) return true;
+    // Una aprobación del manager cierra la tarea para el empleado. Si necesita
+    // cambios, la devolución la reabre y permite una nueva entrega.
+    if (t.reviewStatus == DeptTaskReviewStatus.aprobada) return false;
     final a = t.assignedTo;
     return a != null &&
         widget.currentUserId != null &&
@@ -269,6 +272,7 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
       await _load();
       if (mounted) {
         setState(() => _busy = false);
+        celebrateBurst(context);
         _snack(widget.canManage
             ? 'Evidencia enviada. Tarea completada.'
             : 'Evidencia enviada. Tu manager la revisará.');

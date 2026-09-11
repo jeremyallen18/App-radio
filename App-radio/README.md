@@ -2,6 +2,8 @@
 
 Aplicación Flutter para gestionar equipos de trabajo: creación y unión a equipos por código, asignación de tareas por área, seguimiento de progreso, chat interno, solicitudes de permiso (leave), recursos compartidos y notificaciones in-app. Todo el texto de la interfaz está en español.
 
+> **Estado actual:** este README es la documentación operativa vigente del proyecto. Las notas históricas, planes de implementación y reportes temporales se retiraron para evitar instrucciones contradictorias.
+
 ## Tabla de contenidos
 
 - [Arquitectura general](#arquitectura-general)
@@ -71,7 +73,7 @@ Credenciales de DB y la ruta base ya no están hardcodeadas: viven en `hive-back
 
 ## Configuración del backend
 
-Toda la app apunta a un único backend a través de dos constantes centrales en [`lib/utils/api_config.dart`](lib/utils/api_config.dart):
+Toda la app apunta a un único backend a través de dos constantes centrales en [`lib/core/api_config.dart`](lib/core/api_config.dart):
 
 ```dart
 const String kBaseUrl = String.fromEnvironment(
@@ -143,7 +145,7 @@ lib/design/
 
 Pantalla de referencia visual (solo debug, no es parte del flujo de usuario): `/_ComponentGallery` — ver `lib/design/gallery/component_gallery_screen.dart`.
 
-El rediseño completo (motivación, fases, qué falta) está documentado en [`Rediseno-Frontend.md`](Rediseno-Frontend.md). Hoy está aplicada la Fase 0 (fundación: tokens, tema, componentes base, `login.dart`/`tasks.dart`/`teamDetail.dart`/`profile.dart`/`bottomnavbar.dart`/`teams.dart` migrados). El resto de las pantallas todavía usa colores sueltos y algo de texto en inglés — hay que migrarlas antes de darlas por terminadas (ver ese documento para el orden y los criterios).
+El sistema de diseño vigente se mantiene directamente en `lib/design/`: tokens de color, espaciado y tipografía, temas claro/oscuro, componentes reutilizables y la galería disponible solo en debug. Las pantallas deben consumir esos tokens en lugar de definir colores o tamaños globales por separado.
 
 ## Ícono de la app
 
@@ -287,7 +289,7 @@ La campana del `MyAppBar` consulta `GET /notifications` y muestra un badge rojo 
 
 ### Paleta y diseño
 
-Ver [Sistema de diseño](#sistema-de-diseño) arriba y [`Rediseno-Frontend.md`](Rediseno-Frontend.md) para el detalle completo (tokens, regla de contraste, qué pantallas faltan migrar).
+Ver [Sistema de diseño](#sistema-de-diseño) arriba para el detalle de tokens, componentes y regla de contraste.
 
 ## Backend PHP (`hive-backend`)
 
@@ -505,7 +507,7 @@ ipconfig
 
 Buscá la línea que dice **"Dirección IPv4"** (algo como `192.168.1.25`) dentro de tu red Wi-Fi o Ethernet — esa es tu IP.
 
-Abrí el archivo [`lib/utils/api_config.dart`](lib/utils/api_config.dart) y reemplazá la IP que ya está por la tuya, dejando el resto igual:
+Abrí el archivo [`lib/core/api_config.dart`](lib/core/api_config.dart) y reemplazá la IP que ya está por la tuya, dejando el resto igual:
 
 ```dart
 const String kBaseUrl = 'http://TU_IP_AQUI/hive-backend';
@@ -544,7 +546,7 @@ dart run flutter_launcher_icons
 
 ## Código de conducta y contribución
 
-Ver [Code of Conduct](CODE_OF_CONDUCT.md), [contribution guidelines](CONTRIBUTING.md) y [Security Policy](SECURITY.md). Este proyecto está bajo licencia [MIT](LICENSE).
+La configuración local, el flujo de ejecución y las convenciones técnicas están documentados en este README. Antes de abrir un cambio, ejecutá `flutter analyze` y verificá el flujo afectado en la plataforma correspondiente.
 
 .........Asignacion de roles........
    Registrar a cada usuaio desde la aplicacion

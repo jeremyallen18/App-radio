@@ -692,6 +692,15 @@ function deptTaskSetStatus(PDO $pdo, string $id) {
     }
 
     if ($status !== 'completada') {
+        // Una tarea aprobada es un cierre definitivo para el empleado. Solo
+        // un manager/director puede reabrirla explícitamente.
+        if ($user['role'] === 'employee'
+            && ($row['review_status'] ?? 'sin_revision') === 'aprobada') {
+            dept_task_fail(
+                'La tarea ya fue aprobada y no puede reabrirse desde tu cuenta.',
+                403
+            );
+        }
         // Reabrir / mover a en_progreso: limpia el cierre y la revisión.
         $stmt = $pdo->prepare(
             "UPDATE dept_tasks SET status = ?, completed_by = NULL, completed_at = NULL,
@@ -806,9 +815,13 @@ function deptTaskReview(PDO $pdo, string $id) {
     if ($decision === 'approve') {
         $stmt = $pdo->prepare(
             "UPDATE dept_tasks SET review_status = 'aprobada', review_note = ?,
-               reviewed_by = ?, reviewed_at = NOW() WHERE id = ?"
+               reviewed_by = ?, reviewed_at = NOW()
+             WHERE id = ? AND review_status = 'pendiente_revision'"
         );
         $stmt->execute([$note !== '' ? $note : null, $user['id'], $id]);
+        if ($stmt->rowCount() === 0) {
+            dept_task_fail('La tarea ya fue revisada.', 409);
+        }
         dept_task_spawn_next($pdo, dept_task_row($pdo, $id));
         if ($row['assigned_to']) {
             $s = $pdo->prepare('SELECT email FROM users WHERE id = ?');
@@ -824,12 +837,21 @@ function deptTaskReview(PDO $pdo, string $id) {
         if ($note === '') {
             dept_task_fail('Indica el motivo del rechazo.', 400);
         }
+        $evidencePath = $row['evidence_path'];
         $stmt = $pdo->prepare(
             "UPDATE dept_tasks SET status = 'en_progreso', review_status = 'rechazada',
                review_note = ?, reviewed_by = ?, reviewed_at = NOW(),
-               completed_by = NULL, completed_at = NULL WHERE id = ?"
+               completed_by = NULL, completed_at = NULL,
+               evidence_path = NULL, evidence_mime = NULL
+             WHERE id = ? AND review_status = 'pendiente_revision'"
         );
         $stmt->execute([$note, $user['id'], $id]);
+        if ($stmt->rowCount() === 0) {
+            dept_task_fail('La tarea ya fue revisada.', 409);
+        }
+        if ($evidencePath) {
+            @unlink(TASK_EVIDENCE_DIR . basename($evidencePath));
+        }
         if ($row['assigned_to']) {
             $s = $pdo->prepare('SELECT email FROM users WHERE id = ?');
             $s->execute([$row['assigned_to']]);

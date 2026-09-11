@@ -112,7 +112,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
       final token = await secureStorage.readSecureData(key);
       final res = await http.get(
         Uri.parse('$kBaseUrl/department/list'),
-        headers: {'Authorization': (token as String?) ?? ''},
+        headers: {'Authorization': token ?? ''},
       );
       if (res.statusCode == 200) {
         final List<dynamic> raw = jsonDecode(res.body)['departments'] ?? [];

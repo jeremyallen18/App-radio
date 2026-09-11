@@ -18,7 +18,7 @@ class InternalAnnouncementException implements Exception {
 class InternalAnnouncementApi {
   static Future<String> _token() async {
     final token = await secureStorage.readSecureData(key);
-    return (token as String?) ?? '';
+    return token ?? '';
   }
 
   /// Tablero de anuncios. El director los recibe todos; el resto solo los

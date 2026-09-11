@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:doliv_social/design/design.dart';
@@ -16,16 +18,57 @@ class AdminAttendanceScreen extends StatefulWidget {
   State<AdminAttendanceScreen> createState() => _AdminAttendanceScreenState();
 }
 
+/// Filtro de estado sobre la lista ya cargada (client-side, sin llamada nueva).
+enum _StatusFilter { todos, sinEntrada, enJornada, enComida, completo }
+
+extension on _StatusFilter {
+  String get label => switch (this) {
+        _StatusFilter.todos => 'Todos',
+        _StatusFilter.sinEntrada => 'Sin entrada',
+        _StatusFilter.enJornada => 'En jornada',
+        _StatusFilter.enComida => 'En comida',
+        _StatusFilter.completo => 'Completo',
+      };
+
+  bool matches(AttendanceState state) => switch (this) {
+        _StatusFilter.todos => true,
+        _StatusFilter.sinEntrada => state == AttendanceState.sinEntrada,
+        _StatusFilter.enJornada => state == AttendanceState.enJornada,
+        _StatusFilter.enComida => state == AttendanceState.enComida,
+        _StatusFilter.completo => state == AttendanceState.jornadaTerminada,
+      };
+}
+
 class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
   DateTime _date = DateTime.now();
   List<AdminAttendanceRow> _rows = const [];
   bool _loading = true;
   String? _error;
 
+  final _searchController = TextEditingController();
+  String _query = '';
+  _StatusFilter _filter = _StatusFilter.todos;
+
+  Timer? _clockTimer;
+  DateTime _now = DateTime.now();
+
   @override
   void initState() {
     super.initState();
     _load();
+    _searchController.addListener(() {
+      setState(() => _query = _searchController.text.trim().toLowerCase());
+    });
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _now = DateTime.now());
+    });
+  }
+
+  @override
+  void dispose() {
+    _clockTimer?.cancel();
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -62,11 +105,27 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
     _load();
   }
 
+  void _shiftDate(int days) {
+    final next = _date.add(Duration(days: days));
+    if (next.isAfter(DateTime.now())) return;
+    setState(() => _date = next);
+    _load();
+  }
+
   bool get _isToday {
     final now = DateTime.now();
     return _date.year == now.year &&
         _date.month == now.month &&
         _date.day == now.day;
+  }
+
+  List<AdminAttendanceRow> get _visibleRows {
+    return _rows.where((r) {
+      if (!_filter.matches(r.day.state)) return false;
+      if (_query.isEmpty) return true;
+      return r.name.toLowerCase().contains(_query) ||
+          (r.position ?? '').toLowerCase().contains(_query);
+    }).toList();
   }
 
   @override
@@ -76,6 +135,11 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
         leading: const BackButton(),
         title: const Text('Asistencia de empleados'),
         actions: [
+          IconButton(
+            onPressed: _loading ? null : _load,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refrescar',
+          ),
           IconButton(
             onPressed: _pickDate,
             icon: const Icon(Icons.calendar_today),
@@ -89,6 +153,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
           if (_error != null) {
             return ErrorState(message: _error!, onRetry: _load);
           }
+          final visible = _visibleRows;
           return RefreshIndicator(
             color: AppColors.accent,
             onRefresh: _load,
@@ -100,32 +165,57 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                 AppSpacing.xxl,
               ),
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.event, size: 16, color: AppColors.textMuted),
-                    const SizedBox(width: AppSpacing.sm),
-                    Text(
-                      _isToday ? 'Hoy' : _fmtDate(_date),
-                      style:
-                          TextStyle(color: AppColors.textMuted, fontSize: 13),
-                    ),
-                  ],
+                _DateStrip(
+                  date: _date,
+                  isToday: _isToday,
+                  now: _now,
+                  onPrev: () => _shiftDate(-1),
+                  onNext: _isToday ? null : () => _shiftDate(1),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _SummaryStrip(rows: _rows),
                 const SizedBox(height: AppSpacing.lg),
-                if (_rows.isEmpty)
-                  const EmptyState(
+                AppTextField(
+                  controller: _searchController,
+                  hintText: 'Buscar por nombre o puesto',
+                  prefixIcon: const Icon(Icons.search),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (final f in _StatusFilter.values) ...[
+                        AppFilterChip(
+                          label: f.label,
+                          selected: _filter == f,
+                          onTap: () => setState(() => _filter = f),
+                          count: f == _StatusFilter.todos
+                              ? _rows.length
+                              : _rows.where((r) => f.matches(r.day.state)).length,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                if (visible.isEmpty)
+                  EmptyState(
                     icon: Icons.groups_outlined,
-                    title: 'No hay empleados para mostrar',
-                    message: 'Aún no hay empleados asignados a tu ámbito.',
+                    title: _rows.isEmpty
+                        ? 'No hay empleados para mostrar'
+                        : 'Nadie coincide con la búsqueda',
+                    message: _rows.isEmpty
+                        ? 'Aún no hay empleados asignados a tu ámbito.'
+                        : 'Prueba con otro nombre, puesto o filtro.',
                   )
                 else
-                  ..._rows.map((r) => Padding(
+                  ...visible.map((r) => Padding(
                         padding: const EdgeInsets.only(bottom: AppSpacing.md),
                         child: _EmployeeRowCard(
                           row: r,
-                          onTap: () => Navigator.of(context).push(
+                          onDetails: () => Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => AttendanceHistoryScreen(
                                 employeeId: r.employeeId,
@@ -142,9 +232,83 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
       ),
     );
   }
+}
+
+class _DateStrip extends StatelessWidget {
+  const _DateStrip({
+    required this.date,
+    required this.isToday,
+    required this.now,
+    required this.onPrev,
+    required this.onNext,
+  });
+
+  final DateTime date;
+  final bool isToday;
+  final DateTime now;
+  final VoidCallback onPrev;
+  final VoidCallback? onNext;
 
   static String _fmtDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+  static String _fmtClock(DateTime t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:${t.second.toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        IconButton(
+          onPressed: onPrev,
+          icon: const Icon(Icons.chevron_left),
+          color: AppColors.textMuted,
+          tooltip: 'Día anterior',
+        ),
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.event, size: 16, color: AppColors.textMuted),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                isToday ? 'Hoy · ${_fmtDate(date)}' : _fmtDate(date),
+                style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          onPressed: onNext,
+          icon: const Icon(Icons.chevron_right),
+          color: onNext == null
+              ? AppColors.textMuted.withValues(alpha: 0.3)
+              : AppColors.textMuted,
+          tooltip: 'Día siguiente',
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Row(
+          children: [
+            Icon(Icons.schedule, size: 14, color: AppColors.accent),
+            const SizedBox(width: 4),
+            Text(
+              _fmtClock(now),
+              style: TextStyle(
+                color: AppColors.accent,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 class _SummaryStrip extends StatelessWidget {
@@ -164,41 +328,52 @@ class _SummaryStrip extends StatelessWidget {
     final excedidas = count((r) => r.day.mealExceeded);
 
     return AppCard(
-      child: Wrap(
-        spacing: AppSpacing.lg,
-        runSpacing: AppSpacing.md,
+      child: Column(
         children: [
-          _stat('En jornada', enJornada, AppColors.success),
-          _stat('En comida', enComida, AppColors.warning),
-          _stat('Completas', completo, AppColors.accent),
-          _stat('Sin entrada', sinEntrada, AppColors.error),
-          _stat('Llegadas tarde', tarde, AppColors.warning),
-          _stat('Comida excedida', excedidas, AppColors.error),
+          Row(
+            children: [
+              _stat('En jornada', enJornada, AppColors.success),
+              _stat('En comida', enComida, AppColors.warning),
+              _stat('Completas', completo, AppColors.accent),
+              _stat('Sin entrada', sinEntrada, AppColors.error),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              _stat('Llegadas tarde', tarde, AppColors.warning),
+              _stat('Comida excedida', excedidas, AppColors.error),
+              const Spacer(),
+              const Spacer(),
+            ],
+          ),
         ],
       ),
     );
   }
 
   Widget _stat(String label, int value, Color color) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$value',
-          style: TextStyle(
-              color: color, fontWeight: FontWeight.w800, fontSize: 20),
-        ),
-        Text(label, style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-      ],
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$value',
+            style: TextStyle(
+                color: color, fontWeight: FontWeight.w800, fontSize: 20),
+          ),
+          Text(label,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+        ],
+      ),
     );
   }
 }
 
 class _EmployeeRowCard extends StatelessWidget {
-  const _EmployeeRowCard({required this.row, required this.onTap});
+  const _EmployeeRowCard({required this.row, required this.onDetails});
   final AdminAttendanceRow row;
-  final VoidCallback onTap;
+  final VoidCallback onDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -214,9 +389,12 @@ class _EmployeeRowCard extends StatelessWidget {
       AttendanceState.enComida => ('En hora de comida', AppColors.warning),
       AttendanceState.jornadaTerminada => ('Completo', AppColors.accent),
     };
+    final schedule = day.schedule;
+    final scheduleLabel = schedule != null
+        ? 'Horario: ${schedule.entryTime} – ${schedule.exitTime}'
+        : null;
 
     return AppCard(
-      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -236,12 +414,14 @@ class _EmployeeRowCard extends StatelessWidget {
                         fontSize: 15,
                       ),
                     ),
-                    if ((row.position ?? '').isNotEmpty)
-                      Text(
-                        row.position!,
-                        style:
-                            TextStyle(color: AppColors.textMuted, fontSize: 12),
-                      ),
+                    Text(
+                      [
+                        'ID: ${row.employeeId}',
+                        if ((row.position ?? '').isNotEmpty) row.position!,
+                      ].join(' · '),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    ),
                   ],
                 ),
               ),
@@ -275,13 +455,28 @@ class _EmployeeRowCard extends StatelessWidget {
               _cell('Trabajado', day.workedLabel ?? '—'),
             ],
           ),
-          if (!row.hasSchedule) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Sin horario asignado',
-              style: TextStyle(color: AppColors.warning, fontSize: 11),
-            ),
-          ],
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  row.hasSchedule
+                      ? (scheduleLabel ?? '')
+                      : 'Sin horario asignado',
+                  style: TextStyle(
+                    color: row.hasSchedule
+                        ? AppColors.textMuted
+                        : AppColors.warning,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: onDetails,
+                child: const Text('Detalles'),
+              ),
+            ],
+          ),
         ],
       ),
     );

@@ -42,10 +42,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Duration _mealElapsed = Duration.zero;
 
   /// Eventos que exigen estar físicamente en el lugar de asistencia.
-  static const _geofenced = {AttendanceAction.entrada, AttendanceAction.finComida};
+  static const _geofenced = {
+    AttendanceAction.entrada,
+    AttendanceAction.finComida
+  };
 
   /// Eventos que exigen verificación biométrica del SO antes de la red.
-  static const _biometricActions = {AttendanceAction.entrada, AttendanceAction.salida};
+  static const _biometricActions = {
+    AttendanceAction.entrada,
+    AttendanceAction.salida
+  };
 
   AttendanceDeviceState _deviceState = AttendanceDeviceState.trusted;
   DeviceIdentity? _device;
@@ -163,12 +169,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     double? lat;
     double? lng;
     double? acc;
+    bool locationMocked = false;
     try {
       if (_geofenced.contains(action)) {
         final pos = await AttendanceLocation.current();
         lat = pos.latitude;
         lng = pos.longitude;
         acc = pos.accuracyM;
+        locationMocked = pos.isMocked;
       }
     } on AttendanceException catch (e) {
       if (!mounted) return;
@@ -183,6 +191,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         latitude: lat,
         longitude: lng,
         locationAccuracy: acc,
+        locationMocked: locationMocked,
         device: _device,
         biometricResult: bioResult,
         biometricType: bioType,

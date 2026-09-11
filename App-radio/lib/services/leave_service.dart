@@ -20,7 +20,7 @@ class LeaveException implements Exception {
 class LeaveApi {
   static Future<String> _token() async {
     final token = await secureStorage.readSecureData(key);
-    return (token as String?) ?? '';
+    return token ?? '';
   }
 
   /// Headers de autorización, p.ej. para `Image.network` de la evidencia.

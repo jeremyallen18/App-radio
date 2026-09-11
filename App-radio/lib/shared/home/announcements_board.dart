@@ -21,12 +21,29 @@ class AnnouncementsBoard extends StatefulWidget {
   State<AnnouncementsBoard> createState() => _AnnouncementsBoardState();
 }
 
+/// Filtro rápido del tablero de anuncios (cliente, sobre la lista ya cargada).
+enum _AncFilter { todos, activos, reuniones, finalizados }
+
 class _AnnouncementsBoardState extends State<AnnouncementsBoard> {
   List<InternalAnnouncement> _items = const [];
   bool _canManage = false;
   bool _loading = true;
   String? _error;
   String? _busyId; // anuncio con una acción en curso
+  _AncFilter _filter = _AncFilter.todos;
+
+  bool _matchesFilter(InternalAnnouncement a) {
+    switch (_filter) {
+      case _AncFilter.todos:
+        return true;
+      case _AncFilter.activos:
+        return a.active;
+      case _AncFilter.reuniones:
+        return a.eventAt != null;
+      case _AncFilter.finalizados:
+        return !a.active;
+    }
+  }
 
   @override
   void initState() {
@@ -150,6 +167,31 @@ class _AnnouncementsBoardState extends State<AnnouncementsBoard> {
                   )
                 : null,
           ),
+          const SizedBox(height: AppSpacing.md),
+          if (_items.isNotEmpty) ...[
+            SizedBox(
+              height: 34,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  for (final f in _AncFilter.values) ...[
+                    AppFilterChip(
+                      label: switch (f) {
+                        _AncFilter.todos => 'Todos',
+                        _AncFilter.activos => 'Activos',
+                        _AncFilter.reuniones => 'Reuniones',
+                        _AncFilter.finalizados => 'Finalizados',
+                      },
+                      selected: _filter == f,
+                      onTap: () => setState(() => _filter = f),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           if (_items.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.xxl),
@@ -161,8 +203,8 @@ class _AnnouncementsBoardState extends State<AnnouncementsBoard> {
                     : 'Cuando la dirección publique un anuncio, aparecerá aquí.',
               ),
             )
-          else
-            for (final a in _items) ...[
+          else ...[
+            for (final a in _items.where(_matchesFilter)) ...[
               _AnnouncementCard(
                 announcement: a,
                 canManage: _canManage,
@@ -174,6 +216,16 @@ class _AnnouncementsBoardState extends State<AnnouncementsBoard> {
               ),
               const SizedBox(height: AppSpacing.md),
             ],
+            if (_items.where(_matchesFilter).isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xl),
+                child: Text(
+                  'No hay anuncios en este filtro.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                ),
+              ),
+          ],
         ],
       ),
     );
@@ -220,140 +272,160 @@ class _AnnouncementCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final a = announcement;
     final st = _status;
+    // Las reuniones vigentes se destacan con un fondo en degradado de acento,
+    // a la manera de la tarjeta "fijada" del rediseño.
+    final highlight = a.eventAt != null && a.active;
 
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                a.title,
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            AppBadge(label: st.label, variant: st.variant),
+            if (canManage) _busyOrMenu(context) else const SizedBox.shrink(),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          a.body,
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+        ),
+        const SizedBox(height: AppSpacing.md),
+
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            _meta(
+              a.isGeneral ? Icons.public : Icons.apartment_outlined,
+              a.isGeneral ? 'Toda la empresa' : a.areaNames,
+            ),
+            if (a.eventAt != null)
+              _meta(Icons.event_outlined, 'Reunión: ${_dt(a.eventAt!)}'),
+            if ((a.locationLabel ?? '').isNotEmpty)
+              _meta(Icons.place_outlined, a.locationLabel!),
+            if (a.createdAt != null)
+              _meta(Icons.schedule_outlined, 'Publicado ${_dt(a.createdAt!)}'),
+          ],
+        ),
+
+        // ---- vista del director: agregados + acceso al historial ----
+        if (canManage && a.audienceCount != null) ...[
+          const SizedBox(height: AppSpacing.md),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _meta(Icons.visibility_outlined,
+                  '${a.viewCount ?? 0}/${a.audienceCount} vistas'),
+              if (a.requiresConfirmation) ...[
+                const SizedBox(width: AppSpacing.md),
+                _meta(Icons.how_to_reg_outlined,
+                    '${a.confirmedYes ?? 0} sí · ${a.confirmedNo ?? 0} no'),
+              ],
+              const Spacer(),
+              TextButton(
+                onPressed: onViews,
+                child: const Text('Ver visualizaciones'),
+              ),
+            ],
+          ),
+        ],
+
+        // ---- vista del resto: confirmar asistencia ----
+        if (!canManage && a.requiresConfirmation) ...[
+          Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
+          Text(
+            '¿Asistirás?',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
             children: [
               Expanded(
-                child: Text(
-                  a.title,
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
+                child: FilledButton.icon(
+                  onPressed: busy ? null : () => onConfirm(true),
+                  icon: const Icon(Icons.check, size: 16),
+                  label: const Text('Asistiré'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: a.myConfirmation == 'si'
+                        ? AppColors.success
+                        : AppColors.surface,
+                    foregroundColor: a.myConfirmation == 'si'
+                        ? AppColors.bgBase
+                        : AppColors.textPrimary,
                   ),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              AppBadge(label: st.label, variant: st.variant),
-              if (canManage) _busyOrMenu(context) else const SizedBox.shrink(),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            a.body,
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              _meta(
-                a.isGeneral ? Icons.public : Icons.apartment_outlined,
-                a.isGeneral ? 'Toda la empresa' : a.areaNames,
-              ),
-              if (a.eventAt != null)
-                _meta(Icons.event_outlined, 'Reunión: ${_dt(a.eventAt!)}'),
-              if ((a.locationLabel ?? '').isNotEmpty)
-                _meta(Icons.place_outlined, a.locationLabel!),
-              if (a.createdAt != null)
-                _meta(
-                    Icons.schedule_outlined, 'Publicado ${_dt(a.createdAt!)}'),
-            ],
-          ),
-
-          // ---- vista del director: agregados + acceso al historial ----
-          if (canManage && a.audienceCount != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              children: [
-                _meta(Icons.visibility_outlined,
-                    '${a.viewCount ?? 0}/${a.audienceCount} vistas'),
-                if (a.requiresConfirmation) ...[
-                  const SizedBox(width: AppSpacing.md),
-                  _meta(Icons.how_to_reg_outlined,
-                      '${a.confirmedYes ?? 0} sí · ${a.confirmedNo ?? 0} no'),
-                ],
-                const Spacer(),
-                TextButton(
-                  onPressed: onViews,
-                  child: const Text('Ver visualizaciones'),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: busy ? null : () => onConfirm(false),
+                  icon: const Icon(Icons.close, size: 16),
+                  label: const Text('No asistiré'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: a.myConfirmation == 'no'
+                        ? AppColors.warning
+                        : AppColors.textMuted,
+                  ),
                 ),
-              ],
-            ),
-          ],
-
-          // ---- vista del resto: confirmar asistencia ----
-          if (!canManage && a.requiresConfirmation) ...[
-            Divider(color: AppColors.surfaceBorder, height: AppSpacing.xl),
-            Text(
-              '¿Asistirás?',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
               ),
-            ),
+            ],
+          ),
+          if (a.myConfirmation == 'si' && a.eventAt != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
+                Icon(Icons.notifications_active_outlined,
+                    size: 13, color: AppColors.textMuted),
+                const SizedBox(width: 4),
                 Expanded(
-                  child: FilledButton.icon(
-                    onPressed: busy ? null : () => onConfirm(true),
-                    icon: const Icon(Icons.check, size: 16),
-                    label: const Text('Asistiré'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: a.myConfirmation == 'si'
-                          ? AppColors.success
-                          : AppColors.surface,
-                      foregroundColor: a.myConfirmation == 'si'
-                          ? AppColors.bgBase
-                          : AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: busy ? null : () => onConfirm(false),
-                    icon: const Icon(Icons.close, size: 16),
-                    label: const Text('No asistiré'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: a.myConfirmation == 'no'
-                          ? AppColors.warning
-                          : AppColors.textMuted,
-                    ),
+                  child: Text(
+                    'Recibirás un recordatorio cada día hasta la reunión.',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                   ),
                 ),
               ],
             ),
-            if (a.myConfirmation == 'si' && a.eventAt != null) ...[
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Icon(Icons.notifications_active_outlined,
-                      size: 13, color: AppColors.textMuted),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      'Recibirás un recordatorio cada día hasta la reunión.',
-                      style:
-                          TextStyle(color: AppColors.textMuted, fontSize: 11),
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ],
         ],
+      ],
+    );
+
+    if (!highlight) {
+      return AppCard(child: content);
+    }
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.35)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.accent.withValues(alpha: 0.14),
+            AppColors.surface.withValues(alpha: 0.0),
+          ],
+        ),
+        color: AppColors.surface,
       ),
+      child: content,
     );
   }
 

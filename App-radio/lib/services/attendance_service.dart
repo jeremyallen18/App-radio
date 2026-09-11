@@ -27,19 +27,20 @@ class AttendanceException implements Exception {
 class AttendanceApi {
   static Future<String> _token() async {
     final token = await secureStorage.readSecureData(key);
-    return (token as String?) ?? '';
+    return token ?? '';
   }
 
   // empleado
 
   /// Estado de asistencia de hoy: día, lugar configurado y, si aplica, el
   /// permiso aprobado que exime de registrar.
-  static Future<({
-    AttendanceDay day,
-    AttendanceLocationConfig? location,
-    AttendanceAbsence? absence,
-    EntryOverrideEvent? entryOverride,
-  })> today() async {
+  static Future<
+      ({
+        AttendanceDay day,
+        AttendanceLocationConfig? location,
+        AttendanceAbsence? absence,
+        EntryOverrideEvent? entryOverride,
+      })> today() async {
     final res = await _get(Uri.parse('$kBaseUrl/attendance/today'));
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;
     return (
@@ -58,6 +59,7 @@ class AttendanceApi {
     double? latitude,
     double? longitude,
     double? locationAccuracy,
+    bool locationMocked = false,
     String method = 'gps',
     DeviceIdentity? device,
     String? biometricResult,
@@ -69,7 +71,9 @@ class AttendanceApi {
         'method': method,
         if (latitude != null) 'latitude': latitude.toString(),
         if (longitude != null) 'longitude': longitude.toString(),
-        if (locationAccuracy != null) 'locationAccuracy': locationAccuracy.toString(),
+        if (locationAccuracy != null)
+          'locationAccuracy': locationAccuracy.toString(),
+        'locationMocked': locationMocked ? '1' : '0',
         // Solo diagnóstico: el backend usa su propia hora como oficial.
         'deviceTime': DateTime.now().toIso8601String(),
         if (device != null) ...device.toBody(),
@@ -78,22 +82,26 @@ class AttendanceApi {
       },
     );
     return AttendanceDay.fromJson(
-      (jsonDecode(res.body) as Map<String, dynamic>)['day'] as Map<String, dynamic>,
+      (jsonDecode(res.body) as Map<String, dynamic>)['day']
+          as Map<String, dynamic>,
     );
   }
 
   /// Estado del dispositivo actual respecto de la cuenta. POST para no exponer
   /// los identificadores en la query string.
-  static Future<AttendanceDeviceStatus> deviceStatus(DeviceIdentity device) async {
+  static Future<AttendanceDeviceStatus> deviceStatus(
+      DeviceIdentity device) async {
     final res = await _post(
       Uri.parse('$kBaseUrl/attendance/device/status'),
       device.toBody(),
     );
-    return AttendanceDeviceStatus.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+    return AttendanceDeviceStatus.fromJson(
+        jsonDecode(res.body) as Map<String, dynamic>);
   }
 
   /// Solicita al director autorizar el dispositivo actual (bloqueado).
-  static Future<AttendanceDeviceState> requestDevice(DeviceIdentity device) async {
+  static Future<AttendanceDeviceState> requestDevice(
+      DeviceIdentity device) async {
     final res = await _post(
       Uri.parse('$kBaseUrl/attendance/device/request'),
       device.toBody(),
@@ -103,7 +111,8 @@ class AttendanceApi {
   }
 
   /// Historial de asistencia del empleado (por defecto, últimos 30 días).
-  static Future<List<AttendanceDay>> history({DateTime? from, DateTime? to}) async {
+  static Future<List<AttendanceDay>> history(
+      {DateTime? from, DateTime? to}) async {
     final uri = Uri.parse('$kBaseUrl/attendance/history').replace(
       queryParameters: <String, String>{
         if (from != null) 'from': _ymd(from),
@@ -152,7 +161,8 @@ class AttendanceApi {
   }
 
   /// Empleados con su horario asignado; `canEdit` solo para director.
-  static Future<({List<EmployeeScheduleRow> rows, bool canEdit})> adminSchedules() async {
+  static Future<({List<EmployeeScheduleRow> rows, bool canEdit})>
+      adminSchedules() async {
     final res = await _get(Uri.parse('$kBaseUrl/admin/schedules'));
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;
     final rows = ((decoded['employees'] as List?) ?? const [])
@@ -163,7 +173,8 @@ class AttendanceApi {
   }
 
   /// Lugar de asistencia configurado (director y manager pueden leerlo).
-  static Future<({AttendanceLocationConfig? location, bool canEdit})> adminLocation() async {
+  static Future<({AttendanceLocationConfig? location, bool canEdit})>
+      adminLocation() async {
     final res = await _get(Uri.parse('$kBaseUrl/admin/attendance-location'));
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;
     return (
@@ -189,7 +200,8 @@ class AttendanceApi {
       },
     );
     return AttendanceLocationConfig.fromJson(
-      (jsonDecode(res.body) as Map<String, dynamic>)['location'] as Map<String, dynamic>,
+      (jsonDecode(res.body) as Map<String, dynamic>)['location']
+          as Map<String, dynamic>,
     );
   }
 
@@ -213,7 +225,8 @@ class AttendanceApi {
       },
     );
     return EmployeeSchedule.fromJson(
-      (jsonDecode(res.body) as Map<String, dynamic>)['schedule'] as Map<String, dynamic>,
+      (jsonDecode(res.body) as Map<String, dynamic>)['schedule']
+          as Map<String, dynamic>,
     );
   }
 
@@ -251,7 +264,8 @@ class AttendanceApi {
 
   // dispositivos (panel administrativo)
 
-  static Future<List<DeviceRequestRow>> adminDeviceRequests({String status = 'pending'}) async {
+  static Future<List<DeviceRequestRow>> adminDeviceRequests(
+      {String status = 'pending'}) async {
     final uri = Uri.parse('$kBaseUrl/admin/attendance/device-requests')
         .replace(queryParameters: {'status': status});
     final res = await _get(uri);
@@ -262,7 +276,8 @@ class AttendanceApi {
         .toList();
   }
 
-  static Future<void> resolveDeviceRequest(int id, {required bool approve, String? note}) async {
+  static Future<void> resolveDeviceRequest(int id,
+      {required bool approve, String? note}) async {
     await _post(
       Uri.parse('$kBaseUrl/admin/attendance/device-requests/$id/resolve'),
       {
@@ -272,7 +287,8 @@ class AttendanceApi {
     );
   }
 
-  static Future<List<DeviceAnomaly>> adminDeviceAnomalies({int days = 30}) async {
+  static Future<List<DeviceAnomaly>> adminDeviceAnomalies(
+      {int days = 30}) async {
     final uri = Uri.parse('$kBaseUrl/admin/attendance/device-anomalies')
         .replace(queryParameters: {'days': days.toString()});
     final res = await _get(uri);
@@ -285,7 +301,8 @@ class AttendanceApi {
 
   /// Dispositivo vinculado de cada empleado (pestaña "Dispositivos").
   static Future<List<TrustedDeviceRow>> adminTrustedDevices() async {
-    final res = await _get(Uri.parse('$kBaseUrl/admin/attendance/trusted-devices'));
+    final res =
+        await _get(Uri.parse('$kBaseUrl/admin/attendance/trusted-devices'));
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;
     return ((decoded['devices'] as List?) ?? const [])
         .whereType<Map>()
@@ -293,15 +310,20 @@ class AttendanceApi {
         .toList();
   }
 
-  static Future<TrustedDeviceInfo?> adminEmployeeDevice(String employeeId) async {
-    final res = await _get(Uri.parse('$kBaseUrl/admin/attendance/$employeeId/device'));
+  static Future<TrustedDeviceInfo?> adminEmployeeDevice(
+      String employeeId) async {
+    final res =
+        await _get(Uri.parse('$kBaseUrl/admin/attendance/$employeeId/device'));
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;
     final d = decoded['device'];
-    return d is Map ? TrustedDeviceInfo.fromJson(Map<String, dynamic>.from(d)) : null;
+    return d is Map
+        ? TrustedDeviceInfo.fromJson(Map<String, dynamic>.from(d))
+        : null;
   }
 
   static Future<void> adminResetEmployeeDevice(String employeeId) async {
-    await _post(Uri.parse('$kBaseUrl/admin/attendance/$employeeId/device/reset'), {});
+    await _post(
+        Uri.parse('$kBaseUrl/admin/attendance/$employeeId/device/reset'), {});
   }
 
   // resumen mensual
@@ -318,19 +340,24 @@ class AttendanceApi {
   }
 
   /// Resumen mensual por empleado + totales (director / manager).
-  static Future<({List<AdminAttendanceSummaryRow> rows, AttendancePeriodSummary totals})>
-      adminSummary({String? month, String? departmentId}) async {
+  static Future<
+      ({
+        List<AdminAttendanceSummaryRow> rows,
+        AttendancePeriodSummary totals
+      })> adminSummary({String? month, String? departmentId}) async {
     final uri = Uri.parse('$kBaseUrl/admin/attendance/summary').replace(
       queryParameters: <String, String>{
         if (month != null) 'month': month,
-        if (departmentId != null && departmentId.isNotEmpty) 'departmentId': departmentId,
+        if (departmentId != null && departmentId.isNotEmpty)
+          'departmentId': departmentId,
       },
     );
     final res = await _get(uri);
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;
     final rows = ((decoded['employees'] as List?) ?? const [])
         .whereType<Map>()
-        .map((e) => AdminAttendanceSummaryRow.fromJson(Map<String, dynamic>.from(e)))
+        .map((e) =>
+            AdminAttendanceSummaryRow.fromJson(Map<String, dynamic>.from(e)))
         .toList();
     return (
       rows: rows,
@@ -340,7 +367,8 @@ class AttendanceApi {
   }
 
   /// Descarga el reporte mensual ([format] = `csv` | `pdf`).
-  static Future<({List<int> bytes, String filename, String mime})> downloadReport({
+  static Future<({List<int> bytes, String filename, String mime})>
+      downloadReport({
     required String format,
     String? month,
     String? departmentId,
@@ -349,14 +377,16 @@ class AttendanceApi {
       queryParameters: <String, String>{
         'format': format,
         if (month != null) 'month': month,
-        if (departmentId != null && departmentId.isNotEmpty) 'departmentId': departmentId,
+        if (departmentId != null && departmentId.isNotEmpty)
+          'departmentId': departmentId,
       },
     );
     late final http.Response res;
     try {
       res = await http.get(uri, headers: {'Authorization': await _token()});
     } catch (_) {
-      throw AttendanceException('Se produjo un error de conexión. Inténtalo nuevamente.');
+      throw AttendanceException(
+          'Se produjo un error de conexión. Inténtalo nuevamente.');
     }
     if (res.statusCode != 200) _ensureOk(res);
     final m = (month ?? DateTime.now().toIso8601String().substring(0, 7));
@@ -381,8 +411,8 @@ class AttendanceApi {
       'requestedTime': requestedTime,
       'reason': reason.trim(),
     });
-    return AttendanceCorrection.fromJson(
-        (jsonDecode(res.body) as Map<String, dynamic>)['request'] as Map<String, dynamic>);
+    return AttendanceCorrection.fromJson((jsonDecode(res.body)
+        as Map<String, dynamic>)['request'] as Map<String, dynamic>);
   }
 
   static Future<List<AttendanceCorrection>> myCorrections() async {
@@ -390,7 +420,8 @@ class AttendanceApi {
     return _correctionList(res);
   }
 
-  static Future<List<AttendanceCorrection>> adminCorrections({CorrectionStatus? status}) async {
+  static Future<List<AttendanceCorrection>> adminCorrections(
+      {CorrectionStatus? status}) async {
     final uri = Uri.parse('$kBaseUrl/admin/attendance/corrections').replace(
       queryParameters: status != null ? {'status': status.apiValue} : null,
     );
@@ -410,8 +441,8 @@ class AttendanceApi {
         if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
       },
     );
-    return AttendanceCorrection.fromJson(
-        (jsonDecode(res.body) as Map<String, dynamic>)['request'] as Map<String, dynamic>);
+    return AttendanceCorrection.fromJson((jsonDecode(res.body)
+        as Map<String, dynamic>)['request'] as Map<String, dynamic>);
   }
 
   static List<AttendanceCorrection> _correctionList(http.Response res) {
@@ -432,7 +463,8 @@ class AttendanceApi {
     try {
       res = await http.get(uri, headers: {'Authorization': await _token()});
     } catch (_) {
-      throw AttendanceException('Se produjo un error de conexión. Inténtalo nuevamente.');
+      throw AttendanceException(
+          'Se produjo un error de conexión. Inténtalo nuevamente.');
     }
     _ensureOk(res);
     return res;
@@ -441,9 +473,11 @@ class AttendanceApi {
   static Future<http.Response> _post(Uri uri, Map<String, String> body) async {
     late final http.Response res;
     try {
-      res = await http.post(uri, headers: {'Authorization': await _token()}, body: body);
+      res = await http.post(uri,
+          headers: {'Authorization': await _token()}, body: body);
     } catch (_) {
-      throw AttendanceException('Se produjo un error de conexión. Inténtalo nuevamente.');
+      throw AttendanceException(
+          'Se produjo un error de conexión. Inténtalo nuevamente.');
     }
     _ensureOk(res);
     return res;
@@ -454,7 +488,9 @@ class AttendanceApi {
     String? code;
     try {
       final decoded = jsonDecode(res.body);
-      if (decoded is Map && decoded['code'] != null) code = decoded['code'].toString();
+      if (decoded is Map && decoded['code'] != null) {
+        code = decoded['code'].toString();
+      }
     } catch (_) {}
     throw AttendanceException(_extractMessage(res.body), code: code);
   }

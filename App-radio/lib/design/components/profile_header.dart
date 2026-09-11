@@ -60,14 +60,37 @@ class ProfileHeader extends StatelessWidget {
           Stack(
             alignment: Alignment.topCenter,
             children: [
-              Container(
-                height: _bandHeight,
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [AppColors.brandBlue, AppColors.brandNavy],
+              ClipRect(
+                child: Container(
+                  height: _bandHeight,
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AppColors.brandBlue, AppColors.brandNavy],
+                    ),
+                  ),
+                  child: CustomPaint(painter: _DotGridPainter()),
+                ),
+              ),
+              Positioned(
+                top: AppSpacing.sm,
+                right: AppSpacing.sm,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.24),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                  child: const Text(
+                    '📻 Radio Doliv',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -159,6 +182,22 @@ class _Avatar extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
+        // Resplandor azul detrás del anillo, para que el avatar destaque
+        // sobre la banda de marca.
+        Container(
+          width: (radius + ringWidth) * 2,
+          height: (radius + ringWidth) * 2,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.accentStrong.withValues(alpha: 0.55),
+                blurRadius: 20,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+        ),
         // Anillo del color de la tarjeta que recorta el avatar contra la banda.
         Container(
           padding: EdgeInsets.all(ringWidth),
@@ -220,4 +259,25 @@ class _Avatar extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Textura decorativa de la banda de marca: una retícula fina de puntos
+/// blancos translúcidos, como en la referencia de diseño. Puramente estética,
+/// no reacciona a nada.
+class _DotGridPainter extends CustomPainter {
+  static const double _gap = 14;
+  static const double _dotRadius = 1.1;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.16);
+    for (double y = _gap / 2; y < size.height; y += _gap) {
+      for (double x = _gap / 2; x < size.width; x += _gap) {
+        canvas.drawCircle(Offset(x, y), _dotRadius, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DotGridPainter oldDelegate) => false;
 }

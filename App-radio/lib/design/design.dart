@@ -5,6 +5,7 @@ export 'package:doliv_social/design/tokens/colors.dart';
 export 'package:doliv_social/design/tokens/spacing.dart';
 export 'package:doliv_social/design/tokens/typography.dart';
 export 'package:doliv_social/design/motion/app_motion.dart';
+export 'package:doliv_social/design/motion/celebrate_burst.dart';
 export 'package:doliv_social/design/theme/app_theme.dart';
 export 'package:doliv_social/design/theme/theme_controller.dart';
 export 'package:doliv_social/design/components/app_scaffold.dart';

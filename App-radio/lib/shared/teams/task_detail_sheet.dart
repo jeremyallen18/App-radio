@@ -57,7 +57,7 @@ class _TaskDetailSheetState extends State<TaskDetailSheet> {
     try {
       final token = await secureStorage.readSecureData(key);
       final comments = await DeptTaskApi.comments(widget.task.id);
-      final me = await Session.fetchCurrentUser((token as String?) ?? '');
+      final me = await Session.fetchCurrentUser(token ?? '');
       if (!mounted) return;
       setState(() {
         _comments = comments;

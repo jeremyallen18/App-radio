@@ -45,7 +45,11 @@ class _PostTextScreenState extends State<PostTextScreen> {
     }
 
     setState(() => _postingImage = true);
-    String storedValue = await secureStorage.readSecureData(key);
+    final storedValue = await secureStorage.readSecureData(key);
+    if (storedValue == null || storedValue.trim().isEmpty) {
+      if (mounted) setState(() => _postingImage = false);
+      return;
+    }
     try {
       var apiUrl = '$kBaseUrl/image/addImage';
 
@@ -114,7 +118,11 @@ class _PostTextScreenState extends State<PostTextScreen> {
 
     setState(() => _postingText = true);
     try {
-      String storedValue = await secureStorage.readSecureData(key);
+      final storedValue = await secureStorage.readSecureData(key);
+      if (storedValue == null || storedValue.trim().isEmpty) {
+        if (mounted) setState(() => _postingText = false);
+        return;
+      }
 
       var headers = {
         'Authorization': storedValue,

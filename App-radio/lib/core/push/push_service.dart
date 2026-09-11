@@ -264,8 +264,7 @@ class PushService {
   Future<String?> _sessionToken() async {
     final stored = await secureStorage.readSecureData(key);
     if (stored == null) return null;
-    final s = stored as String;
-    return s.isEmpty ? null : s;
+    return stored.isEmpty ? null : stored;
   }
 
   Future<String?> _safeCurrentToken() async {

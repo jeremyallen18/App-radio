@@ -11,6 +11,7 @@ class AppTypography {
       displaySmall: TextStyle(
         fontSize: 28,
         fontWeight: FontWeight.w800,
+        height: 1.15,
         color: base,
       ),
       headlineMedium: TextStyle(
@@ -20,7 +21,7 @@ class AppTypography {
       ),
       titleLarge: TextStyle(
         fontSize: 18,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w700,
         color: base,
       ),
       bodyLarge: TextStyle(
@@ -36,6 +37,7 @@ class AppTypography {
       labelSmall: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w500,
+        letterSpacing: 0.6,
         color: muted,
       ),
     );

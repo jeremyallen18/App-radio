@@ -49,6 +49,9 @@ dependencies:
   # la hoja de compartir del sistema (share_plus).
   path_provider: ^2.1.5
   share_plus: ^13.3.0
+  # Abrir el cliente de correo del sistema con un `mailto:` prellenado desde
+  # la ficha de un compañero ("Redactar email").
+  url_launcher: ^6.3.1
   # Mapa interactivo para elegir la ubicación de un evento del calendario
   # (lib/shared/calendar/location_picker_map.dart). Usa teselas de
   # OpenStreetMap (sin API key); requiere internet solo para cargar el mapa.
