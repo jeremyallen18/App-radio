@@ -38,12 +38,13 @@ eventos, equipo, patrocinadores, podcasts, anuncios) se edita desde la app inter
 Por eso ambos proyectos deben apuntar a la **misma base de datos** — ver el
 [README general](../README.md) para la instalación de `hive_db`.
 
-> Desde la app, un programa puede vincularse a un integrante real del equipo
-> (`radio_programs.host_team_id`) en vez de solo escribir el nombre del locutor a mano.
-> `index.php` usa ese vínculo (no el texto libre `host`) para resolver la foto y el link
-> a la ficha del locutor en "Suena ahora" y en la parrilla del día — así que un programa
-> con `host_team_id` vacío muestra solo el nombre, sin foto ni link, aunque el texto
-> coincida por casualidad con el de un integrante del equipo.
+> Desde la app, un programa puede vincularse a uno o varios integrantes reales del
+> equipo (tabla `radio_program_hosts`) en vez de solo escribir el nombre del locutor a
+> mano. `index.php` usa ese vínculo (no el texto libre `host`) para resolver la foto y
+> el link de cada locutor en "Suena ahora" y en la parrilla del día — si hay dos o más
+> vinculados, se muestra una tarjeta por cada uno. Un programa sin ningún vínculo
+> muestra solo el nombre, sin foto ni link, aunque el texto coincida por casualidad con
+> el de un integrante del equipo.
 
 ## 4. Requisitos
 

@@ -643,12 +643,20 @@
     }
 }
 
-/* Contenedor del botón "Pide tu cancion" y foto del locutor */
+/* Contenedor del botón "Pide tu cancion" y foto(s) del locutor */
 .home-player-action {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: var(--space-5);
     margin-top: var(--space-4);
+}
+
+/* Fila de tarjetas de locutor: puede traer una o varias (co-conductores) */
+.home-player-host-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
 }
 
 /* Tarjeta del locutor: foto cuadrada grande con nombre y enlace al perfil */

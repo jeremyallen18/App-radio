@@ -82,9 +82,7 @@ const onairName = document.getElementById("onair-program-name");
 const onairHost = document.getElementById("onair-program-host");
 const onairImage = document.getElementById("onair-program-image");
 const onairHostLink = document.getElementById("onair-host-link");
-const onairHostCard = document.getElementById("onair-host-card");
-const onairHostCardPhoto = document.getElementById("onair-host-card-photo");
-const onairHostCardName = document.getElementById("onair-host-card-name");
+const onairHostCards = document.getElementById("onair-host-cards");
 const mexicoTimeFormatter = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Mexico_City",
     hourCycle: "h23",
@@ -146,28 +144,43 @@ function updateOnAirProgram() {
         if (onairImage && selectedRow.dataset.slotImage) {
             onairImage.src = selectedRow.dataset.slotImage;
         }
-        if (onairHostCard && onairHostCardPhoto && onairHostCardName) {
-            const hostImage = selectedRow.dataset.slotHostImage || "";
-            const hostSlug = selectedRow.dataset.slotHostSlug || "";
-            const hostName = selectedRow.dataset.slotHost || "el equipo";
-            const base = window.SITE_BASE || "";
-            if (hostImage) {
-                onairHostCardPhoto.src = hostImage;
-                onairHostCardPhoto.alt = hostName;
-                onairHostCard.classList.remove("is-empty");
+        let hosts = [];
+        try {
+            hosts = JSON.parse(selectedRow.dataset.slotHosts || "[]");
+        } catch (e) {
+            hosts = [];
+        }
+        const base = window.SITE_BASE || "";
+        if (onairHostCards) {
+            onairHostCards.innerHTML = "";
+            if (!hosts.length) {
+                const emptyCard = document.createElement("a");
+                emptyCard.href = `${base}pages/equipo.php`;
+                emptyCard.className = "home-player-host-card is-empty";
+                emptyCard.setAttribute("aria-label", "Conoce al equipo");
+                emptyCard.innerHTML = '<img loading="lazy"><span class="home-player-host-name">el equipo</span>';
+                onairHostCards.appendChild(emptyCard);
             } else {
-                onairHostCardPhoto.src = "";
-                onairHostCardPhoto.alt = "";
-                onairHostCard.classList.add("is-empty");
+                hosts.forEach((host) => {
+                    const card = document.createElement("a");
+                    card.href = `${base}pages/equipo.php?locutor=${encodeURIComponent(host.slug)}`;
+                    card.className = "home-player-host-card";
+                    card.setAttribute("aria-label", `Conoce a ${host.name}`);
+                    const img = document.createElement("img");
+                    img.loading = "lazy";
+                    img.src = host.image || "";
+                    img.alt = host.name || "";
+                    const name = document.createElement("span");
+                    name.className = "home-player-host-name";
+                    name.textContent = host.name || "";
+                    card.append(img, name);
+                    onairHostCards.appendChild(card);
+                });
             }
-            onairHostCardName.textContent = hostName;
-            onairHostCard.href = hostSlug ? `${base}pages/equipo.php?locutor=${encodeURIComponent(hostSlug)}` : `${base}pages/equipo.php`;
-            onairHostCard.setAttribute("aria-label", `Conoce a ${hostName}`);
         }
         if (onairHostLink) {
-            const hostSlug = selectedRow.dataset.slotHostSlug || "";
-            const base = window.SITE_BASE || "";
-            onairHostLink.href = hostSlug ? `${base}pages/equipo.php?locutor=${encodeURIComponent(hostSlug)}` : `${base}pages/equipo.php`;
+            const firstSlug = hosts.length ? hosts[0].slug : "";
+            onairHostLink.href = firstSlug ? `${base}pages/equipo.php?locutor=${encodeURIComponent(firstSlug)}` : `${base}pages/equipo.php`;
             onairHostLink.setAttribute("aria-label", `Conoce a ${selectedRow.dataset.slotHost}`);
         }
     }

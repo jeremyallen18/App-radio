@@ -27,8 +27,14 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
       TextEditingController(text: widget.item?['name']?.toString() ?? '');
   late final _role =
       TextEditingController(text: widget.item?['role']?.toString() ?? '');
-  late final _category =
-      TextEditingController(text: widget.item?['category']?.toString() ?? '');
+  static const _categoryOptions = [
+    SiteChoiceOption('locutores', 'Locutores'),
+    SiteChoiceOption('reporteros', 'Reporteros'),
+  ];
+  late String _category =
+      (widget.item?['category']?.toString().trim().isNotEmpty ?? false)
+          ? widget.item!['category'].toString().trim()
+          : 'locutores';
   late final _accent =
       TextEditingController(text: widget.item?['accent']?.toString() ?? '');
   late final _shortDesc =
@@ -39,8 +45,6 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
       TextEditingController(text: widget.item?['path']?.toString() ?? '');
   late final _interests =
       TextEditingController(text: widget.item?['interests']?.toString() ?? '');
-  late final _sortOrder = TextEditingController(
-      text: widget.item?['sort_order']?.toString() ?? '0');
   late Set<int> _selectedProgramIds =
       _parseProgramIds(widget.item?['program_ids']);
 
@@ -113,14 +117,12 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
     final fields = {
       'name': _name.text.trim(),
       'role': _role.text.trim(),
-      'category': _category.text.trim(),
+      'category': _category,
       'accent': _accent.text.trim(),
       'short_desc': _shortDesc.text.trim(),
       'bio': _bio.text,
       'path': _path.text,
       'interests': _interests.text,
-      'sort_order':
-          _sortOrder.text.trim().isEmpty ? '0' : _sortOrder.text.trim(),
       'program_ids': _selectedProgramIds.join(','),
     };
 
@@ -174,12 +176,13 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
             hintText: 'Ej. Locutora de Rincón Lunar',
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
+          SiteChoiceChipsField(
             icon: Icons.sell_outlined,
             label: 'Categoría',
             iconColor: SiteFieldColors.green,
-            controller: _category,
-            hintText: 'Ej. locutores',
+            options: _categoryOptions,
+            value: _category,
+            onChanged: (value) => setState(() => _category = value),
           ),
           const SizedBox(height: AppSpacing.md),
           FutureBuilder<List<SiteLinkOption>>(
@@ -202,13 +205,11 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
             },
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
+          SiteColorWheelField(
             icon: Icons.palette_outlined,
-            label: 'Color de identidad (HEX)',
+            label: 'Color de identidad',
             iconColor: SiteFieldColors.pink,
             controller: _accent,
-            hintText: 'Ej. #3d5afe',
-            trailing: SiteColorSwatch(controller: _accent),
           ),
           const SizedBox(height: AppSpacing.md),
           SiteFormField(
@@ -240,22 +241,12 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
             maxLines: 4,
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
+          SiteTagInputField(
             icon: Icons.star_outline,
             label: 'Intereses',
             iconColor: SiteFieldColors.orange,
             controller: _interests,
-            hintText: 'Añade cada interés en una línea',
-            maxLines: 4,
-            maxLength: 500,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SiteFormField(
-            icon: Icons.swap_vert,
-            label: 'Orden de aparición',
-            controller: _sortOrder,
-            hintText: 'Número de orden',
-            textInputType: TextInputType.number,
+            hintText: 'Ej. Videojuegos',
           ),
           const SizedBox(height: AppSpacing.md),
           SiteImagePickerField(

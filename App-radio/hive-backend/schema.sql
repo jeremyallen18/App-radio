@@ -805,7 +805,6 @@ CREATE TABLE IF NOT EXISTS radio_programs (
   title VARCHAR(255) NOT NULL,
   modal_title VARCHAR(255) DEFAULT NULL,
   host VARCHAR(255) DEFAULT NULL,
-  host_team_id INT DEFAULT NULL COMMENT 'Vínculo real a radio_team.id; host se sincroniza con su nombre',
   schedule VARCHAR(255) DEFAULT NULL,
   slot_start INT DEFAULT NULL,
   slot_end INT DEFAULT NULL,
@@ -822,8 +821,7 @@ CREATE TABLE IF NOT EXISTS radio_programs (
   summary TEXT,
   sort_order INT NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
-  UNIQUE KEY slug (slug),
-  KEY host_team_id (host_team_id)
+  UNIQUE KEY slug (slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS radio_services (
@@ -855,13 +853,22 @@ CREATE TABLE IF NOT EXISTS radio_team (
   UNIQUE KEY slug (slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- host_team_id se declara arriba (junto a radio_programs) pero la FK va aquí
--- porque necesita que radio_team ya exista. Vincula un programa a un
--- integrante real del equipo; si se borra el integrante, el programa no se
--- borra, solo queda sin vínculo (host_team_id = NULL, host conserva el texto).
-ALTER TABLE radio_programs
-  ADD CONSTRAINT radio_programs_host_team_fk
-    FOREIGN KEY (host_team_id) REFERENCES radio_team (id) ON DELETE SET NULL;
+-- Vincula un programa a uno o varios integrantes reales del equipo (locutor
+-- principal + co-conductores, sin límite). Va después de radio_team porque
+-- necesita que ya exista para la FK. Si se borra el integrante, solo
+-- desaparece su fila aquí (ON DELETE CASCADE); el programa y su `host`
+-- (texto autogenerado, unión de nombres) siguen intactos.
+CREATE TABLE IF NOT EXISTS radio_program_hosts (
+  id INT NOT NULL AUTO_INCREMENT,
+  program_id INT NOT NULL,
+  team_id INT NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  UNIQUE KEY program_team (program_id, team_id),
+  KEY team_id (team_id),
+  CONSTRAINT radio_program_hosts_program_fk FOREIGN KEY (program_id) REFERENCES radio_programs (id) ON DELETE CASCADE,
+  CONSTRAINT radio_program_hosts_team_fk FOREIGN KEY (team_id) REFERENCES radio_team (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS team_socials (
   id INT NOT NULL AUTO_INCREMENT,
