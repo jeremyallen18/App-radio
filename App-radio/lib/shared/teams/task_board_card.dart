@@ -16,6 +16,7 @@ class TaskBoardCard extends StatelessWidget {
     required this.task,
     required this.canManage,
     required this.canComplete,
+    this.isDirector = false,
     required this.busy,
     required this.onToggleDone,
     required this.onCycleStatus,
@@ -32,6 +33,10 @@ class TaskBoardCard extends StatelessWidget {
   final DeptTask task;
   final bool canManage;
   final bool canComplete;
+
+  /// El director gestiona y revisa, pero no marca tareas como completadas.
+  /// Solo se usa para explicar por qué la casilla está deshabilitada.
+  final bool isDirector;
   final bool busy;
   final VoidCallback onToggleDone;
   final VoidCallback onCycleStatus;
@@ -77,11 +82,13 @@ class TaskBoardCard extends StatelessWidget {
                   enabled: !busy && canComplete,
                   tooltip: canComplete
                       ? (task.isDone ? 'Reabrir' : 'Marcar como completada')
-                      : task.reviewStatus == DeptTaskReviewStatus.aprobada
-                          ? 'Tarea aprobada por tu manager'
-                          : (task.assignedTo == null
-                              ? 'Sin responsable: solo un manager puede completarla'
-                              : 'Solo puede completarla la persona asignada'),
+                      : isDirector
+                          ? 'El director solo revisa: aprueba o devuelve la tarea'
+                          : task.reviewStatus == DeptTaskReviewStatus.aprobada
+                              ? 'Tarea aprobada por tu manager'
+                              : (task.assignedTo == null
+                                  ? 'Sin responsable: solo un manager puede completarla'
+                                  : 'Solo puede completarla la persona asignada'),
                   onTap: onToggleDone,
                 ),
                 const SizedBox(width: AppSpacing.sm),

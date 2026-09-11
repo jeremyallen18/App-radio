@@ -691,6 +691,16 @@ function deptTaskSetStatus(PDO $pdo, string $id) {
         dept_task_fail('Estado inválido.', 400);
     }
 
+    // El director gestiona y revisa (aprueba/devuelve), pero nunca marca una
+    // tarea como completada: eso es del manager o del empleado asignado. Se
+    // valida en el servidor porque la UI por sí sola no es suficiente.
+    if ($status === 'completada' && $user['role'] === 'director') {
+        dept_task_fail(
+            'El director no puede marcar tareas como completadas. Solo puede revisarlas: aprobar o devolver.',
+            403
+        );
+    }
+
     if ($status !== 'completada') {
         // Una tarea aprobada es un cierre definitivo para el empleado. Solo
         // un manager/director puede reabrirla explícitamente.
