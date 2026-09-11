@@ -805,6 +805,7 @@ CREATE TABLE IF NOT EXISTS radio_programs (
   title VARCHAR(255) NOT NULL,
   modal_title VARCHAR(255) DEFAULT NULL,
   host VARCHAR(255) DEFAULT NULL,
+  host_team_id INT DEFAULT NULL COMMENT 'Vínculo real a radio_team.id; host se sincroniza con su nombre',
   schedule VARCHAR(255) DEFAULT NULL,
   slot_start INT DEFAULT NULL,
   slot_end INT DEFAULT NULL,
@@ -821,7 +822,8 @@ CREATE TABLE IF NOT EXISTS radio_programs (
   summary TEXT,
   sort_order INT NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
-  UNIQUE KEY slug (slug)
+  UNIQUE KEY slug (slug),
+  KEY host_team_id (host_team_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS radio_services (
@@ -852,6 +854,14 @@ CREATE TABLE IF NOT EXISTS radio_team (
   PRIMARY KEY (id),
   UNIQUE KEY slug (slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- host_team_id se declara arriba (junto a radio_programs) pero la FK va aquí
+-- porque necesita que radio_team ya exista. Vincula un programa a un
+-- integrante real del equipo; si se borra el integrante, el programa no se
+-- borra, solo queda sin vínculo (host_team_id = NULL, host conserva el texto).
+ALTER TABLE radio_programs
+  ADD CONSTRAINT radio_programs_host_team_fk
+    FOREIGN KEY (host_team_id) REFERENCES radio_team (id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS team_socials (
   id INT NOT NULL AUTO_INCREMENT,

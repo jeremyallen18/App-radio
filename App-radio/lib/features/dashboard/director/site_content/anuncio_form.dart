@@ -39,21 +39,6 @@ class _AnuncioFormScreenState extends State<AnuncioFormScreen> {
     setState(() => _newImage = File(picked.path));
   }
 
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: now.subtract(const Duration(days: 365)),
-      lastDate: DateTime(now.year + 5),
-    );
-    if (picked == null) return;
-    setState(() {
-      _fecha.text =
-          '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-    });
-  }
-
   Future<void> _delete() async {
     final item = widget.item;
     if (item == null) return;
@@ -143,14 +128,10 @@ class _AnuncioFormScreenState extends State<AnuncioFormScreen> {
             maxLines: 4,
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
-            icon: Icons.calendar_month_outlined,
+          SiteDatePickerField(
             label: 'Fecha de publicación',
-            iconColor: SiteFieldColors.teal,
             controller: _fecha,
-            hintText: 'Toca para elegir una fecha',
-            readOnly: true,
-            onTap: _pickDate,
+            hintText: 'Elige cuándo se mostrará en el sitio',
           ),
           const SizedBox(height: AppSpacing.md),
           SiteFormField(

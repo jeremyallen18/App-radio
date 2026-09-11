@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:doliv_social/design/design.dart';
@@ -34,6 +35,7 @@ class _EpisodeRow {
   final TextEditingController category;
   final TextEditingController audio;
   final TextEditingController description;
+  File? audioFile;
 }
 
 class _PodcastFormScreenState extends State<PodcastFormScreen> {
@@ -74,6 +76,16 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
     setState(() => _newCover = File(picked.path));
   }
 
+  Future<void> _pickEpisodeAudio(_EpisodeRow episode) async {
+    final file = await FilePicker.pickFile(type: FileType.audio);
+    final path = file?.path;
+    if (path == null) return;
+    setState(() {
+      episode.audioFile = File(path);
+      episode.audio.text = file!.name;
+    });
+  }
+
   Future<void> _delete() async {
     final item = widget.item;
     if (item == null) return;
@@ -104,7 +116,10 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
     }
 
     setState(() => _submitting = true);
-    final episodesJson = jsonEncode(_episodes
+    final filledEpisodes = _episodes
+        .where((episode) => episode.title.text.trim().isNotEmpty)
+        .toList();
+    final episodesJson = jsonEncode(filledEpisodes
         .map((e) => {
               'title': e.title.text.trim(),
               'category_label': e.category.text.trim(),
@@ -113,6 +128,11 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
             })
         .where((e) => (e['title'] as String).isNotEmpty)
         .toList());
+    final episodeAudioFiles = <String, File>{
+      for (var index = 0; index < filledEpisodes.length; index++)
+        if (filledEpisodes[index].audioFile != null)
+          'episode_audio_$index': filledEpisodes[index].audioFile!,
+    };
 
     final fields = {
       'title': _title.text.trim(),
@@ -125,9 +145,14 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
     try {
       if (_isEditing) {
         await _api.update(widget.item!['id'].toString(), fields,
-            imageFile: _newCover, imageField: 'cover');
+            imageFile: _newCover,
+            imageField: 'cover',
+            additionalFiles: episodeAudioFiles);
       } else {
-        await _api.create(fields, imageFile: _newCover, imageField: 'cover');
+        await _api.create(fields,
+            imageFile: _newCover,
+            imageField: 'cover',
+            additionalFiles: episodeAudioFiles);
       }
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -195,9 +220,11 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
               hints: const ['Título del episodio', 'Categoría'],
               onRemove: () => setState(() => _episodes.remove(episode)),
             ),
-            AppTextField(
-                controller: episode.audio,
-                hintText: 'assets/audio/podcasts/archivo.mp3'),
+            _EpisodeAudioField(
+              controller: episode.audio,
+              selectedFile: episode.audioFile,
+              onPick: () => _pickEpisodeAudio(episode),
+            ),
             const SizedBox(height: AppSpacing.xs),
             AppTextField(
                 controller: episode.description,
@@ -205,8 +232,7 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
             const SizedBox(height: AppSpacing.md),
           ],
           Text(
-            'El audio se sube por FTP/cPanel a assets/audio/podcasts/; aquí solo se '
-            'escribe la ruta relativa del archivo.',
+            'Carga un archivo de audio o conserva/escribe una ruta existente.',
             style: TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -231,6 +257,64 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
           ],
           const SizedBox(height: AppSpacing.lg),
         ],
+      ),
+    );
+  }
+}
+
+class _EpisodeAudioField extends StatelessWidget {
+  const _EpisodeAudioField({
+    required this.controller,
+    required this.selectedFile,
+    required this.onPick,
+  });
+
+  final TextEditingController controller;
+  final File? selectedFile;
+  final VoidCallback onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPick,
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.chip),
+            border: Border.all(color: AppColors.surfaceBorder),
+            color: AppColors.surface,
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.audio_file_outlined, color: SiteFieldColors.purple),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  selectedFile?.path.split(Platform.pathSeparator).last ??
+                      (controller.text.trim().isEmpty
+                          ? 'Toca para cargar el audio'
+                          : controller.text.trim()),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: controller.text.trim().isEmpty
+                        ? AppColors.textMuted
+                        : AppColors.textPrimary,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Icon(Icons.upload_file_outlined, color: AppColors.accent),
+            ],
+          ),
+        ),
       ),
     );
   }
