@@ -12,7 +12,7 @@ import 'package:doliv_social/services/team_service.dart' show TeamException;
 class SubTeamApi {
   static Future<String> _token() async {
     final t = await secureStorage.readSecureData(key);
-    return (t as String?) ?? '';
+    return t ?? '';
   }
 
   static Future<http.Response> _get(Uri uri) => _send(() async =>

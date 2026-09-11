@@ -16,7 +16,7 @@ class RadioException implements Exception {
 /// Cliente de solo lectura de la parrilla de Radio Doliv (`GET /radio/programs`).
 class RadioProgramsApi {
   static Future<List<RadioProgram>> list() async {
-    final token = (await secureStorage.readSecureData(key) as String?) ?? '';
+    final token = (await secureStorage.readSecureData(key)) ?? '';
     late final http.Response res;
     try {
       res = await http.get(

@@ -95,7 +95,7 @@ class DashbMemState extends State<DashbMem> {
     });
     try {
       final token = await secureStorage.readSecureData(key);
-      final profile = await Session.fetchCurrentUser((token as String?) ?? '');
+      final profile = await Session.fetchCurrentUser(token ?? '');
       if (profile == null) {
         if (!mounted) return;
         setState(() {
@@ -140,6 +140,9 @@ class DashbMemState extends State<DashbMem> {
           : FloatingActionButton(
               tooltip: 'Mensajes',
               onPressed: _openMessages,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -183,26 +186,18 @@ class DashbMemState extends State<DashbMem> {
                     SectionHeader(
                       title: 'Tablero de tareas',
                       padding: const EdgeInsets.only(bottom: 4),
-                      action: FilledButton.icon(
+                      action: _GradientActionButton(
+                        label: 'Nueva tarea',
                         onPressed:
                             _departments.isEmpty ? null : _newDirectorTask,
-                        icon: const Icon(Icons.add_rounded, size: 18),
-                        label: const Text('Nueva tarea'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.brandBlue,
-                          foregroundColor: AppColors.onBrand,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md, vertical: 10),
-                          textStyle: const TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 13),
-                        ),
                       ),
                     ),
-                    Text(
-                      'Encarga una tarea a un departamento: le llega a su manager, que la reparte. '
-                      'O entra a un equipo para ver su tablero.',
-                      style:
-                          TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    const SizedBox(height: AppSpacing.sm),
+                    const InfoBanner(
+                      icon: Icons.layers_rounded,
+                      message:
+                          'Encarga una tarea a un departamento: le llega a su manager, '
+                          'que la reparte. O entra a un equipo para ver su tablero.',
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     if (_departments.isEmpty)
@@ -277,12 +272,11 @@ class DashbMemState extends State<DashbMem> {
                         title: 'Tablero · ${dept.name}',
                         padding: const EdgeInsets.only(bottom: 4),
                       ),
-                      Text(
-                        profile.role == AppRole.manager
+                      InfoBanner(
+                        icon: Icons.checklist_rounded,
+                        message: profile.role == AppRole.manager
                             ? 'Crea tareas y subtareas para tu equipo y sigue su avance.'
                             : 'Revisa las tareas de tu equipo y márcalas como completadas.',
-                        style:
-                            TextStyle(color: AppColors.textMuted, fontSize: 13),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                     ],
@@ -304,6 +298,65 @@ class DashbMemState extends State<DashbMem> {
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// Botón de acción compacto con el degradado de marca, para la esquina de un
+/// [SectionHeader] (el "Nueva tarea" del rediseño).
+class _GradientActionButton extends StatelessWidget {
+  const _GradientActionButton({required this.label, this.onPressed});
+
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Opacity(
+      opacity: enabled ? 1 : 0.5,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          gradient: AppColors.buttonGradient,
+          boxShadow: enabled
+              ? [
+                  BoxShadow(
+                    color: AppColors.brandBlue.withValues(alpha: 0.30),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            onTap: onPressed,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md, vertical: 9),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.add_rounded,
+                      size: 18, color: AppColors.onBrand),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: AppColors.onBrand,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

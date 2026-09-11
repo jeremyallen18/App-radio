@@ -14,8 +14,8 @@ class AppSpacing {
 class AppRadius {
   AppRadius._();
 
-  static const double chip = 8;
+  static const double chip = 12;
   static const double field = 16;
-  static const double card = 16;
+  static const double card = 20;
   static const double pill = 999;
 }

@@ -33,13 +33,13 @@ class NotificationsController extends ChangeNotifier {
     _loading = true;
     try {
       final token = await secureStorage.readSecureData(key);
-      if (token == null || (token is String && token.isEmpty)) {
+      if (token == null || token.isEmpty) {
         _setUnread(0);
         return;
       }
       final res = await http.get(
         Uri.parse('$kBaseUrl/notifications'),
-        headers: <String, String>{'Authorization': token as String},
+        headers: <String, String>{'Authorization': token},
       );
       if (res.statusCode == 200) {
         final decoded = json.decode(res.body) as Map<String, dynamic>;

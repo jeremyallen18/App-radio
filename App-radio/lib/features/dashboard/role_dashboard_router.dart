@@ -39,7 +39,7 @@ class _RoleDashboardRouterState extends State<RoleDashboardRouter> {
 
   Future<AppRole?> _loadRole() async {
     final token = await _secureStorage.readSecureData(_tokenKey);
-    return Session.getFreshRole(token as String?);
+    return Session.getFreshRole(token);
   }
 
   @override

@@ -4,107 +4,111 @@ import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/models.dart';
 import 'package:doliv_social/shared/teams/team_detail.dart';
 
-/// Fila de metadato (ícono + texto en gris tenue) bajo la cabecera del perfil.
-class ProfileMetaRow extends StatelessWidget {
-  const ProfileMetaRow({
-    super.key,
-    required this.icon,
-    required this.text,
-    this.trailing,
-  });
-
-  final IconData icon;
-  final String text;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 15, color: AppColors.textMuted),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-          ),
-        ),
-        if (trailing != null) ...[
-          const SizedBox(width: AppSpacing.sm),
-          trailing!
-        ],
-      ],
-    );
-  }
-}
-
-/// Contador (valor grande + etiqueta) de la fila de estadísticas del perfil.
+/// Contador (valor grande + etiqueta) de la fila de estadísticas del perfil:
+/// un tile con borde tenue y el número tintado con [accentColor].
 class ProfileStatItem extends StatelessWidget {
-  const ProfileStatItem({super.key, required this.value, required this.label});
+  const ProfileStatItem({
+    super.key,
+    required this.value,
+    required this.label,
+    this.accentColor,
+  });
 
   final String value;
   final String label;
 
+  /// Color del número; si es null usa [AppColors.textPrimary].
+  final Color? accentColor;
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-              fontSize: 18,
+    final accent = accentColor ?? AppColors.textPrimary;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.md, horizontal: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.bgBase,
+        borderRadius: BorderRadius.circular(AppRadius.chip + 4),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 20,
               fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary),
-        ),
-        const SizedBox(height: 2),
-        Text(label, style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
-      ],
+              color: accent,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(label,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+        ],
+      ),
     );
   }
 }
 
-/// Pestaña estilo X: subrayado de acento sobre el texto activo, resto
-/// silenciado. Reparte el ancho en partes iguales entre las tres pestañas.
-class ProfileTabButton extends StatelessWidget {
-  const ProfileTabButton({
+/// Pestañas en píldora: pista redondeada con el segmento activo relleno de
+/// acento, como en el rediseño. Reparte el ancho en partes iguales.
+class ProfileSegmentedTabs extends StatelessWidget {
+  const ProfileSegmentedTabs({
     super.key,
-    required this.label,
-    required this.selected,
-    required this.onTap,
+    required this.labels,
+    required this.selectedIndex,
+    required this.onChanged,
   });
 
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
+  final List<String> labels;
+  final int selectedIndex;
+  final ValueChanged<int> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: selected ? AppColors.accent : Colors.transparent,
-                width: 3,
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.bgBase,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Row(
+        children: [
+          for (int i = 0; i < labels.length; i++)
+            Expanded(
+              child: GestureDetector(
+                onTap: () => onChanged(i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: i == selectedIndex
+                        ? AppColors.accent
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    labels[i],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: i == selectedIndex
+                          ? AppColors.onBrand
+                          : AppColors.textMuted,
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: selected ? AppColors.textPrimary : AppColors.textMuted,
-            ),
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -199,7 +203,21 @@ class DirectorOverviewTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppCard(
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(
+                color: AppColors.accent.withValues(alpha: 0.30)),
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                AppColors.accent.withValues(alpha: 0.16),
+                AppColors.success.withValues(alpha: 0.10),
+              ],
+            ),
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

@@ -108,7 +108,7 @@ class AdminAbsenceJustification {
 /// Cliente de /absences/*; reutiliza [LeaveException] para errores de negocio.
 class AbsenceApi {
   static Future<String> _token() async =>
-      (await secureStorage.readSecureData(key) as String?) ?? '';
+      (await secureStorage.readSecureData(key)) ?? '';
 
   static String _ymd(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

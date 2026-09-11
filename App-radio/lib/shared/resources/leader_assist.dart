@@ -24,7 +24,11 @@ class _LeaderResourceState extends State<LeaderResource> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() => _sending = true);
-    String storedValue = await secureStorage.readSecureData(key);
+    final storedValue = await secureStorage.readSecureData(key);
+    if (storedValue == null || storedValue.trim().isEmpty) {
+      if (mounted) setState(() => _sending = false);
+      return;
+    }
 
     var headers = {
       'Authorization': storedValue,

@@ -109,6 +109,16 @@ class _ProfileState extends State<Profile> {
     );
   }
 
+  Future<void> _copyControlNumber() async {
+    final controlNumber = _profile?.controlNumber;
+    if (controlNumber == null) return;
+    await Clipboard.setData(ClipboardData(text: controlNumber));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Número de control copiado')),
+    );
+  }
+
   void _openDirectory() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -189,129 +199,86 @@ class _ProfileState extends State<Profile> {
       children: [
         ProfileHero(
           name: profile?.name ?? 'Mi perfil',
-          headline: profile?.headline ?? 'Cargando tu información…',
+          roleLabel: profile?.headline ?? 'Cargando tu información…',
+          stationLabel: profile?.department != null
+              ? '${profile!.department!.name} · Radio Doliv'
+              : 'Radio Doliv',
           photoUrl: profile?.photoUrl,
           avatarSeed: profile?.email ?? profile?.name ?? '?',
           onEditPhoto: _editProfilePhoto,
           uploadingPhoto: _uploadingPhoto,
+          verified: profile?.emailVerified ?? false,
+          statusBadgeLabel: profile?.controlNumber != null
+              ? 'SPPRD-ACTIVO'
+              : null,
+          email: profile?.email ?? '',
+          onCopyEmail: _copyEmail,
+          controlNumberLabel: profile?.controlNumberLabel ?? 'Sin asignar',
+          onCopyControlNumber:
+              profile?.controlNumber != null ? _copyControlNumber : null,
+          trailingBadge: profile != null && _isDirector
+              // El rol y la empresa ya salen bajo el nombre; aquí basta el
+              // estado de alcance.
+              ? const AppBadge(
+                  label: '● Acceso global',
+                  variant: AppBadgeVariant.success,
+                )
+              : null,
+          extraBadges: profile != null && !_isDirector
+              ? [
+                  AppBadge(
+                      label: profile.role.label,
+                      variant: AppBadgeVariant.info),
+                  if (profile.department != null)
+                    AppBadge(label: profile.department!.name),
+                  if (profile.leadsOwnDepartment)
+                    const AppBadge(
+                      label: 'Responsable del área',
+                      variant: AppBadgeVariant.success,
+                    ),
+                ]
+              : const [],
+          stats: [
+            ProfileStatItem(
+              value: _pendingCount?.toString() ?? '—',
+              label: 'Pendientes',
+              accentColor: AppColors.warning,
+            ),
+            ProfileStatItem(
+              value: _completedCount?.toString() ?? '—',
+              label: 'Completadas',
+              accentColor: AppColors.success,
+            ),
+            if (!_isDirector)
+              ProfileStatItem(
+                value: _teams.length.toString(),
+                label: 'Equipos',
+                accentColor: AppColors.accent,
+              ),
+          ],
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (profile != null)
-                ProfileMetaRow(
-                  icon: Icons.apartment_outlined,
-                  text: profile.department != null
-                      ? '${profile.department!.name} · Radio Doliv'
-                      : 'Radio Doliv',
-                ),
-              const SizedBox(height: AppSpacing.sm),
-              if (profile != null)
-                ProfileMetaRow(
-                  icon: Icons.mail_outline,
-                  text: profile.email,
-                  trailing: IconButton(
-                    onPressed: _copyEmail,
-                    icon: const Icon(Icons.copy_rounded, size: 14),
-                    color: AppColors.accentStrong,
-                    tooltip: 'Copiar correo',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ),
-              if (profile != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                // Número de control: solo lectura (nadie edita el suyo; el
-                // director lo corrige desde la ficha del compañero).
-                ProfileMetaRow(
-                  icon: Icons.badge_outlined,
-                  text: profile.controlNumberLabel,
-                ),
-              ],
-              if (profile != null) ...[
-                const SizedBox(height: AppSpacing.md),
-                if (_isDirector)
-                  // El rol y la empresa ya salen en el titular y la meta-fila;
-                  // aquí basta el estado de alcance.
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: AppBadge(
-                      label: '● Acceso global',
-                      variant: AppBadgeVariant.success,
-                    ),
-                  )
-                else
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: [
-                      AppBadge(
-                          label: profile.role.label,
-                          variant: AppBadgeVariant.info),
-                      if (profile.department != null)
-                        AppBadge(label: profile.department!.name),
-                      if (profile.leadsOwnDepartment)
-                        const AppBadge(
-                          label: 'Responsable del área',
-                          variant: AppBadgeVariant.success,
-                        ),
-                    ],
-                  ),
-              ],
-              const SizedBox(height: AppSpacing.lg),
-              // Tres columnas de igual ancho: así no se desbordan en pantallas
-              // estrechas ni con el texto a mayor escala.
-              Row(
-                children: [
-                  Expanded(
-                    child: ProfileStatItem(
-                      value: _pendingCount?.toString() ?? '—',
-                      label: 'Pendientes',
-                    ),
-                  ),
-                  Expanded(
-                    child: ProfileStatItem(
-                      value: _completedCount?.toString() ?? '—',
-                      label: 'Completadas',
-                    ),
-                  ),
-                  if (!_isDirector)
-                    Expanded(
-                      child: ProfileStatItem(
-                        value: _teams.length.toString(),
-                        label: 'Equipos',
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.lg),
+              AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+          child: ProfileSegmentedTabs(
+            labels: [
+              if (!_isDirector) 'Equipos',
+              _isDirector ? 'Vista general' : 'Mi área',
+              _isDirector ? 'Cuenta y Accesos' : 'Cuenta',
             ],
+            selectedIndex: !_isDirector
+                ? _ProfileTab.values.indexOf(_tab)
+                : _tab == _ProfileTab.area
+                    ? 0
+                    : 1,
+            onChanged: (i) => setState(() {
+              if (!_isDirector) {
+                _tab = _ProfileTab.values[i];
+              } else {
+                _tab = i == 0 ? _ProfileTab.area : _ProfileTab.cuenta;
+              }
+            }),
           ),
-        ),
-        Divider(height: 1, color: AppColors.surfaceBorder),
-        Row(
-          children: [
-            if (!_isDirector)
-              ProfileTabButton(
-                label: 'Equipos',
-                selected: _tab == _ProfileTab.equipos,
-                onTap: () => setState(() => _tab = _ProfileTab.equipos),
-              ),
-            ProfileTabButton(
-              label: _isDirector ? 'Vista general' : 'Mi área',
-              selected: _tab == _ProfileTab.area,
-              onTap: () => setState(() => _tab = _ProfileTab.area),
-            ),
-            ProfileTabButton(
-              label: 'Cuenta',
-              selected: _tab == _ProfileTab.cuenta,
-              onTap: () => setState(() => _tab = _ProfileTab.cuenta),
-            ),
-          ],
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(

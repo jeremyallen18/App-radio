@@ -21,7 +21,7 @@ class AccountException implements Exception {
 class AccountApi {
   static Future<String> _token() async {
     final t = await secureStorage.readSecureData(key);
-    return (t as String?) ?? '';
+    return t ?? '';
   }
 
   static Future<Map<String, dynamic>> _post(

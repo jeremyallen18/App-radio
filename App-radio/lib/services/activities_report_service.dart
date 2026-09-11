@@ -62,7 +62,7 @@ class ActivityTotals {
 /// Cliente de /admin/activities/* (tareas de departamento completadas en el mes).
 class ActivitiesReportApi {
   static Future<String> _token() async =>
-      (await secureStorage.readSecureData(key) as String?) ?? '';
+      (await secureStorage.readSecureData(key)) ?? '';
 
   /// Vista previa: conteos por empleado + totales del mes.
   static Future<({List<ActivityRow> rows, ActivityTotals totals})> summary({

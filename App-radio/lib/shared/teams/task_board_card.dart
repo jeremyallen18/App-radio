@@ -77,9 +77,11 @@ class TaskBoardCard extends StatelessWidget {
                   enabled: !busy && canComplete,
                   tooltip: canComplete
                       ? (task.isDone ? 'Reabrir' : 'Marcar como completada')
-                      : (task.assignedTo == null
-                          ? 'Sin responsable: solo un manager puede completarla'
-                          : 'Solo puede completarla la persona asignada'),
+                      : task.reviewStatus == DeptTaskReviewStatus.aprobada
+                          ? 'Tarea aprobada por tu manager'
+                          : (task.assignedTo == null
+                              ? 'Sin responsable: solo un manager puede completarla'
+                              : 'Solo puede completarla la persona asignada'),
                   onTap: onToggleDone,
                 ),
                 const SizedBox(width: AppSpacing.sm),

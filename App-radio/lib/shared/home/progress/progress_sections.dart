@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/dept_task.dart';
 import 'package:doliv_social/shared/home/progress/progress_stats.dart';
-import 'package:doliv_social/shared/home/progress_widgets.dart';
 
-/// Leyenda de tres estados bajo el medidor.
+/// Desglose de tres estados bajo el medidor: una fila de chips tintados con
+/// el color del estado (hechas · en curso · pendientes).
 class StatusLegend extends StatelessWidget {
   const StatusLegend({
     super.key,
@@ -20,17 +20,84 @@ class StatusLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: AppSpacing.lg,
-      runSpacing: AppSpacing.sm,
+    return Row(
       children: [
-        ProgressLegendDot(color: AppColors.success, label: '$done hechas'),
-        ProgressLegendDot(
-            color: AppColors.accent, label: '$inProgress en curso'),
-        ProgressLegendDot(
-            color: AppColors.warning, label: '$pending pendientes'),
+        Expanded(
+          child: _MetricChip(
+            color: AppColors.success,
+            value: done,
+            label: 'hechas',
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: _MetricChip(
+            color: AppColors.accent,
+            value: inProgress,
+            label: 'en curso',
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: _MetricChip(
+            color: AppColors.warning,
+            value: pending,
+            label: 'pendientes',
+          ),
+        ),
       ],
+    );
+  }
+}
+
+class _MetricChip extends StatelessWidget {
+  const _MetricChip({
+    required this.color,
+    required this.value,
+    required this.label,
+  });
+
+  final Color color;
+  final int value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(AppRadius.chip + 4),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$value',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+          ),
+        ],
+      ),
     );
   }
 }

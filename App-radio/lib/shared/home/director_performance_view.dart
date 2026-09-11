@@ -7,6 +7,7 @@ import 'package:doliv_social/shared/home/progress/department_stack_bars.dart';
 import 'package:doliv_social/shared/home/progress/progress_sections.dart';
 import 'package:doliv_social/shared/home/progress/progress_stats.dart';
 import 'package:doliv_social/shared/home/progress/weekly_rhythm_chart.dart';
+import 'package:doliv_social/shared/home/progress_widgets.dart';
 import 'package:doliv_social/shared/teams/task_board_screen.dart';
 
 /// "Desempeño por departamento" para el director: medidor de la empresa,
@@ -69,7 +70,10 @@ class DirectorPerformanceView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SectionHeader(title: 'Desempeño de la empresa'),
+          const SectionHeader(
+            title: 'Desempeño de la empresa',
+            action: LivePulsePill(),
+          ),
           AppCard(
             child: Column(
               children: [

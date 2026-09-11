@@ -25,6 +25,10 @@ class AppTheme {
       onPrimary: AppColors.onBrand,
       secondary: p.accent,
       onSecondary: brightness == Brightness.dark ? p.bgBase : Colors.white,
+      // Acento "en vivo"/éxito (emerald). Igual que [AppColors.success] del modo,
+      // disponible para widgets que quieran el acento sin depender del token.
+      tertiary: p.success,
+      onTertiary: brightness == Brightness.dark ? p.bgBase : Colors.white,
       surface: p.surface,
       onSurface: p.textPrimary,
       error: p.error,
@@ -164,20 +168,21 @@ class AppTheme {
 
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: p.surface,
-        indicatorColor: AppColors.brandBlue,
-        // El indicador siempre es brandBlue: su ícono/etiqueta van fijos en blanco.
+        // Rediseño: pastilla de acento translúcida (no relleno sólido); el
+        // ícono y la etiqueta activos van en el color de acento.
+        indicatorColor: p.accent.withValues(alpha: 0.20),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(
             fontSize: 12,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            color: selected ? AppColors.onBrand : p.textMuted,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected ? p.accent : p.textMuted,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: selected ? AppColors.onBrand : p.textMuted,
+            color: selected ? p.accent : p.textMuted,
           );
         }),
       ),

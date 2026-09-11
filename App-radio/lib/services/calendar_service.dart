@@ -19,7 +19,7 @@ class CalendarException implements Exception {
 class CalendarApi {
   static Future<String> _token() async {
     final token = await secureStorage.readSecureData(key);
-    return (token as String?) ?? '';
+    return token ?? '';
   }
 
   /// Feed del calendario (actividades + eventos) en `[from, to]`. `scope`:

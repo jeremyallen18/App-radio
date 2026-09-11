@@ -19,7 +19,7 @@ class CompanyException implements Exception {
 class CompanyApi {
   static Future<String> _token() async {
     final t = await secureStorage.readSecureData(key);
-    return (t as String?) ?? '';
+    return t ?? '';
   }
 
   /// `GET /company/info` → empresa, o `null` si aún no se creó (404). Lanza

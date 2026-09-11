@@ -93,30 +93,50 @@ class WeeklyRhythmChart extends StatelessWidget {
               BarChartGroupData(
                 x: i,
                 barRods: [
-                  BarChartRodData(
-                    toY: week[i].total.toDouble(),
-                    width: 18,
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(6)),
-                    borderSide: i == lastIndex
-                        ? BorderSide(color: AppColors.accentStrong, width: 1.5)
-                        : BorderSide.none,
-                    color: AppColors.success,
-                    rodStackItems: [
-                      BarChartRodStackItem(
-                          0, week[i].onTime.toDouble(), AppColors.success),
-                      BarChartRodStackItem(
-                        week[i].onTime.toDouble(),
-                        week[i].total.toDouble(),
-                        AppColors.warning,
+                  if (i == lastIndex)
+                    // La barra de hoy: sin desglose tarde/a tiempo, con un
+                    // degradado emerald→teal que la despega del resto.
+                    BarChartRodData(
+                      toY: week[i].total.toDouble(),
+                      width: 18,
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(6)),
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          AppColors.success,
+                          const Color(0xFF2DD4BF), // teal-400
+                        ],
                       ),
-                    ],
-                    backDrawRodData: BackgroundBarChartRodData(
-                      show: true,
-                      toY: ceiling,
-                      color: AppColors.surfaceBorder.withValues(alpha: 0.25),
+                      backDrawRodData: BackgroundBarChartRodData(
+                        show: true,
+                        toY: ceiling,
+                        color: AppColors.surfaceBorder.withValues(alpha: 0.25),
+                      ),
+                    )
+                  else
+                    BarChartRodData(
+                      toY: week[i].total.toDouble(),
+                      width: 18,
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(6)),
+                      color: AppColors.success,
+                      rodStackItems: [
+                        BarChartRodStackItem(
+                            0, week[i].onTime.toDouble(), AppColors.success),
+                        BarChartRodStackItem(
+                          week[i].onTime.toDouble(),
+                          week[i].total.toDouble(),
+                          AppColors.warning,
+                        ),
+                      ],
+                      backDrawRodData: BackgroundBarChartRodData(
+                        show: true,
+                        toY: ceiling,
+                        color: AppColors.surfaceBorder.withValues(alpha: 0.25),
+                      ),
                     ),
-                  ),
                 ],
               ),
           ],

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/models/models.dart';
@@ -38,6 +41,7 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
   ColleagueProfile? _profile;
   bool _loading = true;
   String? _error;
+  String? _appVersion;
 
   /// Bloquea taps repetidos (o taps mientras la transición corre) para que
   /// no se apilen dos rutas por una sola acción del usuario.
@@ -47,6 +51,9 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
   void initState() {
     super.initState();
     _load();
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) setState(() => _appVersion = info.version);
+    });
   }
 
   Future<void> _load() async {
@@ -76,6 +83,25 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Correo copiado')),
     );
+  }
+
+  Future<void> _shareProfile(UserProfile user) async {
+    final lines = [
+      user.name,
+      user.headline,
+      if (user.department != null) user.department!.name,
+      user.email,
+    ];
+    await SharePlus.instance.share(ShareParams(text: lines.join('\n')));
+  }
+
+  Future<void> _composeEmail(String email) async {
+    final uri = Uri(scheme: 'mailto', path: email);
+    if (!await launchUrl(uri) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No encontramos una app de correo instalada')),
+      );
+    }
   }
 
   void _openArea(DepartmentInfo department) {
@@ -136,7 +162,23 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
 
     return AppScaffold(
       padding: EdgeInsets.zero,
-      appBar: AppBar(title: const Text('Perfil')),
+      appBar: AppBar(
+        title: const Text('Perfil'),
+        actions: [
+          if (user != null && widget.viewerIsDirector)
+            IconButton(
+              onPressed: () => _editControlNumber(user),
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Editar número de control',
+            ),
+          if (user != null)
+            IconButton(
+              onPressed: () => _shareProfile(user),
+              icon: const Icon(Icons.share_outlined),
+              tooltip: 'Compartir perfil',
+            ),
+        ],
+      ),
       body: Builder(
         builder: (context) {
           if (user == null) {
@@ -146,6 +188,8 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
               onRetry: _load,
             );
           }
+
+          final teams = _profile?.teams ?? const [];
 
           return RefreshIndicator(
             color: AppColors.accent,
@@ -174,17 +218,15 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
                         variant: AppBadgeVariant.success,
                       ),
                   ],
-                  footer: _ContactRow(
+                  footer: _ContactCard(
                     email: user.email,
-                    onCopy: () => _copyEmail(user.email),
+                    onCopyEmail: () => _copyEmail(user.email),
+                    controlNumberLabel: user.controlNumberLabel,
+                    controlSeq: _controlSeq(user.controlNumber),
+                    onEditControlNumber: widget.viewerIsDirector
+                        ? () => _editControlNumber(user)
+                        : null,
                   ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _ControlNumberRow(
-                  value: user.controlNumberLabel,
-                  onEdit: widget.viewerIsDirector
-                      ? () => _editControlNumber(user)
-                      : null,
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 _SendMessageButton(
@@ -197,19 +239,34 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: AppSpacing.md),
+                _SecondaryActionsRow(
+                  onShare: () => _shareProfile(user),
+                  onEmail: () => _composeEmail(user.email),
+                ),
                 const SizedBox(height: AppSpacing.xl),
                 if (_error != null) ...[
                   ErrorState(message: _error!, onRetry: _load),
                   const SizedBox(height: AppSpacing.xl),
                 ],
-                const SectionHeader(title: 'Su área'),
-                if (user.department == null)
-                  AppCard(
-                    child: Text(
-                      'Todavía no pertenece a ningún departamento.',
-                      style:
-                          TextStyle(color: AppColors.textMuted, fontSize: 13),
+                SectionHeader(
+                  title: 'Su área',
+                  action: Text(
+                    user.department?.name ?? 'Sin asignación',
+                    style: TextStyle(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
                     ),
+                  ),
+                ),
+                if (user.department == null)
+                  const _EmptyCard(
+                    icon: Icons.layers_outlined,
+                    title: 'Todavía no pertenece a ningún departamento.',
+                    message:
+                        'Su adscripción la asigna dirección desde el área '
+                        'correspondiente.',
                   )
                 else
                   _AreaCard(
@@ -217,15 +274,51 @@ class _ColleagueProfileScreenState extends State<ColleagueProfileScreen> {
                     onTap: () => _openArea(user.department!),
                   ),
                 const SizedBox(height: AppSpacing.xl),
-                const SectionHeader(title: 'Equipos'),
-                _TeamsSection(profile: _profile, loading: _loading),
-                if (_profile?.joinedAt != null) ...[
-                  const SizedBox(height: AppSpacing.xl),
-                  Text(
-                    'En Radio Doliv desde ${_formatMonthYear(_profile!.joinedAt!)}',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                SectionHeader(
+                  title: 'Equipos',
+                  action: Text(
+                    teams.isEmpty
+                        ? 'Sin equipos activos'
+                        : teams.length == 1
+                            ? '1 equipo'
+                            : '${teams.length} equipos',
+                    style: TextStyle(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
-                ],
+                ),
+                if (_profile == null)
+                  _EmptyCard(
+                    icon: Icons.groups_2_outlined,
+                    title: _loading
+                        ? 'Cargando equipos…'
+                        : 'No pudimos cargar sus equipos.',
+                  )
+                else if (teams.isEmpty)
+                  const _EmptyCard(
+                    icon: Icons.groups_2_outlined,
+                    title: 'Todavía no participa en ningún equipo.',
+                    message: 'Se une a grupos de trabajo, comités o canales '
+                        'de colaboración activa.',
+                  )
+                else
+                  _TeamsSection(profile: _profile, loading: _loading),
+                const SizedBox(height: AppSpacing.xl),
+                _VerifiedCard(
+                  joinedAt: _profile?.joinedAt,
+                  verified: user.emailVerified,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Center(
+                  child: Text(
+                    'Perfil corporativo centralizado'
+                    '${_appVersion != null ? ' • Radio Doliv v$_appVersion' : ''}',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ],
             ),
           );
@@ -253,67 +346,273 @@ const List<String> _months = [
 String _formatMonthYear(DateTime date) =>
     '${_months[date.month - 1]} de ${date.year}';
 
-class _ContactRow extends StatelessWidget {
-  const _ContactRow({required this.email, required this.onCopy});
+/// Tarjeta de contacto de la ficha: correo y credencial corporativos, cada
+/// uno con su etiqueta en mayúsculas y un botón de copiar.
+class _ContactCard extends StatelessWidget {
+  const _ContactCard({
+    required this.email,
+    required this.onCopyEmail,
+    required this.controlNumberLabel,
+    required this.controlSeq,
+    this.onEditControlNumber,
+  });
 
   final String email;
-  final VoidCallback onCopy;
+  final VoidCallback onCopyEmail;
+  final String controlNumberLabel;
+  final int? controlSeq;
+  final VoidCallback? onEditControlNumber;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Column(
+        children: [
+          _row(
+            icon: Icons.mail_outline,
+            label: 'CORREO CORPORATIVO',
+            value: email,
+            onCopy: onCopyEmail,
+          ),
+          Divider(height: 1, color: AppColors.surfaceBorder),
+          _row(
+            icon: Icons.badge_outlined,
+            label: 'CREDENCIAL CORPORATIVA',
+            value: controlNumberLabel,
+            trailing: controlSeq != null
+                ? Text(
+                    'Titular #$controlSeq',
+                    style: TextStyle(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
+                  )
+                : null,
+            onCopy: onEditControlNumber == null
+                ? () async {
+                    await Clipboard.setData(
+                        ClipboardData(text: controlNumberLabel));
+                  }
+                : null,
+            onEdit: onEditControlNumber,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _row({
+    required IconData icon,
+    required String label,
+    required String value,
+    Widget? trailing,
+    VoidCallback? onCopy,
+    VoidCallback? onEdit,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppColors.textMuted),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (trailing != null) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      trailing,
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (onEdit != null)
+            IconButton(
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              color: AppColors.accentStrong,
+              tooltip: 'Editar número de control',
+              visualDensity: VisualDensity.compact,
+            )
+          else if (onCopy != null)
+            IconButton(
+              onPressed: onCopy,
+              icon: const Icon(Icons.copy_rounded, size: 18),
+              color: AppColors.accentStrong,
+              tooltip: 'Copiar',
+              visualDensity: VisualDensity.compact,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Fila de acciones secundarias bajo "Enviar mensaje": compartir la ficha o
+/// redactar un correo directo a esta persona.
+class _SecondaryActionsRow extends StatelessWidget {
+  const _SecondaryActionsRow({required this.onShare, required this.onEmail});
+
+  final VoidCallback onShare;
+  final VoidCallback onEmail;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(Icons.mail_outline, size: 18, color: AppColors.textMuted),
-        const SizedBox(width: AppSpacing.sm),
         Expanded(
-          child: Text(
-            email,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+          child: OutlinedButton.icon(
+            onPressed: onShare,
+            icon: const Icon(Icons.share_outlined, size: 16),
+            label: const Text('Compartir perfil'),
           ),
         ),
-        IconButton(
-          onPressed: onCopy,
-          icon: const Icon(Icons.copy_rounded, size: 18),
-          color: AppColors.accentStrong,
-          tooltip: 'Copiar correo',
-          visualDensity: VisualDensity.compact,
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: onEmail,
+            icon: const Icon(Icons.email_outlined, size: 16),
+            label: const Text('Redactar email'),
+          ),
         ),
       ],
     );
   }
 }
 
-/// Fila del número de control bajo la cabecera. Solo lectura salvo que se
-/// pase [onEdit] (director), que muestra el lápiz de corrección.
-class _ControlNumberRow extends StatelessWidget {
-  const _ControlNumberRow({required this.value, this.onEdit});
+/// Tarjeta de estado vacío: ícono en un cuadrado redondeado, título y mensaje
+/// opcional. Solo lectura — desde la ficha de un compañero no se asignan
+/// áreas ni equipos a otra persona.
+class _EmptyCard extends StatelessWidget {
+  const _EmptyCard({required this.icon, required this.title, this.message});
 
-  final String value;
-  final VoidCallback? onEdit;
+  final IconData icon;
+  final String title;
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(Icons.badge_outlined, size: 18, color: AppColors.textMuted),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+    return AppCard(
+      child: Column(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.chip),
+            ),
+            child: Icon(icon, color: AppColors.accent, size: 22),
           ),
-        ),
-        if (onEdit != null)
-          IconButton(
-            onPressed: onEdit,
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            color: AppColors.accentStrong,
-            tooltip: 'Editar número de control',
-            visualDensity: VisualDensity.compact,
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
           ),
-      ],
+          if (message != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              message!,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Tarjeta de cierre con el sello corporativo: desde cuándo está en Radio
+/// Doliv y si su correo está verificado.
+class _VerifiedCard extends StatelessWidget {
+  const _VerifiedCard({required this.joinedAt, required this.verified});
+
+  final DateTime? joinedAt;
+  final bool verified;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.podcasts, color: AppColors.accent, size: 18),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'En Radio Doliv',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                if (joinedAt != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Desde ${_formatMonthYear(joinedAt!)}',
+                    style:
+                        TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (verified)
+            const AppBadge(label: '✓ Verificado', variant: AppBadgeVariant.success),
+        ],
+      ),
     );
   }
 }
@@ -521,8 +820,8 @@ class _SendMessageButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
+    return SizedBox(
+      width: double.infinity,
       child: AppPressable(
         child: Material(
           color: Colors.transparent,
@@ -544,13 +843,12 @@ class _SendMessageButton extends StatelessWidget {
               child: Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: AppSpacing.xl,
-                  vertical: 12,
+                  vertical: 14,
                 ),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.chat_bubble_outline,
-                        color: AppColors.onBrand, size: 18),
+                    Icon(Icons.send_rounded, color: AppColors.onBrand, size: 18),
                     SizedBox(width: AppSpacing.sm),
                     Text(
                       'Enviar mensaje',

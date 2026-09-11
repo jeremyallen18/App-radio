@@ -45,7 +45,7 @@ class _ProgressChartState extends State<ProgressChart> {
     // Se pide el rol fresco a `/user/me` (y solo se cae al caché si falla),
     // igual que RoleDashboardRouter.
     final token = await _secureStorage.readSecureData(_tokenKey);
-    final role = await Session.getFreshRole(token as String?);
+    final role = await Session.getFreshRole(token);
     _isDirector = role == AppRole.director;
     if (_isDirector) {
       // El desglose por departamento es lo imprescindible; el listado

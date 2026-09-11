@@ -67,14 +67,25 @@ void main() async {
   }
   // Tocar el singleton dispara la precarga del stream lo antes posible.
   RadioPlayer.instance;
-  final dynamic storedValue = await secureStorage.readSecureData(key);
+  final storedValue = await _readStoredToken();
   // La sesión persiste mientras exista el token; solo "Cerrar sesión" o un
   // token rechazado la terminan.
-  final bool hasSession = storedValue != null;
+  final bool hasSession = storedValue?.trim().isNotEmpty ?? false;
   if (hasSession && supportsPush) {
     unawaited(PushService.instance.init());
   }
   runApp(MyApp(hasSession: hasSession));
+}
+
+Future<String?> _readStoredToken() async {
+  try {
+    return await secureStorage.readSecureData(key);
+  } catch (error, stackTrace) {
+    // El almacenamiento puede fallar en un dispositivo recién configurado;
+    // iniciar como visitante permite mostrar el login y recuperar la sesión.
+    debugPrint('No se pudo leer la sesión guardada: $error\n$stackTrace');
+    return null;
+  }
 }
 
 /// Widget raíz de la app: tema y rutas. [hasSession] elige la pantalla inicial.

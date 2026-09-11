@@ -61,7 +61,7 @@ class _VerifyEmailBannerState extends State<VerifyEmailBanner>
   Future<void> _check() async {
     final token = await secureStorage.readSecureData(key);
     if (token == null) return;
-    final profile = await Session.fetchCurrentUser(token as String);
+    final profile = await Session.fetchCurrentUser(token);
     if (!mounted || profile == null) return;
     setState(() {
       _verified = profile.emailVerified;

@@ -19,7 +19,7 @@ class TeamException implements Exception {
 
 Future<String> _token() async {
   final t = await secureStorage.readSecureData(key);
-  return (t as String?) ?? '';
+  return t ?? '';
 }
 
 Future<http.Response> _get(Uri uri) async {

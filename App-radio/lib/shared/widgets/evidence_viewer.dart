@@ -7,7 +7,8 @@ import 'package:doliv_social/design/design.dart';
 /// (nunca una URL pública). Lo usan permisos (`/leave-requests/{id}/evidence`)
 /// y tareas (`/dept-tasks/{id}/evidence`): se le pasa la URL ya construida.
 class EvidenceViewer extends StatefulWidget {
-  const EvidenceViewer({super.key, required this.url, this.title = 'Evidencia'});
+  const EvidenceViewer(
+      {super.key, required this.url, this.title = 'Evidencia'});
 
   final String url;
   final String title;
@@ -24,7 +25,7 @@ class _EvidenceViewerState extends State<EvidenceViewer> {
     super.initState();
     secureStorage.readSecureData(key).then((token) {
       if (mounted) {
-        setState(() => _headers = {'Authorization': (token as String?) ?? ''});
+        setState(() => _headers = {'Authorization': token ?? ''});
       }
     });
   }

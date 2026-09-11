@@ -30,6 +30,9 @@ const ATT_MSG_NOT_EMPLOYEE = 'El registro de asistencia no está disponible para
 
 // Tipos de evento que exigen estar físicamente en el lugar de asistencia.
 const ATT_GEOFENCED_TYPES = ['entrada', 'fin_comida'];
+// Una ubicación con esta precisión no permite demostrar presencia dentro de
+// una geocerca pequeña. El valor se valida en servidor, no solo en el cliente.
+const ATT_MAX_LOCATION_ACCURACY_M = 100.0;
 
 // ---- helpers: seguridad y estado ---------------------------------------
 
@@ -423,7 +426,15 @@ function attendance_location_payload(?array $row): ?array {
 // la fila de attendance_location), se valida contra ese punto en vez del lugar
 // de asistencia global. Lo usa la ENTRADA cuando un evento con ubicación cubre
 // al trabajador ese día.
-function attendance_verify_location(PDO $pdo, string $type, ?float $lat, ?float $lng, ?array $overrideLoc = null): void {
+function attendance_verify_location(
+    PDO $pdo,
+    string $type,
+    ?float $lat,
+    ?float $lng,
+    ?float $accuracy = null,
+    bool $isMocked = false,
+    ?array $overrideLoc = null
+): void {
     if (!in_array($type, ATT_GEOFENCED_TYPES, true)) {
         return;
     }
@@ -433,6 +444,23 @@ function attendance_verify_location(PDO $pdo, string $type, ?float $lat, ?float 
     }
     if ($lat === null || $lng === null) {
         attendance_fail('No fue posible verificar tu ubicación. Activa el GPS e inténtalo de nuevo.', 422);
+    }
+    if (!is_finite($lat) || !is_finite($lng)
+        || $lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+        attendance_fail('La ubicación recibida no es válida.', 422);
+    }
+    if ($isMocked) {
+        attendance_fail(
+            'Se detectó una ubicación simulada. Desactiva las ubicaciones de prueba para registrar asistencia.',
+            422
+        );
+    }
+    if ($accuracy === null || !is_finite($accuracy)
+        || $accuracy < 0 || $accuracy > ATT_MAX_LOCATION_ACCURACY_M) {
+        attendance_fail(
+            'La precisión del GPS es insuficiente. Inténtalo desde un lugar con mejor señal.',
+            422
+        );
     }
     $dist = attendance_distance_m((float) $loc['latitude'], (float) $loc['longitude'], $lat, $lng);
     if ($dist > (float) $loc['radius_m']) {
@@ -533,6 +561,9 @@ function attendanceEntry(PDO $pdo) {
     // de entrada del evento reemplazan a las habituales (solo para la entrada).
     $body = request_body();
     [$lat, $lng] = attendance_coords_from_body($body);
+    $accuracy = isset($body['locationAccuracy']) && $body['locationAccuracy'] !== ''
+        ? (float) $body['locationAccuracy'] : null;
+    $isMocked = in_array(strtolower((string) ($body['locationMocked'] ?? '')), ['1', 'true', 'yes'], true);
     $override = event_entry_override_for_day($pdo, $user['department_id'] ?? null, $workDate);
     $overrideLoc = ($override && $override['latitude'] !== null && $override['longitude'] !== null)
         ? $override : null;
@@ -556,7 +587,7 @@ function attendanceEntry(PDO $pdo) {
     $deviceInfo = attendance_verify_device($pdo, $user['id'], $body);
     $bio = attendance_check_biometric($body, 'entrada');
 
-    attendance_verify_location($pdo, 'entrada', $lat, $lng, $overrideLoc);
+    attendance_verify_location($pdo, 'entrada', $lat, $lng, $accuracy, $isMocked, $overrideLoc);
 
     // Congela el horario del día ANTES de crear la entrada.
     attendance_snapshot_schedule($pdo, $user['id'], $workDate, $override['entry_time'] ?? null);
@@ -688,12 +719,15 @@ function attendanceMealEnd(PDO $pdo) {
     // Terminar la hora de comida exige estar de vuelta en el lugar de asistencia.
     $body = request_body();
     [$lat, $lng] = attendance_coords_from_body($body);
+    $accuracy = isset($body['locationAccuracy']) && $body['locationAccuracy'] !== ''
+        ? (float) $body['locationAccuracy'] : null;
+    $isMocked = in_array(strtolower((string) ($body['locationMocked'] ?? '')), ['1', 'true', 'yes'], true);
 
     // Dispositivo antes que geocerca (spec §1.2): ver attendanceEntry.
     $deviceInfo = attendance_verify_device($pdo, $user['id'], $body);
     $bio = attendance_check_biometric($body, 'fin_comida'); // no exige biometría
 
-    attendance_verify_location($pdo, 'fin_comida', $lat, $lng);
+    attendance_verify_location($pdo, 'fin_comida', $lat, $lng, $accuracy, $isMocked);
 
     $ev = attendance_insert_event($pdo, $user['id'], $workDate, 'fin_comida', $body,
         attendance_evidence($deviceInfo, $bio));
@@ -860,4 +894,3 @@ function attendance_history_range(): array {
     if ($from > $to) [$from, $to] = [$to, $from];
     return [$from, $to];
 }
-
