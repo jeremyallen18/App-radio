@@ -1389,6 +1389,151 @@ class SiteRepeatRow extends StatelessWidget {
   }
 }
 
+/// Una red social conocida: además de la etiqueta que ve el director, trae
+/// el ícono de Material que se previsualiza en la app y el nombre de ícono
+/// Lucide que espera RADIODOLIV_PAGINA (ver assets/js/pages/equipo.js /
+/// roster-modal, que pintan `data-lucide="<icono>"`) para mostrar el logo
+/// real en el sitio público. Así el director solo elige la red — nunca
+/// escribe el nombre del ícono a mano.
+class SiteSocialNetwork {
+  const SiteSocialNetwork(this.key, this.label, this.previewIcon, this.siteIcon);
+
+  final String key;
+  final String label;
+  final IconData previewIcon;
+  final String siteIcon;
+
+  static const List<SiteSocialNetwork> catalog = [
+    SiteSocialNetwork('facebook', 'Facebook', Icons.facebook, 'facebook'),
+    SiteSocialNetwork(
+        'instagram', 'Instagram', Icons.camera_alt_outlined, 'instagram'),
+    SiteSocialNetwork('tiktok', 'TikTok', Icons.tiktok, 'music-2'),
+    SiteSocialNetwork(
+        'youtube', 'YouTube', Icons.smart_display_outlined, 'youtube'),
+    SiteSocialNetwork('whatsapp', 'WhatsApp', Icons.chat_outlined, 'smartphone'),
+    SiteSocialNetwork(
+        'twitter', 'X (Twitter)', Icons.alternate_email, 'twitter'),
+    SiteSocialNetwork(
+        'linkedin', 'LinkedIn', Icons.business_center_outlined, 'linkedin'),
+    SiteSocialNetwork('threads', 'Threads', Icons.forum_outlined, 'at-sign'),
+    SiteSocialNetwork(
+        'spotify', 'Spotify', Icons.music_note_outlined, 'music'),
+    SiteSocialNetwork('otro', 'Otra red', Icons.link, 'link'),
+  ];
+
+  static SiteSocialNetwork byKey(String key) => catalog.firstWhere(
+        (n) => n.key == key,
+        orElse: () => catalog.last,
+      );
+
+  /// Adivina la red a partir del ícono ya guardado, para preseleccionarla al
+  /// editar un enlace creado antes de que existiera este selector.
+  static SiteSocialNetwork byIcon(String icon) => catalog.firstWhere(
+        (n) => n.siteIcon == icon,
+        orElse: () => catalog.last,
+      );
+}
+
+/// Fila para un enlace a una red social: el director elige la red de una
+/// lista (el ícono aparece solo, sin escribirlo) y pega la URL de su
+/// perfil. "Otra red" deja escribir el nombre a mano para casos no
+/// contemplados. Escribe en los mismos [labelController]/[iconController]/
+/// [urlController] que ya arma `socials_json` para el backend.
+class SiteSocialLinkRow extends StatefulWidget {
+  const SiteSocialLinkRow({
+    super.key,
+    required this.labelController,
+    required this.iconController,
+    required this.urlController,
+    required this.onRemove,
+  });
+
+  final TextEditingController labelController;
+  final TextEditingController iconController;
+  final TextEditingController urlController;
+  final VoidCallback onRemove;
+
+  @override
+  State<SiteSocialLinkRow> createState() => _SiteSocialLinkRowState();
+}
+
+class _SiteSocialLinkRowState extends State<SiteSocialLinkRow> {
+  late String _networkKey = widget.iconController.text.isEmpty
+      ? SiteSocialNetwork.catalog.first.key
+      : SiteSocialNetwork.byIcon(widget.iconController.text).key;
+
+  void _selectNetwork(String? key) {
+    if (key == null) return;
+    final network = SiteSocialNetwork.byKey(key);
+    setState(() {
+      _networkKey = key;
+      widget.iconController.text = network.siteIcon;
+      if (key != 'otro') widget.labelController.text = network.label;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final network = SiteSocialNetwork.byKey(_networkKey);
+    final isOther = network.key == 'otro';
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: SiteFieldColors.blue.withValues(alpha: 0.16),
+                child: Icon(network.previewIcon,
+                    color: SiteFieldColors.blue, size: 18),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: _networkKey,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                      isDense: true, border: InputBorder.none),
+                  items: SiteSocialNetwork.catalog
+                      .map((n) => DropdownMenuItem(
+                          value: n.key, child: Text(n.label)))
+                      .toList(),
+                  onChanged: _selectNetwork,
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.close, color: AppColors.error, size: 18),
+                onPressed: widget.onRemove,
+              ),
+            ],
+          ),
+          if (isOther) ...[
+            const SizedBox(height: AppSpacing.sm),
+            AppTextField(
+              controller: widget.labelController,
+              hintText: 'Nombre de la red',
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          AppTextField(
+            controller: widget.urlController,
+            hintText: 'https://...',
+            textInputType: TextInputType.url,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Título de sección dentro de un formulario largo (ej. "Redes sociales",
 /// "Episodios"), consistente con el resto de la jerarquía tipográfica.
 class SiteFormSectionTitle extends StatelessWidget {

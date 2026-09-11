@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -16,6 +17,17 @@ class EquipoFormScreen extends StatefulWidget {
 
   @override
   State<EquipoFormScreen> createState() => _EquipoFormScreenState();
+}
+
+class _SocialRow {
+  _SocialRow({String label = '', String icon = '', String url = ''})
+      : label = TextEditingController(text: label),
+        icon = TextEditingController(text: icon),
+        url = TextEditingController(text: url);
+
+  final TextEditingController label;
+  final TextEditingController icon;
+  final TextEditingController url;
 }
 
 class _EquipoFormScreenState extends State<EquipoFormScreen> {
@@ -47,6 +59,7 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
       TextEditingController(text: widget.item?['interests']?.toString() ?? '');
   late Set<int> _selectedProgramIds =
       _parseProgramIds(widget.item?['program_ids']);
+  late final List<_SocialRow> _socials = _initialSocials();
 
   File? _newImage;
   bool _submitting = false;
@@ -61,6 +74,18 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
         .map((v) => int.tryParse(v.toString()))
         .whereType<int>()
         .toSet();
+  }
+
+  List<_SocialRow> _initialSocials() {
+    final raw = widget.item?['socials'] as List?;
+    if (raw == null || raw.isEmpty) return [_SocialRow()];
+    return raw
+        .map((s) => _SocialRow(
+              label: s['label']?.toString() ?? '',
+              icon: s['icon']?.toString() ?? '',
+              url: s['url']?.toString() ?? '',
+            ))
+        .toList();
   }
 
   /// Trae todos los programas para ofrecerlos como vínculo "conduce este
@@ -114,6 +139,16 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
     }
 
     setState(() => _submitting = true);
+    final socialsJson = jsonEncode(_socials
+        .map((s) => {
+              'label': s.label.text.trim(),
+              'icon': s.icon.text.trim(),
+              'url': s.url.text.trim()
+            })
+        .where((s) =>
+            (s['label'] as String).isNotEmpty || (s['url'] as String).isNotEmpty)
+        .toList());
+
     final fields = {
       'name': _name.text.trim(),
       'role': _role.text.trim(),
@@ -124,6 +159,7 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
       'path': _path.text,
       'interests': _interests.text,
       'program_ids': _selectedProgramIds.join(','),
+      'socials_json': socialsJson,
     };
 
     try {
@@ -247,6 +283,23 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
             iconColor: SiteFieldColors.orange,
             controller: _interests,
             hintText: 'Ej. Videojuegos',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          const SiteFormSectionTitle('Redes sociales'),
+          const SizedBox(height: AppSpacing.sm),
+          for (final social in _socials)
+            SiteSocialLinkRow(
+              key: ObjectKey(social),
+              labelController: social.label,
+              iconController: social.icon,
+              urlController: social.url,
+              onRemove: () => setState(() => _socials.remove(social)),
+            ),
+          TextButton.icon(
+            onPressed: () => setState(() => _socials.add(_SocialRow())),
+            icon: Icon(Icons.add, color: AppColors.accent),
+            label: Text('Agregar red social',
+                style: TextStyle(color: AppColors.accent)),
           ),
           const SizedBox(height: AppSpacing.md),
           SiteImagePickerField(
