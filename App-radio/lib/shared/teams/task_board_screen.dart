@@ -77,6 +77,9 @@ class TaskBoardScreen extends StatelessWidget {
 ///   eliminar y cambiar el estado.
 /// - empleado (`canManage == false`): solo marca como completadas las tareas
 ///   suyas o sin responsable. Puede filtrar "Solo mías".
+/// - director: conserva todos los permisos de gestión y de revisión
+///   (aprobar/devolver), pero NUNCA puede marcar una tarea como completada;
+///   eso le corresponde al manager o al empleado asignado.
 class TaskBoardBody extends StatefulWidget {
   const TaskBoardBody({
     super.key,
@@ -126,6 +129,9 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
   bool _busy = false;
   String? _error;
 
+  /// El director gestiona y revisa, pero no marca tareas como completadas.
+  bool _isDirector = false;
+
   String? get _effectiveSubTeamId => widget.fixedSubTeamId ?? _subTeamFilter;
 
   @override
@@ -133,6 +139,13 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
     super.initState();
     _subTeamFilter = widget.fixedSubTeamId;
     _load();
+    _loadRole();
+  }
+
+  Future<void> _loadRole() async {
+    final role = await Session.getCachedRole();
+    if (!mounted) return;
+    setState(() => _isDirector = role == AppRole.director);
   }
 
   Future<void> _load() async {
@@ -202,10 +215,12 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
 
   /// Quién puede marcar una tarea como completada.
   ///
-  /// - director / manager (`canManage`): cualquier tarea.
+  /// - manager (`canManage` y no director): cualquier tarea.
+  /// - director: NUNCA. Solo revisa (aprueba o devuelve) lo que le llega.
   /// - empleado: SOLO las tareas asignadas específicamente a él. Una tarea
   ///   sin responsable, o de otra persona, no la puede tocar.
   bool _canComplete(DeptTask t) {
+    if (_isDirector) return false;
     if (widget.canManage) return true;
     // Una aprobación del manager cierra la tarea para el empleado. Si necesita
     // cambios, la devolución la reabre y permite una nueva entrega.
@@ -570,6 +585,7 @@ class _TaskBoardBodyState extends State<TaskBoardBody> {
         task: t,
         canManage: widget.canManage,
         canComplete: _canComplete(t),
+        isDirector: _isDirector,
         busy: _busy,
         dense: dense,
         onToggleDone: () => _toggleDone(t),
