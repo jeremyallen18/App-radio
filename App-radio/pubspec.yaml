@@ -79,6 +79,9 @@ dependencies:
   # Android con controles en la notificación y en la pantalla de bloqueo.
   just_audio_background: ^0.0.1-beta.13
   image_picker: ^1.2.3
+  # Rueda de color (HSV) para elegir el color de identidad de un integrante
+  # de Equipo sin escribir un hex a mano (site_content_widgets.dart).
+  flutter_colorpicker: ^1.1.0
   geolocator: ^14.0.3
   # Identidad estable del dispositivo para la vinculación del fichaje de
   # asistencia (lib/core/device/device_identity.dart). device_info_plus da

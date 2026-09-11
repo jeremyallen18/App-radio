@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 import 'package:doliv_social/design/design.dart';
 
@@ -660,6 +661,330 @@ class _SiteWeekdayPickerFieldState extends State<SiteWeekdayPickerField> {
               );
             }).toList(),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Una opción de [SiteChoiceChipsField]: valor que se envía al backend +
+/// etiqueta legible para mostrar.
+class SiteChoiceOption {
+  const SiteChoiceOption(this.value, this.label);
+
+  final String value;
+  final String label;
+}
+
+/// Selector de una sola opción entre pocas alternativas fijas (p. ej. la
+/// categoría de un integrante de Equipo), mostradas como chips — mismo
+/// patrón visual que [SiteWeekdayPickerField] pero de selección única y sin
+/// controller (el valor vive en el estado del formulario dueño).
+class SiteChoiceChipsField extends StatelessWidget {
+  const SiteChoiceChipsField({
+    super.key,
+    required this.icon,
+    required this.label,
+    this.iconColor,
+    required this.options,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color? iconColor;
+  final List<SiteChoiceOption> options;
+  final String? value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = iconColor ?? SiteFieldColors.teal;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
+                ),
+                child: Icon(icon, color: color),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(label,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            children: options.map((option) {
+              final selected = option.value == value;
+              return ChoiceChip(
+                label: Text(option.label),
+                selected: selected,
+                onSelected: (_) => onChanged(option.value),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Campo de color de identidad: pastilla que previsualiza el hex actual del
+/// [controller] y, al tocarla, abre una rueda de color (HSV) para elegir
+/// cualquier tono sin escribir el código a mano. Escribe el hex resultante
+/// de vuelta en el controller, igual que si el usuario lo hubiera tecleado.
+class SiteColorWheelField extends StatefulWidget {
+  const SiteColorWheelField({
+    super.key,
+    required this.icon,
+    required this.label,
+    this.iconColor,
+    required this.controller,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color? iconColor;
+  final TextEditingController controller;
+
+  @override
+  State<SiteColorWheelField> createState() => _SiteColorWheelFieldState();
+}
+
+class _SiteColorWheelFieldState extends State<SiteColorWheelField> {
+  Future<void> _openPicker() async {
+    var pickedColor = parseHexColor(widget.controller.text) ?? SiteFieldColors.teal;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Elige un color'),
+        content: SingleChildScrollView(
+          child: ColorPicker(
+            pickerColor: pickedColor,
+            onColorChanged: (color) => pickedColor = color,
+            paletteType: PaletteType.hueWheel,
+            enableAlpha: false,
+            labelTypes: const [],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Listo'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      setState(() {
+        widget.controller.text =
+            '#${pickedColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.iconColor ?? SiteFieldColors.teal;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(AppRadius.chip),
+            ),
+            child: Icon(widget.icon, color: color),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(widget.label,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+          ),
+          AnimatedBuilder(
+            animation: widget.controller,
+            builder: (context, _) {
+              final swatch = parseHexColor(widget.controller.text);
+              return GestureDetector(
+                onTap: _openPicker,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: swatch ?? AppColors.bgBase,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.surfaceBorder, width: 1.5),
+                  ),
+                  child: swatch == null
+                      ? const Icon(Icons.colorize, size: 18)
+                      : null,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Campo de etiquetas: escribe texto y presiona Enter (o el botón +) para
+/// agregarlo como chip removible. Guarda el texto en [controller] con el
+/// mismo formato "una por línea" que ya espera el backend (p. ej.
+/// `site_equipo_text('interests')`), así que no requiere cambios ahí.
+class SiteTagInputField extends StatefulWidget {
+  const SiteTagInputField({
+    super.key,
+    required this.icon,
+    required this.label,
+    this.iconColor,
+    required this.controller,
+    this.hintText,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color? iconColor;
+  final TextEditingController controller;
+  final String? hintText;
+
+  @override
+  State<SiteTagInputField> createState() => _SiteTagInputFieldState();
+}
+
+class _SiteTagInputFieldState extends State<SiteTagInputField> {
+  final _inputController = TextEditingController();
+  final List<String> _tags = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _tags.addAll(widget.controller.text
+        .split('\n')
+        .map((tag) => tag.trim())
+        .where((tag) => tag.isNotEmpty));
+  }
+
+  void _save() {
+    widget.controller.text = _tags.join('\n');
+  }
+
+  void _addTag() {
+    final tag = _inputController.text.trim();
+    if (tag.isEmpty) return;
+    setState(() {
+      if (!_tags.contains(tag)) _tags.add(tag);
+      _inputController.clear();
+    });
+    _save();
+  }
+
+  void _removeTag(String tag) {
+    setState(() => _tags.remove(tag));
+    _save();
+  }
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.iconColor ?? SiteFieldColors.teal;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
+                ),
+                child: Icon(widget.icon, color: color),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(widget.label,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _inputController,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: widget.hintText ?? 'Escribe un interés y presiona +',
+                  ),
+                  onSubmitted: (_) => _addTag(),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              IconButton.filled(
+                onPressed: _addTag,
+                icon: const Icon(Icons.add),
+              ),
+            ],
+          ),
+          if (_tags.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: _tags.map((tag) {
+                return Chip(
+                  label: Text(tag),
+                  onDeleted: () => _removeTag(tag),
+                );
+              }).toList(),
+            ),
+          ],
         ],
       ),
     );

@@ -18,11 +18,22 @@ class ProgramaFormScreen extends StatefulWidget {
   State<ProgramaFormScreen> createState() => _ProgramaFormScreenState();
 }
 
-/// Convierte un valor dinámico que llega de la API (int, String o null) al
-/// id entero que usan los selectores de vínculo.
-int? _parseSiteId(dynamic value) {
-  if (value == null) return null;
-  return int.tryParse(value.toString());
+/// Convierte la lista `host_team_ids` que llega de la API (ints o strings) al
+/// set de ids que usa el selector múltiple de locutores.
+Set<int> _parseHostTeamIds(dynamic value) {
+  if (value is! List) return <int>{};
+  return value.map((v) => int.tryParse(v.toString())).whereType<int>().toSet();
+}
+
+/// Une nombres de locutores en un solo texto legible, igual que
+/// site_join_names_with_y() en hive-backend/site_content.php: "Fernanda" con
+/// uno, "Fernanda y Amanda" con dos, "Fernanda, Amanda y Diego" con tres o
+/// más. Se usa para previsualizar el campo "Conductor(a)" al elegir varios.
+String _joinNamesWithY(List<String> names) {
+  if (names.isEmpty) return '';
+  if (names.length == 1) return names.first;
+  final last = names.last;
+  return '${names.sublist(0, names.length - 1).join(', ')} y $last';
 }
 
 class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
@@ -36,7 +47,10 @@ class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
       text: widget.item?['modal_title']?.toString() ?? '');
   late final _host =
       TextEditingController(text: widget.item?['host']?.toString() ?? '');
-  late int? _hostTeamId = _parseSiteId(widget.item?['host_team_id']);
+  late Set<int> _selectedHostTeamIds =
+      _parseHostTeamIds(widget.item?['host_team_ids']);
+  late final Future<List<SiteLinkOption>> _hostOptionsFuture =
+      _loadHostOptions();
   late final _schedule =
       TextEditingController(text: widget.item?['schedule']?.toString() ?? '');
   late final _slotStart =
@@ -92,10 +106,15 @@ class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
     }).toList();
   }
 
-  void _onHostSelected(SiteLinkOption? option) {
+  void _onHostsChanged(Set<int> ids, List<SiteLinkOption> options) {
     setState(() {
-      _hostTeamId = option?.id;
-      if (option != null) _host.text = option.label;
+      _selectedHostTeamIds = ids;
+      if (ids.isNotEmpty) {
+        final labelById = {for (final o in options) o.id: o.label};
+        _host.text = _joinNamesWithY(
+          ids.map((id) => labelById[id]).whereType<String>().toList(),
+        );
+      }
     });
   }
 
@@ -133,7 +152,7 @@ class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
       'title': _title.text.trim(),
       'modal_title': _modalTitle.text.trim(),
       'host': _host.text.trim(),
-      'host_team_id': _hostTeamId?.toString() ?? '',
+      'host_team_ids': _selectedHostTeamIds.join(','),
       'schedule': _schedule.text.trim(),
       'slot_start': _slotStart.text.trim(),
       'slot_end': _slotEnd.text.trim(),
@@ -264,24 +283,32 @@ class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
             iconColor: SiteFieldColors.teal,
             controller: _host,
             hintText: 'Nombre del conductor o conductora',
-            readOnly: _hostTeamId != null,
-            helperText: _hostTeamId != null
-                ? 'Vinculado a un integrante de Equipo; para cambiar el nombre edítalo ahí.'
+            readOnly: _selectedHostTeamIds.isNotEmpty,
+            helperText: _selectedHostTeamIds.isNotEmpty
+                ? 'Vinculado a integrantes de Equipo; para cambiar el nombre edítalos ahí.'
                 : null,
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteLinkPickerField(
-            icon: Icons.badge_outlined,
-            label: 'Vincular con un locutor de Equipo',
-            iconColor: SiteFieldColors.teal,
-            optionsLoader: _loadHostOptions,
-            selectedId: _hostTeamId,
-            selectedLabel: _host.text.trim().isEmpty ? null : _host.text.trim(),
-            onSelected: _onHostSelected,
-            placeholder:
-                'Opcional · toca para elegir a alguien ya registrado en Equipo',
-            emptyMessage:
-                'Todavía no hay integrantes en Equipo. Créalos primero ahí.',
+          FutureBuilder<List<SiteLinkOption>>(
+            future: _hostOptionsFuture,
+            builder: (context, snapshot) {
+              final options = snapshot.data ?? const [];
+              return SiteMultiLinkPickerField(
+                icon: Icons.badge_outlined,
+                label: 'Vincular con locutores de Equipo',
+                iconColor: SiteFieldColors.teal,
+                options: options,
+                selectedIds: _selectedHostTeamIds,
+                onChanged: (ids) => _onHostsChanged(ids, options),
+                helperText: snapshot.connectionState == ConnectionState.waiting
+                    ? 'Cargando integrantes…'
+                    : (_selectedHostTeamIds.isEmpty
+                        ? 'Opcional · elige a uno o varios ya registrados en Equipo'
+                        : null),
+                emptyMessage:
+                    'Todavía no hay integrantes en Equipo. Créalos primero ahí.',
+              );
+            },
           ),
           const SizedBox(height: AppSpacing.md),
           SiteFormField(

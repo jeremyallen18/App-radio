@@ -123,11 +123,12 @@ Grupos principales de tablas:
 | `events` | Calendario de eventos |
 | `anuncios`, `radio_events`, `radio_programs`, `radio_podcasts`, `radio_team`, `radio_services`, `sponsors` | Contenido del sitio web público (editado desde esta app) |
 
-> **Vínculo Programas ↔ Equipo:** `radio_programs.host_team_id` es una llave foránea
-> opcional a `radio_team.id`. Al editar un programa se puede elegir un locutor real ya
-> registrado en Equipo (en vez de escribir el nombre a mano); al editar un integrante de
+> **Vínculo Programas ↔ Equipo:** la tabla `radio_program_hosts` vincula cada programa
+> con cualquier cantidad de integrantes reales de `radio_team` (locutor principal +
+> co-conductores, sin límite). Al editar un programa se eligen uno o varios locutores ya
+> registrados en Equipo (en vez de escribir el nombre a mano); al editar un integrante de
 > Equipo se puede marcar qué programas conduce. El nombre mostrado (`host`) se mantiene
-> siempre sincronizado con el registro vinculado.
+> siempre sincronizado, uniendo los nombres de todos los vinculados ("Fernanda y Amanda").
 
 ## 6. Rutas principales de la API (`hive-backend`)
 
