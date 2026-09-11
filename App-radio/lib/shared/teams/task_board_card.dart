@@ -52,7 +52,13 @@ class TaskBoardCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tone = TaskTone.of(task);
+    // Revisión formal (el empleado la envió a revisar): puede aprobarse o
+    // devolverse. Si ya está completada por otra vía (cerrada directamente
+    // por un manager/sub-líder, o ya aprobada), no hay nada que "aprobar",
+    // pero quien administra la tarea siempre puede devolverla con un motivo
+    // (equivalente a "reabrir" en Microsoft Teams).
     final showReview = canManage && task.awaitingReview;
+    final showReturnOnly = canManage && !showReview && task.isDone;
     final rejectNote = task.wasRejected && (task.reviewNote ?? '').isNotEmpty;
 
     return Material(
@@ -84,8 +90,10 @@ class TaskBoardCard extends StatelessWidget {
                       ? (task.isDone ? 'Reabrir' : 'Marcar como completada')
                       : isDirector
                           ? 'El director solo revisa: aprueba o devuelve la tarea'
-                          : task.reviewStatus == DeptTaskReviewStatus.aprobada
-                              ? 'Tarea aprobada por tu manager'
+                          : task.isDone
+                              ? (canManage
+                                  ? 'Usa "Devolver" para reabrirla'
+                                  : 'Tarea aprobada: pide a tu manager que la devuelva si necesita cambios')
                               : (task.assignedTo == null
                                   ? 'Sin responsable: solo un manager puede completarla'
                                   : 'Solo puede completarla la persona asignada'),
@@ -132,7 +140,12 @@ class TaskBoardCard extends StatelessWidget {
                           StatusChip(
                             tone: tone,
                             compact: dense,
-                            onTap: canManage && !busy ? onCycleStatus : null,
+                            // Reabrir una tarea completada solo puede hacerse
+                            // con "Devolver" (deja constancia del motivo), no
+                            // tocando el chip.
+                            onTap: canManage && !busy && !task.isDone
+                                ? onCycleStatus
+                                : null,
                           ),
                           if (task.assignedTo != null)
                             AssigneeChip(person: task.assignedTo!),
@@ -156,6 +169,9 @@ class TaskBoardCard extends StatelessWidget {
                             busy: busy,
                             onApprove: onApprove,
                             onReject: onReject),
+                      ] else if (showReturnOnly) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        _ReturnAction(busy: busy, onReject: onReject),
                       ],
                     ],
                   ),
@@ -336,6 +352,33 @@ class _ReviewActions extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Botón único para devolver (reabrir) una tarea ya completada que no pasó
+/// por el flujo de revisión del empleado (cerrada directamente, o ya
+/// aprobada). Es el equivalente a "Devolver" pero sin el botón "Aprobar",
+/// porque no hay nada pendiente de aprobar.
+class _ReturnAction extends StatelessWidget {
+  const _ReturnAction({required this.busy, required this.onReject});
+  final bool busy;
+  final VoidCallback onReject;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: busy ? null : onReject,
+        icon: const Icon(Icons.undo_rounded, size: 16),
+        label: const Text('Devolver'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.error,
+          side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
+          visualDensity: VisualDensity.compact,
+        ),
+      ),
     );
   }
 }
