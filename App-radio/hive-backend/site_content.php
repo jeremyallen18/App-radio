@@ -293,66 +293,80 @@ function siteEventoDelete(PDO $pdo, string $id) {
 // ---- servicios (radio_services) --------------------------------------------
 
 function siteServiciosList(PDO $pdo) {
-    site_require_director($pdo);
+    site_actor_context($pdo, 'site:read');
     $rows = $pdo->query('SELECT * FROM radio_services ORDER BY sort_order ASC, id ASC')->fetchAll();
-    json_response(['items' => $rows]);
+    site_response_list($rows);
 }
 
 function siteServicioCreate(PDO $pdo) {
-    site_require_director($pdo);
-    $title = trim($_POST['title'] ?? '');
-    if ($title === '') error_response('title es requerido', 400);
+    $actor = site_actor_context($pdo, 'site:write');
+    $title = site_required_text('title', 'title');
+    // category agrupa servicios en get_services_by_category(); sin catálogo
+    // fijo, pero debe venir para que el agrupamiento tenga sentido.
+    $category = site_required_text('category', 'category');
 
     $image = site_handle_image('image', 'servicios', $title, '');
     $stmt = $pdo->prepare('INSERT INTO radio_services (title, image, description, whatsapp_url, category, icon, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)');
     $stmt->execute([
         $title,
         $image,
-        trim($_POST['description'] ?? ''),
-        safe_external_url($_POST['whatsapp_url'] ?? ''),
-        trim($_POST['category'] ?? ''),
-        trim($_POST['icon'] ?? ''),
-        (int) ($_POST['sort_order'] ?? 0),
+        site_optional_text('description'),
+        site_valid_url((string) ($_POST['whatsapp_url'] ?? ''), 'whatsapp_url'),
+        $category,
+        site_optional_text('icon'),
+        site_valid_int('sort_order', 'sort_order'),
     ]);
 
     $id = (int) $pdo->lastInsertId();
     $stmt = $pdo->prepare('SELECT * FROM radio_services WHERE id = ?');
     $stmt->execute([$id]);
-    json_response(['item' => $stmt->fetch()], 201);
+    $item = $stmt->fetch();
+    site_audit_log($pdo, $actor, 'servicios', 'create', $id, null, $item);
+    site_response_item($item, 201);
 }
 
 function siteServicioUpdate(PDO $pdo, string $id) {
-    site_require_director($pdo);
+    $actor = site_actor_context($pdo, 'site:write');
     $stmt = $pdo->prepare('SELECT * FROM radio_services WHERE id = ?');
     $stmt->execute([$id]);
     $existing = $stmt->fetch();
     if (!$existing) error_response('Servicio no encontrado', 404);
 
-    $title = trim($_POST['title'] ?? '');
-    if ($title === '') error_response('title es requerido', 400);
-
+    $title = site_required_text('title', 'title');
+    $category = site_required_text('category', 'category');
     $image = site_handle_image('image', 'servicios', $title, $existing['image'] ?? '');
     $stmt = $pdo->prepare('UPDATE radio_services SET title=?, image=?, description=?, whatsapp_url=?, category=?, icon=?, sort_order=? WHERE id=?');
     $stmt->execute([
         $title,
         $image,
-        trim($_POST['description'] ?? ''),
-        safe_external_url($_POST['whatsapp_url'] ?? ''),
-        trim($_POST['category'] ?? ''),
-        trim($_POST['icon'] ?? ''),
-        (int) ($_POST['sort_order'] ?? 0),
+        site_optional_text('description'),
+        site_valid_url((string) ($_POST['whatsapp_url'] ?? ''), 'whatsapp_url'),
+        $category,
+        site_optional_text('icon'),
+        site_valid_int('sort_order', 'sort_order'),
         $id,
     ]);
+    if ($image !== ($existing['image'] ?? '')) {
+        site_delete_old_file($existing['image'] ?? '');
+    }
 
     $stmt = $pdo->prepare('SELECT * FROM radio_services WHERE id = ?');
     $stmt->execute([$id]);
-    json_response(['item' => $stmt->fetch()]);
+    $item = $stmt->fetch();
+    site_audit_log($pdo, $actor, 'servicios', 'update', (int) $id, $existing, $item);
+    site_response_item($item);
 }
 
 function siteServicioDelete(PDO $pdo, string $id) {
-    site_require_director($pdo);
+    $actor = site_actor_context($pdo, 'site:delete');
+    $stmt = $pdo->prepare('SELECT * FROM radio_services WHERE id = ?');
+    $stmt->execute([$id]);
+    $existing = $stmt->fetch();
+    if (!$existing) error_response('Resource not found', 404);
+
     $pdo->prepare('DELETE FROM radio_services WHERE id = ?')->execute([$id]);
-    json_response(['ok' => true]);
+    site_audit_log($pdo, $actor, 'servicios', 'delete', (int) $id, $existing, null);
+    json_response(['version' => '1', 'ok' => true]);
 }
 
 // ---- equipo (radio_team) ----------------------------------------------------
