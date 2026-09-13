@@ -51,23 +51,42 @@ function getMe(PDO $pdo) {
     json_response($payload);
 }
 
+// Límite explícito, independiente de upload_max_filesize/post_max_size del
+// php.ini del host (mismo patrón que SITE_MAX_IMAGE_BYTES, DOCUMENT_MAX_BYTES...).
+const PROFILE_PHOTO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+
 // Sube/reemplaza la foto de perfil del usuario autenticado. Misma validación
 // de tipo de archivo que addImage(); a diferencia de esa, aquí se borra el
 // archivo anterior porque solo tiene sentido conservar una foto por usuario.
 function updateProfilePhoto(PDO $pdo) {
     $user = require_auth($pdo);
+    enforce_rate_limit($pdo, 'upload_profile_photo', $user['id'], 10, 3600);
 
     if (empty($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
         error_response('photo is required', 400);
+    }
+
+    $size = (int) $_FILES['photo']['size'];
+    if ($size <= 0 || $size > PROFILE_PHOTO_MAX_BYTES) {
+        error_response('La foto supera el tamaño máximo permitido (5 MB).', 400);
     }
 
     $tmpPath = $_FILES['photo']['tmp_name'];
     $originalName = $_FILES['photo']['name'];
     $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
     $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    $allowedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
     if (!in_array($ext, $allowed, true) || @getimagesize($tmpPath) === false) {
         error_response('Only image files are allowed', 400);
+    }
+    if (function_exists('finfo_open')) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $tmpPath) ?: null;
+        finfo_close($finfo);
+        if ($mime !== null && !in_array($mime, $allowedMime, true)) {
+            error_response('Only image files are allowed', 400);
+        }
     }
 
     $storedName = bin2hex(random_bytes(16)) . '.' . $ext;

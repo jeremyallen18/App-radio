@@ -318,6 +318,10 @@ function internalAnnouncementsList(PDO $pdo) {
 function internalAnnouncementCreate(PDO $pdo) {
     $user = require_auth($pdo);
     require_role($user, ['director']);
+    // Notifica a toda la audiencia (push + fila de notificación por persona):
+    // sin este límite, un token comprometido podría bombardear a la empresa
+    // entera. Se corta ANTES de tocar la BD o mandar nada.
+    enforce_rate_limit($pdo, 'internal_announcement_create', $user['id'], 2, 60);
     $data = ia_body_or_fail($pdo);
 
     $id = generate_id();

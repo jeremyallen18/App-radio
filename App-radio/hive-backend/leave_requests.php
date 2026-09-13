@@ -341,6 +341,9 @@ function leaveRequestCreate(PDO $pdo) {
     if ($type === 'incapacidad' && !$hasFile) {
         leave_fail('Debes adjuntar evidencia para solicitar una incapacidad.', 400);
     }
+    if ($hasFile) {
+        enforce_rate_limit($pdo, 'upload_leave_evidence', $user['id'], 20, 3600);
+    }
 
     $days = leave_business_days($start, $end);
     $id = generate_id();

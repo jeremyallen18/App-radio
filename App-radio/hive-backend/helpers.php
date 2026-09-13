@@ -31,6 +31,76 @@ function error_response(string $message, int $status = 400) {
     json_response(['error' => $message], $status);
 }
 
+// ---- límite de tasa (anti fuerza bruta / anti abuso) -------------------
+//
+// Ventanas fijas contadas en MySQL (tabla rate_limits, migración 037): cada
+// $key agrupa una acción con un ámbito (IP, email o user id). No requiere
+// Redis/Memcached; a la escala de este backend, una fila por bucket+ventana
+// es barata y el índice UNIQUE(bucket_key, window_start) hace el conteo
+// atómico con INSERT ... ON DUPLICATE KEY UPDATE.
+
+// IP del cliente para los límites de tasa por IP. X-Forwarded-For lo manda
+// el propio cliente HTTP, así que confiar en él siempre permitiría saltarse
+// cualquier límite por IP mandando un valor distinto en cada petición. Solo
+// se lee si la conexión inmediata (REMOTE_ADDR) es un proxy de confianza
+// configurado en TRUSTED_PROXY_IPS (.env); sin esa variable, siempre se usa
+// REMOTE_ADDR tal cual.
+function client_ip(): string {
+    $remote = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+
+    $trusted = array_filter(array_map('trim', explode(',', (string) env_get('TRUSTED_PROXY_IPS', ''))));
+    if ($trusted && in_array($remote, $trusted, true)) {
+        $fwd = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+        if ($fwd !== '') {
+            return trim(explode(',', $fwd)[0]);
+        }
+    }
+    return $remote;
+}
+
+// Cuenta un intento bajo $key dentro de la ventana actual y dice si sigue
+// permitido. $key ya debe incluir la acción y el ámbito, p. ej.
+// "login_ip:203.0.113.4". Siempre cuenta el intento, incluso si ya se pasó
+// del límite, para que quien reintenta agresivamente no "resetee" la ventana.
+function rate_limit_check(PDO $pdo, string $key, int $maxHits, int $windowSeconds): bool {
+    $windowStart = date('Y-m-d H:i:s', intdiv(time(), $windowSeconds) * $windowSeconds);
+
+    $pdo->prepare(
+        'INSERT INTO rate_limits (bucket_key, window_start, hits)
+         VALUES (?, ?, 1)
+         ON DUPLICATE KEY UPDATE hits = hits + 1'
+    )->execute([$key, $windowStart]);
+
+    $stmt = $pdo->prepare(
+        'SELECT hits FROM rate_limits WHERE bucket_key = ? AND window_start = ?'
+    );
+    $stmt->execute([$key, $windowStart]);
+
+    return (int) $stmt->fetchColumn() <= $maxHits;
+}
+
+// Responde 429 (con Retry-After) y corta la ejecución si $action/$scopeKey ya
+// alcanzó $maxHits peticiones en los últimos $windowSeconds. Loguea el evento.
+function enforce_rate_limit(PDO $pdo, string $action, string $scopeKey, int $maxHits, int $windowSeconds): void {
+    if (!rate_limit_check($pdo, "$action:$scopeKey", $maxHits, $windowSeconds)) {
+        log_security_event($pdo, 'rate_limited', $scopeKey, ['action' => $action]);
+        header('Retry-After: ' . $windowSeconds);
+        error_response('Demasiadas solicitudes. Inténtalo de nuevo en unos minutos.', 429);
+    }
+}
+
+// Bitácora ligera de eventos de seguridad (intentos fallidos, límites
+// alcanzados). Nunca debe romper el flujo normal si falla el propio log.
+function log_security_event(PDO $pdo, string $type, ?string $identifier, array $meta = []): void {
+    try {
+        $pdo->prepare(
+            'INSERT INTO security_events (event_type, identifier, request_ip, meta) VALUES (?, ?, ?, ?)'
+        )->execute([$type, $identifier, client_ip(), json_encode($meta)]);
+    } catch (Throwable $e) {
+        error_log('[hive-backend] log_security_event failed: ' . $e->getMessage());
+    }
+}
+
 // Generates a 24-char hex id, mirroring the Mongo ObjectId style the
 // original Node backend used (some client code assumes this shape).
 function generate_id(): string {

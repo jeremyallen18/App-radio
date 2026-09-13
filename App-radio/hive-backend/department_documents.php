@@ -106,6 +106,7 @@ function deptDocumentsList(PDO $pdo) {
 
 function deptDocumentUpload(PDO $pdo) {
     $user = require_auth($pdo);
+    enforce_rate_limit($pdo, 'upload_department_documents', $user['id'], 20, 3600);
     $deptId = trim($_POST['departmentId'] ?? '');
     $docName = trim($_POST['docName'] ?? '');
 

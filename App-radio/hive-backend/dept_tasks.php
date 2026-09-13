@@ -473,6 +473,7 @@ function deptTasksList(PDO $pdo) {
 
 function deptTaskCreate(PDO $pdo) {
     $user = require_auth($pdo);
+    enforce_rate_limit($pdo, 'dept_task_create', $user['id'], 30, 3600);
 
     $body = request_body();
     $departmentId = dept_task_scope_department($user, $body['departmentId'] ?? null);
@@ -748,6 +749,7 @@ function deptTaskSetStatus(PDO $pdo, string $id) {
     $evidencePath = $row['evidence_path'];
     $evidenceMime = $row['evidence_mime'];
     if ($hasFile) {
+        enforce_rate_limit($pdo, 'upload_task_evidence', $user['id'], 20, 3600);
         $stored = task_store_evidence($_FILES['evidence']);
         $evidencePath = $stored['path'];
         $evidenceMime = $stored['mime'];
@@ -956,6 +958,7 @@ function deptTaskComments(PDO $pdo, string $id) {
 
 function deptTaskCommentCreate(PDO $pdo, string $id) {
     $user = require_auth($pdo);
+    enforce_rate_limit($pdo, 'dept_task_comment_create', $user['id'], 10, 60);
     $row = dept_task_row($pdo, $id);
     if (!$row) error_response('Tarea no encontrada', 404);
     dept_task_require_view($user, $row['department_id']);

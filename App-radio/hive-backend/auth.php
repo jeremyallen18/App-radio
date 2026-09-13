@@ -20,6 +20,8 @@ function dispatch_verification_email(PDO $pdo, array $user): bool {
 }
 
 function signup(PDO $pdo) {
+    enforce_rate_limit($pdo, 'signup_ip', client_ip(), 5, 3600);
+
     $body = request_body();
     $name = trim($body['name'] ?? '');
     $email = trim($body['email'] ?? '');
@@ -180,11 +182,17 @@ function login(PDO $pdo) {
     $email = trim($body['email'] ?? '');
     $password = $body['password'] ?? '';
 
+    enforce_rate_limit($pdo, 'login_ip', client_ip(), 10, 900);
+    if ($email !== '') {
+        enforce_rate_limit($pdo, 'login_email', strtolower($email), 5, 900);
+    }
+
     $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ?');
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
     if (!$user || !password_verify($password, $user['password'])) {
+        log_security_event($pdo, 'login_failed', strtolower($email));
         error_response('Invalid email or password', 401);
     }
 
@@ -222,15 +230,27 @@ function login(PDO $pdo) {
     raw_json_response($token, 200);
 }
 
+// Respuesta neutra: NUNCA revela si el correo existe o no en el sistema
+// (antes distinguía 404 "No account found" de 200 "OTP enviado", lo que
+// permitía enumerar cuentas sin ningún límite). El cliente solo mira
+// statusCode == 200 (ver reset_api.dart), así que este cambio es transparente.
+const RESET_PASSWORD_NEUTRAL_MESSAGE =
+    'Si la cuenta existe, te enviamos un código de recuperación a ese correo.';
+
 function resetPassword(PDO $pdo) {
     $body = request_body();
     $email = trim($body['email'] ?? '');
+
+    enforce_rate_limit($pdo, 'pwreset_ip', client_ip(), 10, 3600);
+    if ($email !== '') {
+        enforce_rate_limit($pdo, 'pwreset_email', strtolower($email), 3, 3600);
+    }
 
     $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
     $stmt->execute([$email]);
     $user = $stmt->fetch();
     if (!$user) {
-        json_response(['error' => 'No account found for that email'], 404);
+        json_response(['message' => RESET_PASSWORD_NEUTRAL_MESSAGE]);
     }
 
     $otp = generate_otp();
@@ -243,14 +263,17 @@ function resetPassword(PDO $pdo) {
     // (desarrollo local) o el envío falla, se puede leer aquí igualmente.
     error_log("[hive-backend] Password reset OTP for $email: $otp" . ($sent ? ' (emailed)' : ' (NOT emailed)'));
 
-    json_response(['message' => $sent
-        ? 'OTP enviado a tu correo'
-        : 'OTP generado, pero no se pudo enviar el correo (revisa la configuración SMTP o el log del backend)']);
+    json_response(['message' => RESET_PASSWORD_NEUTRAL_MESSAGE]);
 }
 
 function verifyOTP(PDO $pdo, string $email) {
     $body = request_body();
     $otp = trim($body['OTP'] ?? '');
+
+    // El OTP es de 6 dígitos (10^6 combinaciones); sin este límite se podría
+    // fuerza-brutear dentro de la ventana de validez de 10 minutos.
+    enforce_rate_limit($pdo, 'otp_verify_email', strtolower($email), 8, 600);
+    enforce_rate_limit($pdo, 'otp_verify_ip', client_ip(), 20, 600);
 
     if ($otp === '') {
         json_response(['error' => 'Invalid or expired OTP'], 400);
@@ -267,6 +290,7 @@ function verifyOTP(PDO $pdo, string $email) {
     $user = $stmt->fetch();
 
     if (!$user) {
+        log_security_event($pdo, 'otp_failed', strtolower($email));
         json_response(['error' => 'Invalid or expired OTP'], 400);
     }
 
@@ -336,12 +360,15 @@ function updateAccountName(PDO $pdo) {
 // dispositivo; cualquier otra queda invalidada) y lo devuelve.
 function changePassword(PDO $pdo) {
     $user = require_auth($pdo);
+    enforce_rate_limit($pdo, 'change_password', $user['id'], 5, 900);
+
     $body = request_body();
     $current = $body['currentPassword'] ?? '';
     $new = $body['newPassword'] ?? '';
     $confirm = $body['confirmPassword'] ?? '';
 
     if (!password_verify($current, $user['password'])) {
+        log_security_event($pdo, 'change_password_failed', $user['id']);
         error_response('La contraseña actual no es correcta', 400);
     }
     if (mb_strlen($new) < 6) {
@@ -366,11 +393,14 @@ function changePassword(PDO $pdo) {
 // dirección. El correo actual y la sesión siguen válidos entretanto.
 function requestEmailChange(PDO $pdo) {
     $user = require_auth($pdo);
+    enforce_rate_limit($pdo, 'request_email_change', $user['id'], 5, 900);
+
     $body = request_body();
     $current = $body['currentPassword'] ?? '';
     $newEmail = strtolower(trim($body['newEmail'] ?? ''));
 
     if (!password_verify($current, $user['password'])) {
+        log_security_event($pdo, 'request_email_change_failed', $user['id']);
         error_response('La contraseña actual no es correcta', 400);
     }
     if ($newEmail === '' || !filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {

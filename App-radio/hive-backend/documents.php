@@ -37,6 +37,7 @@ function teamDocumentsList(PDO $pdo, string $teamId) {
 
 function teamDocumentUpload(PDO $pdo) {
     $user = require_auth($pdo);
+    enforce_rate_limit($pdo, 'upload_documents', $user['id'], 20, 3600);
     $teamId = trim($_POST['teamId'] ?? '');
     $docName = trim($_POST['docName'] ?? '');
 

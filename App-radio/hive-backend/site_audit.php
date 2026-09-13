@@ -43,19 +43,30 @@ function site_actor_context(PDO $pdo, string $requiredScope = 'site:write'): arr
                 'scopes'      => SITE_CONTENT_SCOPES,
             ];
             site_require_scope($context, $requiredScope);
+            site_enforce_write_rate_limit($pdo, $context, $requiredScope);
             return $context;
         }
     }
 
     $user = require_auth($pdo);
     require_role($user, ['director']);
-    return [
+    $context = [
         'actor_type'  => 'session',
         'actor_id'    => (string) $user['id'],
         'actor_email' => $user['email'],
         'role'        => $user['role'],
         'scopes'      => SITE_CONTENT_SCOPES,
     ];
+    site_enforce_write_rate_limit($pdo, $context, $requiredScope);
+    return $context;
+}
+
+// Límite común a los 12 endpoints create/update/delete de /site/* (incluye
+// las subidas de imagen/audio, el mayor riesgo de agotar el disco
+// compartido). Las lecturas (site:read) no pasan por aquí.
+function site_enforce_write_rate_limit(PDO $pdo, array $context, string $requiredScope): void {
+    if ($requiredScope === 'site:read') return;
+    enforce_rate_limit($pdo, 'site_content_write', $context['actor_id'], 30, 3600);
 }
 
 function site_require_scope(array $actorContext, string $scope): void {

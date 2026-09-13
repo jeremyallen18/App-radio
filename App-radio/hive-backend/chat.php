@@ -120,6 +120,7 @@ function chatThread(PDO $pdo, string $peerRef) {
 // El remitente sale del token, nunca del body.
 function sendChatMessage(PDO $pdo) {
     $me = require_auth($pdo);
+    enforce_rate_limit($pdo, 'chat_send_message', $me['id'], 20, 60);
     $body = request_body();
     $message = trim($body['message'] ?? '');
     $to = (string) ($body['to'] ?? $body['recipient'] ?? $body['recipientEmail'] ?? '');
