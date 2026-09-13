@@ -2,3 +2,6 @@ doliv_social/
 
 # Notas personales de despliegue, no forman parte del proyecto versionado.
 ARCHIVOS_MODIFICADOS_HOSTINGER.txt
+
+# Workspace scratch de subagent-driven-development (ledgers, briefs, reviews).
+.superpowers/
