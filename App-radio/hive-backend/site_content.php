@@ -392,24 +392,22 @@ function site_team_with_socials(PDO $pdo, int $id): array {
 // llegaron en $_POST['socials_json'] (array JSON de {label,icon,url}) --
 // mismo enfoque que site_save_sponsor_socials().
 function site_save_team_socials(PDO $pdo, int $teamId): void {
+    $rows = site_decode_json_array((string) ($_POST['socials_json'] ?? '[]'), 'socials_json');
     $pdo->prepare('DELETE FROM team_socials WHERE team_id = ?')->execute([$teamId]);
-
-    $raw = $_POST['socials_json'] ?? '[]';
-    $rows = json_decode($raw, true);
-    if (!is_array($rows)) return;
 
     $insert = $pdo->prepare('INSERT INTO team_socials (team_id, label, icon, url, sort_order) VALUES (?, ?, ?, ?, ?)');
     $order = 0;
     foreach ($rows as $row) {
         $label = trim((string) ($row['label'] ?? ''));
-        $url = safe_external_url($row['url'] ?? '');
-        if ($label === '' && $url === '') continue;
+        $rawUrl = trim((string) ($row['url'] ?? ''));
+        if ($label === '' && $rawUrl === '') continue;
+        $url = site_valid_url($rawUrl, "socials_json[$order].url");
         $insert->execute([$teamId, $label, trim((string) ($row['icon'] ?? '')), $url, $order++]);
     }
 }
 
 function siteEquipoList(PDO $pdo) {
-    site_require_director($pdo);
+    site_actor_context($pdo, 'site:read');
     $rows = $pdo->query('SELECT * FROM radio_team ORDER BY sort_order ASC, id ASC')->fetchAll();
     $socialsStmt = $pdo->query('SELECT team_id, label, icon, url FROM team_socials ORDER BY team_id ASC, sort_order ASC');
     $byMember = [];
@@ -421,7 +419,7 @@ function siteEquipoList(PDO $pdo) {
         $row['socials'] = $byMember[$row['id']] ?? [];
         $row['program_ids'] = $byHost[$row['id']] ?? [];
     }
-    json_response(['items' => $rows]);
+    site_response_list($rows);
 }
 
 function site_equipo_text(string $field): string {
@@ -468,18 +466,7 @@ function site_recompute_program_host(PDO $pdo, int $programId): void {
 function site_sync_team_programs(PDO $pdo, int $teamId): void {
     if (!array_key_exists('program_ids', $_POST)) return;
 
-    $raw = trim((string) $_POST['program_ids']);
-    $ids = $raw === '' ? [] : array_values(array_unique(array_filter(
-        array_map('intval', explode(',', $raw)),
-        fn($n) => $n > 0
-    )));
-
-    if ($ids !== []) {
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $valid = $pdo->prepare("SELECT id FROM radio_programs WHERE id IN ($placeholders)");
-        $valid->execute($ids);
-        $ids = array_map('intval', $valid->fetchAll(PDO::FETCH_COLUMN));
-    }
+    $ids = site_valid_ids_in_table($pdo, (string) $_POST['program_ids'], 'radio_programs', 'program_ids');
 
     $currentStmt = $pdo->prepare('SELECT program_id FROM radio_program_hosts WHERE team_id = ?');
     $currentStmt->execute([$teamId]);
@@ -523,80 +510,104 @@ function site_equipo_category(): string {
 }
 
 function siteEquipoCreate(PDO $pdo) {
-    site_require_director($pdo);
-    $name = trim($_POST['name'] ?? '');
-    if ($name === '') error_response('name es requerido', 400);
+    $actor = site_actor_context($pdo, 'site:write');
+    $name = site_required_text('name', 'name');
     $category = site_equipo_category();
 
     $image = site_handle_image('image', 'locutores', $name, '');
     $slug = site_unique_slug($pdo, 'radio_team', $name);
 
-    $pdo->beginTransaction();
-    // El integrante más reciente siempre aparece primero: recorre a todos
-    // los demás una posición y este entra en sort_order = 0.
-    $pdo->exec('UPDATE radio_team SET sort_order = sort_order + 1');
-    $stmt = $pdo->prepare('INSERT INTO radio_team (slug, name, role, category, accent, image, short_desc, bio, path, interests, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)');
-    $stmt->execute([
-        $slug,
-        $name,
-        trim($_POST['role'] ?? ''),
-        $category,
-        trim($_POST['accent'] ?? ''),
-        $image,
-        trim($_POST['short_desc'] ?? ''),
-        site_equipo_text('bio'),
-        site_equipo_text('path'),
-        site_equipo_text('interests'),
-    ]);
+    try {
+        $pdo->beginTransaction();
+        // El integrante más reciente siempre aparece primero: recorre a todos
+        // los demás una posición y este entra en sort_order = 0.
+        $pdo->exec('UPDATE radio_team SET sort_order = sort_order + 1');
+        $stmt = $pdo->prepare('INSERT INTO radio_team (slug, name, role, category, accent, image, short_desc, bio, path, interests, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)');
+        $stmt->execute([
+            $slug,
+            $name,
+            site_optional_text('role'),
+            $category,
+            site_optional_text('accent'),
+            $image,
+            site_optional_text('short_desc'),
+            site_equipo_text('bio'),
+            site_equipo_text('path'),
+            site_equipo_text('interests'),
+        ]);
 
-    $id = (int) $pdo->lastInsertId();
-    site_save_team_socials($pdo, $id);
-    site_sync_team_programs($pdo, $id);
-    $pdo->commit();
+        $id = (int) $pdo->lastInsertId();
+        site_save_team_socials($pdo, $id);
+        site_sync_team_programs($pdo, $id);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
 
-    json_response(['item' => site_team_with_socials($pdo, $id)], 201);
+    $item = site_team_with_socials($pdo, $id);
+    site_audit_log($pdo, $actor, 'equipo', 'create', $id, null, $item);
+    site_response_item($item, 201);
 }
 
 function siteEquipoUpdate(PDO $pdo, string $id) {
-    site_require_director($pdo);
+    $actor = site_actor_context($pdo, 'site:write');
     $stmt = $pdo->prepare('SELECT * FROM radio_team WHERE id = ?');
     $stmt->execute([$id]);
     $existing = $stmt->fetch();
     if (!$existing) error_response('Integrante no encontrado', 404);
+    $before = site_team_with_socials($pdo, (int) $id);
 
-    $name = trim($_POST['name'] ?? '');
-    if ($name === '') error_response('name es requerido', 400);
+    $name = site_required_text('name', 'name');
     $category = site_equipo_category();
-
     $image = site_handle_image('image', 'locutores', $name, $existing['image'] ?? '');
-    $pdo->beginTransaction();
-    // sort_order no se toca aquí a propósito: editar un integrante no debe
-    // reordenar la lista (solo crear uno nuevo la reordena, ver Create).
-    $stmt = $pdo->prepare('UPDATE radio_team SET name=?, role=?, category=?, accent=?, image=?, short_desc=?, bio=?, path=?, interests=? WHERE id=?');
-    $stmt->execute([
-        $name,
-        trim($_POST['role'] ?? ''),
-        $category,
-        trim($_POST['accent'] ?? ''),
-        $image,
-        trim($_POST['short_desc'] ?? ''),
-        site_equipo_text('bio'),
-        site_equipo_text('path'),
-        site_equipo_text('interests'),
-        $id,
-    ]);
-    site_save_team_socials($pdo, (int) $id);
-    site_sync_team_programs($pdo, (int) $id);
-    $pdo->commit();
 
-    json_response(['item' => site_team_with_socials($pdo, (int) $id)]);
+    try {
+        $pdo->beginTransaction();
+        // sort_order no se toca aquí a propósito: editar un integrante no debe
+        // reordenar la lista (solo crear uno nuevo la reordena, ver Create).
+        $stmt = $pdo->prepare('UPDATE radio_team SET name=?, role=?, category=?, accent=?, image=?, short_desc=?, bio=?, path=?, interests=? WHERE id=?');
+        $stmt->execute([
+            $name,
+            site_optional_text('role'),
+            $category,
+            site_optional_text('accent'),
+            $image,
+            site_optional_text('short_desc'),
+            site_equipo_text('bio'),
+            site_equipo_text('path'),
+            site_equipo_text('interests'),
+            $id,
+        ]);
+        site_save_team_socials($pdo, (int) $id);
+        site_sync_team_programs($pdo, (int) $id);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+    if ($image !== ($existing['image'] ?? '')) {
+        site_delete_old_file($existing['image'] ?? '');
+    }
+
+    $item = site_team_with_socials($pdo, (int) $id);
+    site_audit_log($pdo, $actor, 'equipo', 'update', (int) $id, $before, $item);
+    site_response_item($item);
 }
 
 function siteEquipoDelete(PDO $pdo, string $id) {
-    site_require_director($pdo);
-    // team_socials tiene ON DELETE CASCADE hacia radio_team.
+    $actor = site_actor_context($pdo, 'site:delete');
+    $stmt = $pdo->prepare('SELECT * FROM radio_team WHERE id = ?');
+    $stmt->execute([$id]);
+    $existing = $stmt->fetch();
+    if (!$existing) error_response('Resource not found', 404);
+    $before = site_team_with_socials($pdo, (int) $id);
+
+    // team_socials y radio_program_hosts tienen ON DELETE CASCADE hacia
+    // radio_team.
     $pdo->prepare('DELETE FROM radio_team WHERE id = ?')->execute([$id]);
-    json_response(['ok' => true]);
+    site_audit_log($pdo, $actor, 'equipo', 'delete', (int) $id, $before, null);
+    json_response(['version' => '1', 'ok' => true]);
 }
 
 // ---- programas (radio_programs) --------------------------------------------
