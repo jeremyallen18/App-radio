@@ -64,16 +64,6 @@ function site_require_scope(array $actorContext, string $scope): void {
     }
 }
 
-// Backward compatibility wrapper for existing site_content.php code.
-// Returns simplified context for legacy callers that don't need the full actor context.
-function site_require_director(PDO $pdo): array {
-    $context = site_actor_context($pdo, 'site:write');
-    return [
-        'email' => $context['actor_email'] ?? $context['actor_id'],
-        'role' => $context['role'],
-    ];
-}
-
 // Saves audit record. $before/$after stored as JSON for reconstruction;
 // $resource must match /site/{resource} segment for endpoint filtering.
 function site_audit_log(
