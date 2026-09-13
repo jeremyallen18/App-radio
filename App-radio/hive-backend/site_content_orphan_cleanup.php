@@ -1,11 +1,19 @@
 <?php
 // Script de mantenimiento: limpia archivos huérfanos de assets/img y assets/audio.
-// Uso: php site_content_orphan_cleanup.php [--dry-run]
+// Uso: php site_content_orphan_cleanup.php [--force]  (sin --force solo lista, no borra)
 // Seguridad: nunca borra nada fuera de RADIODOLIV_PAGINA_PATH/assets.
 
 require __DIR__ . '/config.php';
 
-$dryRun = in_array('--dry-run', $argv, true);
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
+// --dry-run se acepta por compatibilidad pero ya no cambia nada: solo
+// --force borra. Por defecto el script únicamente lista.
+$force = in_array('--force', $argv, true);
+$dryRun = !$force;
 
 // img/patrocinadores también se referencia desde el arreglo estático de
 // RADIODOLIV_PAGINA/inc/data/sponsors.php (invisible aquí) — revísalo antes de borrar.
@@ -32,7 +40,7 @@ foreach ($sources as [$relDir, $table, $columns]) {
     foreach ($columns as $column) {
         $stmt = $pdo->query("SELECT `$column` FROM `$table` WHERE `$column` IS NOT NULL AND `$column` <> ''");
         foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $path) {
-            $referenced[basename(urldecode($path))] = true;
+            $referenced[basename(urldecode(strtok((string) $path, '?')))] = true;
         }
     }
 
@@ -47,10 +55,11 @@ foreach ($sources as [$relDir, $table, $columns]) {
         }
 
         echo ($dryRun ? '[dry-run] borraría: ' : 'borrando: ') . "assets/$relDir/$file" . PHP_EOL;
-        if (!$dryRun) {
-            @unlink($fullPath);
+        if ($dryRun) {
+            $deleted++;
+        } elseif (@unlink($fullPath)) {
+            $deleted++;
         }
-        $deleted++;
     }
 }
 

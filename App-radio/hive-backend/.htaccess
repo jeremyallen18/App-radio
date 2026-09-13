@@ -9,7 +9,7 @@ RewriteRule ^ - [L]
 # Everything else goes through the front controller
 RewriteRule ^(.*)$ index.php [QSA,L]
 
-<FilesMatch "(\.(sql|log|env)$|^migrate_encrypt_027\.php$)">
+<FilesMatch "(\.(sql|log|env)$|^migrate_encrypt_027\.php$|^(cron_.*|site_content_orphan_cleanup)\.php$)">
     Require all denied
 </FilesMatch>
 
