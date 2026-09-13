@@ -140,66 +140,76 @@ function site_handle_audio(string $field, string $subdir, string $labelForName, 
 // ---- anuncios --------------------------------------------------------------
 
 function siteAnunciosList(PDO $pdo) {
-    site_require_director($pdo);
+    site_actor_context($pdo, 'site:read');
     $rows = $pdo->query('SELECT * FROM anuncios ORDER BY fecha_publicacion DESC, id DESC')->fetchAll();
-    json_response(['items' => $rows]);
+    site_response_list($rows);
 }
 
 function siteAnuncioCreate(PDO $pdo) {
-    site_require_director($pdo);
-    $titulo = trim($_POST['titulo'] ?? '');
-    if ($titulo === '') error_response('titulo es requerido', 400);
+    $actor = site_actor_context($pdo, 'site:write');
+    $titulo = site_required_text('titulo', 'titulo');
 
     $imagenUrl = site_handle_image('imagen', 'anuncios', $titulo, '');
     $stmt = $pdo->prepare('INSERT INTO anuncios (titulo, descripcion, imagen_url, link_web, link_facebook, link_whatsapp, fecha_publicacion) VALUES (?, ?, ?, ?, ?, ?, ?)');
     $stmt->execute([
         $titulo,
-        trim($_POST['descripcion'] ?? ''),
+        site_optional_text('descripcion'),
         $imagenUrl,
-        safe_external_url($_POST['link_web'] ?? ''),
-        safe_external_url($_POST['link_facebook'] ?? ''),
-        safe_external_url($_POST['link_whatsapp'] ?? ''),
-        trim($_POST['fecha_publicacion'] ?? '') ?: null,
+        site_valid_url((string) ($_POST['link_web'] ?? ''), 'link_web'),
+        site_valid_url((string) ($_POST['link_facebook'] ?? ''), 'link_facebook'),
+        site_valid_url((string) ($_POST['link_whatsapp'] ?? ''), 'link_whatsapp'),
+        site_valid_date('fecha_publicacion', 'fecha_publicacion'),
     ]);
 
     $id = (int) $pdo->lastInsertId();
     $stmt = $pdo->prepare('SELECT * FROM anuncios WHERE id = ?');
     $stmt->execute([$id]);
-    json_response(['item' => $stmt->fetch()], 201);
+    $item = $stmt->fetch();
+    site_audit_log($pdo, $actor, 'anuncios', 'create', $id, null, $item);
+    site_response_item($item, 201);
 }
 
 function siteAnuncioUpdate(PDO $pdo, string $id) {
-    site_require_director($pdo);
+    $actor = site_actor_context($pdo, 'site:write');
     $stmt = $pdo->prepare('SELECT * FROM anuncios WHERE id = ?');
     $stmt->execute([$id]);
     $existing = $stmt->fetch();
     if (!$existing) error_response('Anuncio no encontrado', 404);
 
-    $titulo = trim($_POST['titulo'] ?? '');
-    if ($titulo === '') error_response('titulo es requerido', 400);
-
+    $titulo = site_required_text('titulo', 'titulo');
     $imagenUrl = site_handle_image('imagen', 'anuncios', $titulo, $existing['imagen_url'] ?? '');
     $stmt = $pdo->prepare('UPDATE anuncios SET titulo=?, descripcion=?, imagen_url=?, link_web=?, link_facebook=?, link_whatsapp=?, fecha_publicacion=? WHERE id=?');
     $stmt->execute([
         $titulo,
-        trim($_POST['descripcion'] ?? ''),
+        site_optional_text('descripcion'),
         $imagenUrl,
-        safe_external_url($_POST['link_web'] ?? ''),
-        safe_external_url($_POST['link_facebook'] ?? ''),
-        safe_external_url($_POST['link_whatsapp'] ?? ''),
-        trim($_POST['fecha_publicacion'] ?? '') ?: null,
+        site_valid_url((string) ($_POST['link_web'] ?? ''), 'link_web'),
+        site_valid_url((string) ($_POST['link_facebook'] ?? ''), 'link_facebook'),
+        site_valid_url((string) ($_POST['link_whatsapp'] ?? ''), 'link_whatsapp'),
+        site_valid_date('fecha_publicacion', 'fecha_publicacion'),
         $id,
     ]);
+    if ($imagenUrl !== ($existing['imagen_url'] ?? '')) {
+        site_delete_old_file($existing['imagen_url'] ?? '');
+    }
 
     $stmt = $pdo->prepare('SELECT * FROM anuncios WHERE id = ?');
     $stmt->execute([$id]);
-    json_response(['item' => $stmt->fetch()]);
+    $item = $stmt->fetch();
+    site_audit_log($pdo, $actor, 'anuncios', 'update', (int) $id, $existing, $item);
+    site_response_item($item);
 }
 
 function siteAnuncioDelete(PDO $pdo, string $id) {
-    site_require_director($pdo);
+    $actor = site_actor_context($pdo, 'site:delete');
+    $stmt = $pdo->prepare('SELECT * FROM anuncios WHERE id = ?');
+    $stmt->execute([$id]);
+    $existing = $stmt->fetch();
+    if (!$existing) error_response('Resource not found', 404);
+
     $pdo->prepare('DELETE FROM anuncios WHERE id = ?')->execute([$id]);
-    json_response(['ok' => true]);
+    site_audit_log($pdo, $actor, 'anuncios', 'delete', (int) $id, $existing, null);
+    json_response(['version' => '1', 'ok' => true]);
 }
 
 // ---- eventos (radio_events) ------------------------------------------------
