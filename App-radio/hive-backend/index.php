@@ -1,6 +1,8 @@
 <?php
 require __DIR__ . '/config.php';
 require __DIR__ . '/helpers.php';
+require __DIR__ . '/site_audit.php';
+require __DIR__ . '/site_validation.php';
 require __DIR__ . '/site_content.php';
 require __DIR__ . '/events.php';
 require __DIR__ . '/attendance_device.php';
