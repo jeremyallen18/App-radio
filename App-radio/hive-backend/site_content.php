@@ -613,13 +613,13 @@ function siteEquipoDelete(PDO $pdo, string $id) {
 // ---- programas (radio_programs) --------------------------------------------
 
 function siteProgramasList(PDO $pdo) {
-    site_require_director($pdo);
+    site_actor_context($pdo, 'site:read');
     $rows = $pdo->query('SELECT * FROM radio_programs ORDER BY sort_order ASC, id ASC')->fetchAll();
     $byProgram = site_program_host_ids_by_program($pdo);
     foreach ($rows as &$row) {
         $row['host_team_ids'] = $byProgram[$row['id']] ?? [];
     }
-    json_response(['items' => $rows]);
+    site_response_list($rows);
 }
 
 // Ids de radio_team vinculados a cada programa (host_team_ids), en un solo
@@ -666,8 +666,8 @@ function site_join_names_with_y(array $names): string {
 }
 
 function site_programa_fields(PDO $pdo): array {
-    $slotStart = site_programa_hour('slot_start');
-    $slotEnd = site_programa_hour('slot_end');
+    $slotStart = site_valid_hour('slot_start', 'slot_start');
+    $slotEnd = site_valid_hour('slot_end', 'slot_end');
     if (($slotStart === null) !== ($slotEnd === null)) {
         error_response('Indica la hora de inicio y la hora final, o deja ambas vacías.', 400);
     }
@@ -719,10 +719,7 @@ function site_programa_host(PDO $pdo): array {
     if ($raw === '') {
         return [[], trim($_POST['host'] ?? '')];
     }
-    $ids = array_values(array_unique(array_filter(
-        array_map('intval', explode(',', $raw)),
-        fn($n) => $n > 0
-    )));
+    $ids = site_valid_ids_in_table($pdo, $raw, 'radio_team', 'host_team_ids');
     if ($ids === []) {
         return [[], trim($_POST['host'] ?? '')];
     }
@@ -734,24 +731,8 @@ function site_programa_host(PDO $pdo): array {
     foreach ($stmt->fetchAll() as $row) {
         $namesById[(int) $row['id']] = $row['name'];
     }
-    if (count($namesById) !== count($ids)) {
-        error_response('Alguno de los locutores seleccionados ya no existe.', 400);
-    }
     $names = array_map(fn($id) => $namesById[$id], $ids);
     return [$ids, site_join_names_with_y($names)];
-}
-
-function site_programa_hour(string $field): ?int {
-    $raw = trim((string) ($_POST[$field] ?? ''));
-    if ($raw === '') return null;
-    if (filter_var($raw, FILTER_VALIDATE_INT) === false) {
-        error_response("$field debe ser una hora entera entre 0 y 23.", 400);
-    }
-    $hour = (int) $raw;
-    if ($hour < 0 || $hour > 23) {
-        error_response("$field debe estar entre 0 y 23.", 400);
-    }
-    return $hour;
 }
 
 function site_programa_weekdays(): array {
@@ -774,51 +755,73 @@ function site_programa_days_label(array $days): string {
 }
 
 function siteProgramaCreate(PDO $pdo) {
-    site_require_director($pdo);
-    $title = trim($_POST['title'] ?? '');
-    if ($title === '') error_response('title es requerido', 400);
+    $actor = site_actor_context($pdo, 'site:write');
+    $title = site_required_text('title', 'title');
 
     [$modalTitle, $host, $hostTeamIds, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $categories, $cardDesc, $indexDesc, $summary, $sortOrder] = site_programa_fields($pdo);
     $image = site_handle_image('image', 'programas', $title, '');
     $slug = site_unique_slug($pdo, 'radio_programs', $title);
 
-    $pdo->beginTransaction();
-    $stmt = $pdo->prepare('INSERT INTO radio_programs (slug, title, modal_title, host, schedule, slot_start, slot_end, weekdays, badge_icon, badge_time, badge_label, accent, icon, image, categories, card_desc, index_desc, summary, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    $stmt->execute([$slug, $title, $modalTitle, $host, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $image, $categories, $cardDesc, $indexDesc, $summary, $sortOrder]);
+    try {
+        $pdo->beginTransaction();
+        $stmt = $pdo->prepare('INSERT INTO radio_programs (slug, title, modal_title, host, schedule, slot_start, slot_end, weekdays, badge_icon, badge_time, badge_label, accent, icon, image, categories, card_desc, index_desc, summary, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$slug, $title, $modalTitle, $host, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $image, $categories, $cardDesc, $indexDesc, $summary, $sortOrder]);
 
-    $id = (int) $pdo->lastInsertId();
-    site_sync_program_hosts($pdo, $id, $hostTeamIds);
-    $pdo->commit();
+        $id = (int) $pdo->lastInsertId();
+        site_sync_program_hosts($pdo, $id, $hostTeamIds);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
 
-    json_response(['item' => site_program_with_hosts($pdo, $id)], 201);
+    $item = site_program_with_hosts($pdo, $id);
+    site_audit_log($pdo, $actor, 'programas', 'create', $id, null, $item);
+    site_response_item($item, 201);
 }
 
 function siteProgramaUpdate(PDO $pdo, string $id) {
-    site_require_director($pdo);
+    $actor = site_actor_context($pdo, 'site:write');
     $stmt = $pdo->prepare('SELECT * FROM radio_programs WHERE id = ?');
     $stmt->execute([$id]);
     $existing = $stmt->fetch();
     if (!$existing) error_response('Programa no encontrado', 404);
+    $before = site_program_with_hosts($pdo, (int) $id);
 
-    $title = trim($_POST['title'] ?? '');
-    if ($title === '') error_response('title es requerido', 400);
-
+    $title = site_required_text('title', 'title');
     [$modalTitle, $host, $hostTeamIds, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $categories, $cardDesc, $indexDesc, $summary, $sortOrder] = site_programa_fields($pdo);
     $image = site_handle_image('image', 'programas', $title, $existing['image'] ?? '');
 
-    $pdo->beginTransaction();
-    $stmt = $pdo->prepare('UPDATE radio_programs SET title=?, modal_title=?, host=?, schedule=?, slot_start=?, slot_end=?, weekdays=?, badge_icon=?, badge_time=?, badge_label=?, accent=?, icon=?, image=?, categories=?, card_desc=?, index_desc=?, summary=?, sort_order=? WHERE id=?');
-    $stmt->execute([$title, $modalTitle, $host, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $image, $categories, $cardDesc, $indexDesc, $summary, $sortOrder, $id]);
-    site_sync_program_hosts($pdo, (int) $id, $hostTeamIds);
-    $pdo->commit();
+    try {
+        $pdo->beginTransaction();
+        $stmt = $pdo->prepare('UPDATE radio_programs SET title=?, modal_title=?, host=?, schedule=?, slot_start=?, slot_end=?, weekdays=?, badge_icon=?, badge_time=?, badge_label=?, accent=?, icon=?, image=?, categories=?, card_desc=?, index_desc=?, summary=?, sort_order=? WHERE id=?');
+        $stmt->execute([$title, $modalTitle, $host, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $image, $categories, $cardDesc, $indexDesc, $summary, $sortOrder, $id]);
+        site_sync_program_hosts($pdo, (int) $id, $hostTeamIds);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+    if ($image !== ($existing['image'] ?? '')) {
+        site_delete_old_file($existing['image'] ?? '');
+    }
 
-    json_response(['item' => site_program_with_hosts($pdo, (int) $id)]);
+    $item = site_program_with_hosts($pdo, (int) $id);
+    site_audit_log($pdo, $actor, 'programas', 'update', (int) $id, $before, $item);
+    site_response_item($item);
 }
 
 function siteProgramaDelete(PDO $pdo, string $id) {
-    site_require_director($pdo);
+    $actor = site_actor_context($pdo, 'site:delete');
+    $stmt = $pdo->prepare('SELECT * FROM radio_programs WHERE id = ?');
+    $stmt->execute([$id]);
+    $existing = $stmt->fetch();
+    if (!$existing) error_response('Resource not found', 404);
+    $before = site_program_with_hosts($pdo, (int) $id);
+
     $pdo->prepare('DELETE FROM radio_programs WHERE id = ?')->execute([$id]);
-    json_response(['ok' => true]);
+    site_audit_log($pdo, $actor, 'programas', 'delete', (int) $id, $before, null);
+    json_response(['version' => '1', 'ok' => true]);
 }
 
 // GET /radio/programs — lista de la programación de la radio para verla desde
