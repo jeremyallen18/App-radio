@@ -121,26 +121,21 @@ class MyApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      // Fondo de marca + gate de conectividad. El `KeyedSubtree` atado al modo
-      // reconstruye todo al cambiar de tema (reinicia la navegación) para que
-      // cada pantalla relea `AppColors`.
+      // Fondo de marca + gate de conectividad.
       builder: (context, child) {
         if (child == null) return const SizedBox.shrink();
-        return KeyedSubtree(
-          key: ValueKey(ThemeController.instance.isDark),
-          child: ColoredBox(
-            color: AppColors.bgBase,
-            child: RadioBulletinHost(
-              notice: NotificationsController.instance.bulletin,
-              onDismiss: NotificationsController.instance.dismissBulletin,
-              onOpen: (notice) {
-                final navigatorContext = appNavigatorKey.currentContext;
-                if (navigatorContext != null) {
-                  NotificationRouter.open(navigatorContext, notice.data);
-                }
-              },
-              child: ConnectivityGate(child: child),
-            ),
+        return ColoredBox(
+          color: AppColors.bgBase,
+          child: RadioBulletinHost(
+            notice: NotificationsController.instance.bulletin,
+            onDismiss: NotificationsController.instance.dismissBulletin,
+            onOpen: (notice) {
+              final navigatorContext = appNavigatorKey.currentContext;
+              if (navigatorContext != null) {
+                NotificationRouter.open(navigatorContext, notice.data);
+              }
+            },
+            child: ConnectivityGate(child: child),
           ),
         );
       },

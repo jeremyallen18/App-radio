@@ -193,6 +193,14 @@ class AppTheme {
               ? AppColors.brandBlue
               : p.surfaceBorder;
         }),
+        // Sin esto, el círculo usa el color por defecto de Material, que en
+        // modo oscuro y apagado queda casi idéntico al track (surfaceBorder)
+        // y desaparece visualmente. Siempre debe contrastar con su track.
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          return states.contains(WidgetState.selected)
+              ? Colors.white
+              : p.textMuted;
+        }),
       ),
 
       checkboxTheme: CheckboxThemeData(

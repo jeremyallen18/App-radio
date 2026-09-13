@@ -453,29 +453,5 @@ List<AppMenuSection> _directorSections(void Function(Widget) push) {
         ),
       ],
     ),
-    const AppMenuSection(
-      title: 'Próximamente',
-      entries: [
-        AppMenuEntry(
-          icon: Icons.task_alt,
-          title: 'Tareas activas',
-          subtitle: 'Resumen por departamento',
-          enabled: false,
-          trailingLabel: 'Próximamente',
-        ),
-        AppMenuEntry(
-          icon: Icons.insights,
-          title: 'Gráficas de desempeño',
-          enabled: false,
-          trailingLabel: 'Próximamente',
-        ),
-        AppMenuEntry(
-          icon: Icons.bar_chart,
-          title: 'Reportes',
-          enabled: false,
-          trailingLabel: 'Próximamente',
-        ),
-      ],
-    ),
   ];
 }

@@ -257,6 +257,10 @@ class _DateStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Los botones van compactos (sin el padding de 48x48 por defecto) y la
+    // fecha y el reloj pueden encogerse: en pantallas angostas o con texto
+    // grande del sistema, la suma de los elementos fijos alcanzaba a
+    // desbordar el Row por unos pocos px.
     return Row(
       children: [
         IconButton(
@@ -264,6 +268,9 @@ class _DateStrip extends StatelessWidget {
           icon: const Icon(Icons.chevron_left),
           color: AppColors.textMuted,
           tooltip: 'Día anterior',
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
         ),
         Expanded(
           child: Row(
@@ -271,12 +278,16 @@ class _DateStrip extends StatelessWidget {
             children: [
               Icon(Icons.event, size: 16, color: AppColors.textMuted),
               const SizedBox(width: AppSpacing.sm),
-              Text(
-                isToday ? 'Hoy · ${_fmtDate(date)}' : _fmtDate(date),
-                style: TextStyle(
-                  color: AppColors.textMuted,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  isToday ? 'Hoy · ${_fmtDate(date)}' : _fmtDate(date),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -289,22 +300,31 @@ class _DateStrip extends StatelessWidget {
               ? AppColors.textMuted.withValues(alpha: 0.3)
               : AppColors.textMuted,
           tooltip: 'Día siguiente',
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
         ),
         const SizedBox(width: AppSpacing.sm),
-        Row(
-          children: [
-            Icon(Icons.schedule, size: 14, color: AppColors.accent),
-            const SizedBox(width: 4),
-            Text(
-              _fmtClock(now),
-              style: TextStyle(
-                color: AppColors.accent,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.schedule, size: 14, color: AppColors.accent),
+                const SizedBox(width: 4),
+                Text(
+                  _fmtClock(now),
+                  style: TextStyle(
+                    color: AppColors.accent,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ],
     );

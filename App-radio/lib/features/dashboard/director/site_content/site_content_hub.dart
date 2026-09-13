@@ -214,7 +214,7 @@ class _SiteContentHubScreenState extends State<SiteContentHubScreen> {
     return AppScaffold(
       padding: EdgeInsets.zero,
       body: RefreshIndicator(
-        color: const Color(0xFF60A5FA),
+        color: AppColors.accent,
         onRefresh: _loadSummaries,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -259,16 +259,16 @@ class _HubHeader extends StatelessWidget {
         IconButton(
           onPressed: onBack,
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-          color: const Color(0xFFC7D2E5),
+          color: AppColors.textMuted,
           visualDensity: VisualDensity.compact,
           tooltip: 'Volver',
         ),
         const SizedBox(width: 8),
-        const Expanded(
+        Expanded(
           child: Text(
             'Contenido del sitio web',
             style: TextStyle(
-              color: Color(0xFFF8FAFC),
+              color: AppColors.textPrimary,
               fontSize: 18,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.35,
@@ -359,8 +359,8 @@ class _CategoryHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(
-        color: Color(0xFFF8FAFC),
+      style: TextStyle(
+        color: AppColors.textPrimary,
         fontSize: 13,
         fontWeight: FontWeight.w800,
         letterSpacing: -0.1,
@@ -398,9 +398,9 @@ class _SectionCard extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
           decoration: BoxDecoration(
-            color: const Color(0xFF101C31),
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF273753)),
+            border: Border.all(color: AppColors.surfaceBorder),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,8 +432,8 @@ class _SectionCard extends StatelessWidget {
                             section.label,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFFF8FAFC),
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
                               fontSize: 16,
                               height: 1.2,
                               fontWeight: FontWeight.w800,
@@ -444,8 +444,8 @@ class _SectionCard extends StatelessWidget {
                             section.description,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFF9FB3D1),
+                            style: TextStyle(
+                              color: AppColors.textMuted,
                               fontSize: 10,
                             ),
                           ),
@@ -457,7 +457,7 @@ class _SectionCard extends StatelessWidget {
                   IconButton(
                     onPressed: onQuickAdd,
                     icon: const Icon(Icons.add_rounded, size: 18),
-                    color: const Color(0xFFB4C2D8),
+                    color: AppColors.textMuted,
                     tooltip: 'Añadir ${section.label}',
                     visualDensity: VisualDensity.compact,
                     constraints:
@@ -466,16 +466,16 @@ class _SectionCard extends StatelessWidget {
                     style: IconButton.styleFrom(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(7),
-                        side: const BorderSide(color: Color(0xFF3A4A63)),
+                        side: BorderSide(color: AppColors.surfaceBorder),
                       ),
                     ),
                   ),
                   const SizedBox(width: 7),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
                     child: Icon(
                       Icons.chevron_right_rounded,
-                      color: Color(0xFF71839F),
+                      color: AppColors.textMuted,
                       size: 22,
                     ),
                   ),
@@ -487,7 +487,7 @@ class _SectionCard extends StatelessWidget {
                   item: primaryItem,
                   isLoading: itemCount == null),
               const SizedBox(height: 10),
-              const Divider(height: 1, color: Color(0xFF273753)),
+              Divider(height: 1, color: AppColors.surfaceBorder),
               const SizedBox(height: 10),
               _CardMetadata(itemCount: itemCount),
             ],
@@ -523,17 +523,17 @@ class _PrimarySiteItem extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF081326),
+        color: AppColors.bgBase,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF1D2D48)),
+        border: Border.all(color: AppColors.surfaceBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'PRIMERO EN EL SITIO',
             style: TextStyle(
-              color: Color(0xFF7588A5),
+              color: AppColors.textMuted,
               fontSize: 8,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.7,
@@ -544,8 +544,8 @@ class _PrimarySiteItem extends StatelessWidget {
             title.isEmpty ? 'Sin título' : title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFFE2E8F0),
+            style: TextStyle(
+              color: AppColors.textPrimary,
               fontSize: 10,
               fontWeight: FontWeight.w700,
             ),
@@ -555,7 +555,7 @@ class _PrimarySiteItem extends StatelessWidget {
             subtitle.isEmpty ? 'Sin información adicional' : subtitle,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Color(0xFF9FB3D1), fontSize: 9),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 9),
           ),
         ],
       ),
@@ -571,13 +571,13 @@ class _CardMetadata extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (itemCount == null) {
-      return const Align(
+      return Align(
         alignment: Alignment.centerLeft,
         child: SizedBox(
           width: 13,
           height: 13,
           child: CircularProgressIndicator(
-            color: Color(0xFF60A5FA),
+            color: AppColors.accent,
             strokeWidth: 1.5,
           ),
         ),
@@ -590,43 +590,46 @@ class _CardMetadata extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
           decoration: BoxDecoration(
-            color: const Color(0xFF0B2754),
+            color: AppColors.accent.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: const Color(0xFF1D4E9A)),
+            border: Border.all(color: AppColors.accent.withValues(alpha: 0.35)),
           ),
           child: Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF60A5FA),
+            style: TextStyle(
+              color: AppColors.accent,
               fontSize: 9,
               fontWeight: FontWeight.w700,
             ),
           ),
         ),
         const SizedBox(width: 8),
-        const Icon(Icons.check_circle_outline,
-            color: Color(0xFF2DD4BF), size: 12),
+        Icon(Icons.check_circle_outline, color: AppColors.success, size: 12),
         const SizedBox(width: 4),
-        Text(
-          '$itemCount publicados',
-          style: const TextStyle(color: Color(0xFF9FB3D1), fontSize: 9),
+        Flexible(
+          child: Text(
+            '$itemCount publicados',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: AppColors.textMuted, fontSize: 9),
+          ),
         ),
         const Spacer(),
-        const Row(
+        Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'Gestionar',
               style: TextStyle(
-                color: Color(0xFFB4C2D8),
+                color: AppColors.textMuted,
                 fontSize: 9,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            SizedBox(width: 2),
+            const SizedBox(width: 2),
             Icon(
               Icons.arrow_forward,
-              color: Color(0xFFB4C2D8),
+              color: AppColors.textMuted,
               size: 12,
             ),
           ],

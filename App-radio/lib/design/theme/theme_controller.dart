@@ -39,6 +39,17 @@ class ThemeController extends ChangeNotifier {
     _isDark = value;
     AppColors.setDark(_isDark);
     notifyListeners();
+    // `AppColors` son getters sobre esta bandera, no un InheritedWidget: una
+    // pantalla ya montada (una pestaña viva del BottomNavBar, o la que queda
+    // debajo del drawer donde está el switch de tema) nunca se entera de que
+    // debe releerlos con solo notifyListeners(). `reassembleApplication()` es
+    // la misma llamada que usa el hot reload para forzar que el árbol entero
+    // ya montado vuelva a ejecutar build() — sin destruir Navigator, State ni
+    // pila de navegación, a diferencia de intentar forzarlo con una key en
+    // MaterialApp (que además no funciona: el Navigator vive bajo un
+    // GlobalKey persistente y Flutter lo reutiliza aunque todo lo de arriba
+    // cambie).
+    WidgetsBinding.instance.reassembleApplication();
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_prefsKey, _isDark);
