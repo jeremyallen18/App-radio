@@ -875,24 +875,22 @@ function site_sponsor_with_socials(PDO $pdo, int $id): array {
 // que llegaron en $_POST['socials_json'] (array JSON de {label,icon,url}).
 // Más simple y robusto que calcular un diff fila por fila.
 function site_save_sponsor_socials(PDO $pdo, int $sponsorId): void {
+    $rows = site_decode_json_array((string) ($_POST['socials_json'] ?? '[]'), 'socials_json');
     $pdo->prepare('DELETE FROM sponsor_socials WHERE sponsor_id = ?')->execute([$sponsorId]);
-
-    $raw = $_POST['socials_json'] ?? '[]';
-    $rows = json_decode($raw, true);
-    if (!is_array($rows)) return;
 
     $insert = $pdo->prepare('INSERT INTO sponsor_socials (sponsor_id, label, icon, url, sort_order) VALUES (?, ?, ?, ?, ?)');
     $order = 0;
     foreach ($rows as $row) {
         $label = trim((string) ($row['label'] ?? ''));
-        $url = safe_external_url($row['url'] ?? '');
-        if ($label === '' && $url === '') continue;
+        $rawUrl = trim((string) ($row['url'] ?? ''));
+        if ($label === '' && $rawUrl === '') continue;
+        $url = site_valid_url($rawUrl, "socials_json[$order].url");
         $insert->execute([$sponsorId, $label, trim((string) ($row['icon'] ?? '')), $url, $order++]);
     }
 }
 
 function sitePatrocinadoresList(PDO $pdo) {
-    site_require_director($pdo);
+    site_actor_context($pdo, 'site:read');
     $rows = $pdo->query('SELECT * FROM sponsors ORDER BY sort_order ASC, id ASC')->fetchAll();
     $socialsStmt = $pdo->query('SELECT sponsor_id, label, icon, url FROM sponsor_socials ORDER BY sponsor_id ASC, sort_order ASC');
     $bySponsor = [];
@@ -902,73 +900,100 @@ function sitePatrocinadoresList(PDO $pdo) {
     foreach ($rows as &$row) {
         $row['socials'] = $bySponsor[$row['id']] ?? [];
     }
-    json_response(['items' => $rows]);
+    site_response_list($rows);
 }
 
 function siteSponsorCreate(PDO $pdo) {
-    site_require_director($pdo);
-    $name = trim($_POST['name'] ?? '');
-    if ($name === '') error_response('name es requerido', 400);
+    $actor = site_actor_context($pdo, 'site:write');
+    $name = site_required_text('name', 'name');
+    // map se inyecta sin escapar como src= de un <iframe> en seccionazul.js:
+    // debe ser siempre una URL http(s) real, nunca texto libre.
+    $map = site_valid_url((string) ($_POST['map'] ?? ''), 'map');
 
     $image = site_handle_image('image', 'patrocinadores', $name, '');
-    $pdo->beginTransaction();
-    $stmt = $pdo->prepare('INSERT INTO sponsors (name, category, category_label, icon, image, subtitle, summary, description, map, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    $stmt->execute([
-        $name,
-        trim($_POST['category'] ?? ''),
-        trim($_POST['category_label'] ?? ''),
-        trim($_POST['icon'] ?? ''),
-        $image,
-        trim($_POST['subtitle'] ?? ''),
-        trim($_POST['summary'] ?? ''),
-        trim(str_replace("\r\n", "\n", $_POST['description'] ?? '')),
-        trim($_POST['map'] ?? ''),
-        (int) ($_POST['sort_order'] ?? 0),
-    ]);
-    $id = (int) $pdo->lastInsertId();
-    site_save_sponsor_socials($pdo, $id);
-    $pdo->commit();
+    try {
+        $pdo->beginTransaction();
+        $stmt = $pdo->prepare('INSERT INTO sponsors (name, category, category_label, icon, image, subtitle, summary, description, map, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([
+            $name,
+            site_required_text('category', 'category'),
+            site_required_text('category_label', 'category_label'),
+            site_optional_text('icon'),
+            $image,
+            site_optional_text('subtitle'),
+            site_optional_text('summary'),
+            trim(str_replace("\r\n", "\n", (string) ($_POST['description'] ?? ''))),
+            $map,
+            site_valid_int('sort_order', 'sort_order'),
+        ]);
+        $id = (int) $pdo->lastInsertId();
+        site_save_sponsor_socials($pdo, $id);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
 
-    json_response(['item' => site_sponsor_with_socials($pdo, $id)], 201);
+    $item = site_sponsor_with_socials($pdo, $id);
+    site_audit_log($pdo, $actor, 'patrocinadores', 'create', $id, null, $item);
+    site_response_item($item, 201);
 }
 
 function siteSponsorUpdate(PDO $pdo, string $id) {
-    site_require_director($pdo);
+    $actor = site_actor_context($pdo, 'site:write');
     $stmt = $pdo->prepare('SELECT * FROM sponsors WHERE id = ?');
     $stmt->execute([$id]);
     $existing = $stmt->fetch();
     if (!$existing) error_response('Patrocinador no encontrado', 404);
+    $before = site_sponsor_with_socials($pdo, (int) $id);
 
-    $name = trim($_POST['name'] ?? '');
-    if ($name === '') error_response('name es requerido', 400);
-
+    $name = site_required_text('name', 'name');
+    $map = site_valid_url((string) ($_POST['map'] ?? ''), 'map');
     $image = site_handle_image('image', 'patrocinadores', $name, $existing['image'] ?? '');
-    $pdo->beginTransaction();
-    $stmt = $pdo->prepare('UPDATE sponsors SET name=?, category=?, category_label=?, icon=?, image=?, subtitle=?, summary=?, description=?, map=?, sort_order=? WHERE id=?');
-    $stmt->execute([
-        $name,
-        trim($_POST['category'] ?? ''),
-        trim($_POST['category_label'] ?? ''),
-        trim($_POST['icon'] ?? ''),
-        $image,
-        trim($_POST['subtitle'] ?? ''),
-        trim($_POST['summary'] ?? ''),
-        trim(str_replace("\r\n", "\n", $_POST['description'] ?? '')),
-        trim($_POST['map'] ?? ''),
-        (int) ($_POST['sort_order'] ?? 0),
-        $id,
-    ]);
-    site_save_sponsor_socials($pdo, (int) $id);
-    $pdo->commit();
 
-    json_response(['item' => site_sponsor_with_socials($pdo, (int) $id)]);
+    try {
+        $pdo->beginTransaction();
+        $stmt = $pdo->prepare('UPDATE sponsors SET name=?, category=?, category_label=?, icon=?, image=?, subtitle=?, summary=?, description=?, map=?, sort_order=? WHERE id=?');
+        $stmt->execute([
+            $name,
+            site_required_text('category', 'category'),
+            site_required_text('category_label', 'category_label'),
+            site_optional_text('icon'),
+            $image,
+            site_optional_text('subtitle'),
+            site_optional_text('summary'),
+            trim(str_replace("\r\n", "\n", (string) ($_POST['description'] ?? ''))),
+            $map,
+            site_valid_int('sort_order', 'sort_order'),
+            $id,
+        ]);
+        site_save_sponsor_socials($pdo, (int) $id);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+    if ($image !== ($existing['image'] ?? '')) {
+        site_delete_old_file($existing['image'] ?? '');
+    }
+
+    $item = site_sponsor_with_socials($pdo, (int) $id);
+    site_audit_log($pdo, $actor, 'patrocinadores', 'update', (int) $id, $before, $item);
+    site_response_item($item);
 }
 
 function siteSponsorDelete(PDO $pdo, string $id) {
-    site_require_director($pdo);
+    $actor = site_actor_context($pdo, 'site:delete');
+    $stmt = $pdo->prepare('SELECT * FROM sponsors WHERE id = ?');
+    $stmt->execute([$id]);
+    $existing = $stmt->fetch();
+    if (!$existing) error_response('Resource not found', 404);
+    $before = site_sponsor_with_socials($pdo, (int) $id);
+
     // sponsor_socials tiene ON DELETE CASCADE hacia sponsors.
     $pdo->prepare('DELETE FROM sponsors WHERE id = ?')->execute([$id]);
-    json_response(['ok' => true]);
+    site_audit_log($pdo, $actor, 'patrocinadores', 'delete', (int) $id, $before, null);
+    json_response(['version' => '1', 'ok' => true]);
 }
 
 // ---- podcasts (radio_podcasts + radio_podcast_episodes) --------------------

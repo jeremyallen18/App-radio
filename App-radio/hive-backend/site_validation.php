@@ -60,6 +60,11 @@ function site_valid_url(string $rawValue, string $label, bool $required = false)
         }
         return '';
     }
+    // safe_external_url() devuelve el valor tal cual cuando parse_url() no
+    // detecta ningún scheme (p.ej. "<script>..."); exigimos http(s) aquí.
+    if (!preg_match('#^https?://#i', $raw)) {
+        error_response("$label no es una URL válida (debe empezar con http:// o https://)", 400);
+    }
     $safe = safe_external_url($raw);
     if ($safe === '') {
         error_response("$label no es una URL válida (debe empezar con http:// o https://)", 400);
