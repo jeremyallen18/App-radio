@@ -302,7 +302,7 @@ Multipart form fields:
 - `host` (opcional, texto libre — solo se usa si NO se manda `host_team_ids`; si se manda `host_team_ids`, `host` se recalcula siempre a partir de los nombres reales)
 - `host_team_ids` (opcional, ids de `radio_team` separados por coma — vincula locutores reales como conductores; cualquier id inexistente rechaza la petición completa)
 - `schedule`, `badge_time` (opcionales, texto — se recalculan automáticamente y sobrescriben lo enviado si `slot_start`/`slot_end` vienen ambos)
-- `sort_order` (opcional, entero; vacío o ausente = `0` — a diferencia de otros recursos, este campo usa `(int) ($_POST['sort_order'] ?? 0)` directamente, no `site_valid_int()`, así que un valor no numérico se castea silenciosamente a `0` en vez de dar error 400)
+- `sort_order` (opcional, entero; vacío o ausente = `0` — validado con `site_valid_int()` igual que en el resto de recursos, rechaza valores no numéricos con 400)
 - `image` (opcional, archivo — jpg/jpeg/png/gif/webp, máx. 5 MB, debe ser una imagen real)
 
 Ejemplo:
@@ -318,7 +318,7 @@ curl -X POST http://localhost/hive-backend/site/programas \
 
 Respuesta 201: mismo shape que un elemento de `items` arriba, envuelto en `{"version": "1", "item": {...}}`.
 
-Errores: `400 {"error":"title es requerido"}`, `400 {"error":"slot_start debe estar entre 0 y 23"}`, `400 {"error":"Indica la hora de inicio y la hora final, o deja ambas vacías."}`, `400 {"error":"La hora de inicio y la hora final no pueden ser iguales."}`, `400 {"error":"Los días de transmisión deben estar entre 1 (lunes) y 7 (domingo)."}`, `400 {"error":"host_team_ids contiene un id que ya no existe"}`.
+Errores: `400 {"error":"title es requerido"}`, `400 {"error":"sort_order debe ser un número entero"}`, `400 {"error":"slot_start debe estar entre 0 y 23"}`, `400 {"error":"Indica la hora de inicio y la hora final, o deja ambas vacías."}`, `400 {"error":"La hora de inicio y la hora final no pueden ser iguales."}`, `400 {"error":"Los días de transmisión deben estar entre 1 (lunes) y 7 (domingo)."}`, `400 {"error":"host_team_ids contiene un id que ya no existe"}`.
 
 ### `POST /site/programas/{id}` — actualizar
 
@@ -467,3 +467,9 @@ Errores adicionales: `404 {"error":"Podcast no encontrado"}`.
 Borra el podcast y sus episodios (`ON DELETE CASCADE`). Nota: los archivos de audio de los episodios en disco NO se borran automáticamente al eliminar el podcast completo (solo se borran al reemplazarse individualmente en un `update`).
 
 Respuesta 200: `{"version": "1", "ok": true}`. Si el id no existe: `404 {"error": "Resource not found"}`.
+
+## Despliegue
+
+- **Límites de subida**: el `php.ini` de producción debe fijar `upload_max_filesize` y `post_max_size` en al menos `110M`. El límite de 100 MB para audio ya se valida a nivel de aplicación, pero si el límite propio del servidor web es menor, PHP trunca la subida y vacía `$_POST`/`$_FILES` en silencio — el director ve un error confuso y no relacionado (p.ej. "title es requerido") en vez de un mensaje claro de tamaño excedido.
+- **Orden de migraciones**: `migrations/036_site_content_audit_log.sql` debe aplicarse en la base de datos de producción ANTES de desplegar esta versión del código PHP. Si la tabla no existe, cada creación/actualización/borrado en `/site/*` seguirá teniendo éxito (el cambio de contenido se confirma primero) pero luego lanzará un 500 al intentar insertar en el audit log — el director ve un fallo en una operación que en realidad sí se aplicó, y puede reintentar y crear un duplicado.
+- **Requisitos de API key**: hay que fijar `APP_ENV=production` explícitamente en el `.env` de producción (por defecto es `local` si falta, incluso en un host de producción real al que se le olvidó esa línea) — es necesario para que la validación de longitud mínima de 32 caracteres de `SITE_CONTENT_KEY` realmente se active.
