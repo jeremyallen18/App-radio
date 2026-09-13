@@ -1008,22 +1008,27 @@ function site_podcast_with_episodes(PDO $pdo, int $id): array {
     return $podcast;
 }
 
-// Reemplaza por completo los episodios de un podcast con los que llegaron
-// en $_POST['episodes_json'] (array JSON de {title,description,audio_url,category_label}).
-function site_save_podcast_episodes(PDO $pdo, int $podcastId): void {
-    $pdo->prepare('DELETE FROM radio_podcast_episodes WHERE podcast_id = ?')->execute([$podcastId]);
+// Devuelve las rutas de audio huerfanas para que el llamador las borre
+// DESPUES de un commit exitoso (nunca antes, por si hay rollback).
+function site_save_podcast_episodes(PDO $pdo, int $podcastId): array {
+    $oldAudioStmt = $pdo->prepare('SELECT audio_url FROM radio_podcast_episodes WHERE podcast_id = ?');
+    $oldAudioStmt->execute([$podcastId]);
+    $oldAudioUrls = array_values(array_filter($oldAudioStmt->fetchAll(PDO::FETCH_COLUMN)));
 
-    $raw = $_POST['episodes_json'] ?? '[]';
-    $rows = json_decode($raw, true);
-    if (!is_array($rows)) return;
+    $rows = site_decode_json_array((string) ($_POST['episodes_json'] ?? '[]'), 'episodes_json');
+    $pdo->prepare('DELETE FROM radio_podcast_episodes WHERE podcast_id = ?')->execute([$podcastId]);
 
     $insert = $pdo->prepare('INSERT INTO radio_podcast_episodes (podcast_id, title, description, audio_url, category_label, sort_order) VALUES (?, ?, ?, ?, ?, ?)');
     $order = 0;
+    $keptAudioUrls = [];
     foreach ($rows as $row) {
         $title = trim((string) ($row['title'] ?? ''));
-        if ($title === '') continue;
+        if ($title === '') {
+            error_response("episodes_json[$order].title es requerido", 400);
+        }
         $existingAudio = trim((string) ($row['audio_url'] ?? ''));
         $audioUrl = site_handle_audio("episode_audio_$order", 'podcasts', $title, $existingAudio);
+        $keptAudioUrls[] = $audioUrl;
         $insert->execute([
             $podcastId,
             $title,
@@ -1033,10 +1038,12 @@ function site_save_podcast_episodes(PDO $pdo, int $podcastId): void {
             $order++,
         ]);
     }
+
+    return array_values(array_diff($oldAudioUrls, $keptAudioUrls));
 }
 
 function sitePodcastsList(PDO $pdo) {
-    site_require_director($pdo);
+    site_actor_context($pdo, 'site:read');
     $rows = $pdo->query('SELECT * FROM radio_podcasts ORDER BY sort_order ASC, id ASC')->fetchAll();
     $episodesStmt = $pdo->query('SELECT podcast_id, title, description, audio_url, category_label FROM radio_podcast_episodes ORDER BY podcast_id ASC, sort_order ASC');
     $byPodcast = [];
@@ -1046,51 +1053,79 @@ function sitePodcastsList(PDO $pdo) {
     foreach ($rows as &$row) {
         $row['episodes'] = $byPodcast[$row['id']] ?? [];
     }
-    json_response(['items' => $rows]);
+    site_response_list($rows);
 }
 
 function sitePodcastCreate(PDO $pdo) {
-    site_require_director($pdo);
-    $title = trim($_POST['title'] ?? '');
-    if ($title === '') error_response('title es requerido', 400);
+    $actor = site_actor_context($pdo, 'site:write');
+    $title = site_required_text('title', 'title');
 
     $cover = site_handle_image('cover', 'portadas', $title, '');
     $slug = site_unique_slug($pdo, 'radio_podcasts', $title);
 
-    $pdo->beginTransaction();
-    $stmt = $pdo->prepare('INSERT INTO radio_podcasts (slug, title, filter_icon, cover, sort_order) VALUES (?, ?, ?, ?, ?)');
-    $stmt->execute([$slug, $title, trim($_POST['filter_icon'] ?? ''), $cover, (int) ($_POST['sort_order'] ?? 0)]);
-    $id = (int) $pdo->lastInsertId();
-    site_save_podcast_episodes($pdo, $id);
-    $pdo->commit();
+    try {
+        $pdo->beginTransaction();
+        $stmt = $pdo->prepare('INSERT INTO radio_podcasts (slug, title, filter_icon, cover, sort_order) VALUES (?, ?, ?, ?, ?)');
+        $stmt->execute([$slug, $title, site_optional_text('filter_icon'), $cover, site_valid_int('sort_order', 'sort_order')]);
+        $id = (int) $pdo->lastInsertId();
+        $orphanedAudio = site_save_podcast_episodes($pdo, $id);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+    foreach ($orphanedAudio as $path) {
+        site_delete_old_file($path);
+    }
 
-    json_response(['item' => site_podcast_with_episodes($pdo, $id)], 201);
+    $item = site_podcast_with_episodes($pdo, $id);
+    site_audit_log($pdo, $actor, 'podcasts', 'create', $id, null, $item);
+    site_response_item($item, 201);
 }
 
 function sitePodcastUpdate(PDO $pdo, string $id) {
-    site_require_director($pdo);
+    $actor = site_actor_context($pdo, 'site:write');
     $stmt = $pdo->prepare('SELECT * FROM radio_podcasts WHERE id = ?');
     $stmt->execute([$id]);
     $existing = $stmt->fetch();
     if (!$existing) error_response('Podcast no encontrado', 404);
+    $before = site_podcast_with_episodes($pdo, (int) $id);
 
-    $title = trim($_POST['title'] ?? '');
-    if ($title === '') error_response('title es requerido', 400);
-
+    $title = site_required_text('title', 'title');
     $cover = site_handle_image('cover', 'portadas', $title, $existing['cover'] ?? '');
 
-    $pdo->beginTransaction();
-    $stmt = $pdo->prepare('UPDATE radio_podcasts SET title=?, filter_icon=?, cover=?, sort_order=? WHERE id=?');
-    $stmt->execute([$title, trim($_POST['filter_icon'] ?? ''), $cover, (int) ($_POST['sort_order'] ?? 0), $id]);
-    site_save_podcast_episodes($pdo, (int) $id);
-    $pdo->commit();
+    try {
+        $pdo->beginTransaction();
+        $stmt = $pdo->prepare('UPDATE radio_podcasts SET title=?, filter_icon=?, cover=?, sort_order=? WHERE id=?');
+        $stmt->execute([$title, site_optional_text('filter_icon'), $cover, site_valid_int('sort_order', 'sort_order'), $id]);
+        $orphanedAudio = site_save_podcast_episodes($pdo, (int) $id);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+    if ($cover !== ($existing['cover'] ?? '')) {
+        site_delete_old_file($existing['cover'] ?? '');
+    }
+    foreach ($orphanedAudio as $path) {
+        site_delete_old_file($path);
+    }
 
-    json_response(['item' => site_podcast_with_episodes($pdo, (int) $id)]);
+    $item = site_podcast_with_episodes($pdo, (int) $id);
+    site_audit_log($pdo, $actor, 'podcasts', 'update', (int) $id, $before, $item);
+    site_response_item($item);
 }
 
 function sitePodcastDelete(PDO $pdo, string $id) {
-    site_require_director($pdo);
+    $actor = site_actor_context($pdo, 'site:delete');
+    $stmt = $pdo->prepare('SELECT * FROM radio_podcasts WHERE id = ?');
+    $stmt->execute([$id]);
+    $existing = $stmt->fetch();
+    if (!$existing) error_response('Resource not found', 404);
+    $before = site_podcast_with_episodes($pdo, (int) $id);
+
     // radio_podcast_episodes tiene ON DELETE CASCADE hacia radio_podcasts.
     $pdo->prepare('DELETE FROM radio_podcasts WHERE id = ?')->execute([$id]);
-    json_response(['ok' => true]);
+    site_audit_log($pdo, $actor, 'podcasts', 'delete', (int) $id, $before, null);
+    json_response(['version' => '1', 'ok' => true]);
 }
