@@ -48,6 +48,10 @@ $DB_PASS = env_get('DB_PASS') ?: '';
 
 define('APP_BASE_PATH', env_get('APP_BASE_PATH') !== null ? env_get('APP_BASE_PATH') : '/hive-backend');
 
+// 'local' (por defecto) o 'production'. Usado por site_audit.php para
+// exigir una SITE_CONTENT_KEY larga solo fuera de desarrollo.
+define('APP_ENV', strtolower((string) (env_get('APP_ENV') ?: 'local')));
+
 // Origen público del backend (esquema + host + ruta base), SIN barra final,
 // p. ej. https://doliv.site/hive-backend. Se usa para construir enlaces que se
 // mandan por correo (verificación de cuenta): esos enlaces NO deben depender de
