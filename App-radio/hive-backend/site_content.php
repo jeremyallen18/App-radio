@@ -704,7 +704,7 @@ function site_programa_fields(PDO $pdo): array {
         trim($_POST['card_desc'] ?? ''),
         trim($_POST['index_desc'] ?? ''),
         trim($_POST['summary'] ?? ''),
-        (int) ($_POST['sort_order'] ?? 0),
+        site_valid_int('sort_order', 'sort_order'),
     ];
 }
 
