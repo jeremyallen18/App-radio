@@ -7,9 +7,8 @@ require __DIR__ . '/config.php';
 
 $dryRun = in_array('--dry-run', $argv, true);
 
-// ADVERTENCIA: img/patrocinadores también se referencia desde el arreglo
-// estático de RADIODOLIV_PAGINA/inc/data/sponsors.php, invisible para este
-// script (solo lee la BD) — revisa ese archivo a mano antes de borrar ahí.
+// img/patrocinadores también se referencia desde el arreglo estático de
+// RADIODOLIV_PAGINA/inc/data/sponsors.php (invisible aquí) — revísalo antes de borrar.
 // [directorio relativo a assets/, columna(s) que referencian archivos ahí]
 $sources = [
     ['img/anuncios',        'anuncios',               ['imagen_url']],
