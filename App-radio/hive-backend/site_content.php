@@ -23,6 +23,24 @@ function site_slugify(string $value): string {
     return $value !== '' ? $value : 'item';
 }
 
+// Límites de subida independientes de php.ini, explícitos y documentados.
+// Se comprueban aquí, además de los límites de upload_max_filesize/post_max_size.
+const SITE_MAX_IMAGE_BYTES = 5 * 1024 * 1024;   // 5 MB
+const SITE_MAX_AUDIO_BYTES = 100 * 1024 * 1024; // 100 MB
+
+// Borra un archivo dentro de RADIODOLIV_PAGINA_PATH, solo DESPUÉS de una
+// UPDATE exitosa en la BD (nunca antes). Safe incluso si $relativePath manipulado.
+function site_delete_old_file(?string $relativePath): void {
+    if ($relativePath === null || $relativePath === '') return;
+
+    $base = realpath(RADIODOLIV_PAGINA_PATH);
+    $target = realpath(RADIODOLIV_PAGINA_PATH . '/' . $relativePath);
+    if ($base === false || $target === false) return;
+    if (strpos($target, $base . DIRECTORY_SEPARATOR) !== 0) return;
+
+    @unlink($target);
+}
+
 // $table siempre viene de una llamada fija en este archivo, nunca de
 // entrada del cliente, así que interpolarlo en la consulta es seguro.
 function site_unique_slug(PDO $pdo, string $table, string $base): string {
@@ -49,8 +67,14 @@ function site_handle_image(string $field, string $subdir, string $labelForName, 
     }
 
     $file = $_FILES[$field];
+    if (in_array($file['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
+        error_response('La imagen supera el tamaño máximo permitido por el servidor', 400);
+    }
     if ($file['error'] !== UPLOAD_ERR_OK) {
         error_response('No se pudo subir la imagen', 400);
+    }
+    if ($file['size'] > SITE_MAX_IMAGE_BYTES) {
+        error_response('La imagen supera el tamaño máximo permitido (5 MB)', 400);
     }
 
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
@@ -82,8 +106,14 @@ function site_handle_audio(string $field, string $subdir, string $labelForName, 
     }
 
     $file = $_FILES[$field];
+    if (in_array($file['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
+        error_response('El audio supera el tamaño máximo permitido por el servidor', 400);
+    }
     if ($file['error'] !== UPLOAD_ERR_OK) {
         error_response('No se pudo subir el audio', 400);
+    }
+    if ($file['size'] > SITE_MAX_AUDIO_BYTES) {
+        error_response('El audio supera el tamaño máximo permitido (100 MB)', 400);
     }
 
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
