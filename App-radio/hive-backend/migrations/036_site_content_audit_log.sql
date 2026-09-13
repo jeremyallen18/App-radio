@@ -1,14 +1,5 @@
--- Migración: bitácora de auditoría para el API de contenido del sitio
--- público (site_content.php, rutas /site/*). Aplicar una sola vez. Ver
--- hive-backend/schema.sql para el esquema completo (instalaciones nuevas
--- parten de ahí).
---
--- Registra cada create/update/delete hecho a través de /site/* para poder
--- rastrear quién cambió o borró algo por error. `before_json`/`after_json`
--- son opcionales (NULL si no aplica, p. ej. en un delete no se guarda
--- "after"). `actor_id` es el id de usuario (sesión de director) o el nombre
--- fijo de la integración (llave de API) — nunca NULL, para que el log
--- siempre sea atribuible a algo.
+-- Bitácora de auditoría para /site/* (create/update/delete). before_json/
+-- after_json opcionales; actor_id nunca NULL, siempre atribuible.
 USE hive_db;
 
 CREATE TABLE IF NOT EXISTS site_content_audit_log (
