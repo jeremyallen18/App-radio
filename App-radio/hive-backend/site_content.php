@@ -215,33 +215,31 @@ function siteAnuncioDelete(PDO $pdo, string $id) {
 // ---- eventos (radio_events) ------------------------------------------------
 
 function siteEventosList(PDO $pdo) {
-    site_require_director($pdo);
+    site_actor_context($pdo, 'site:read');
     $rows = $pdo->query('SELECT * FROM radio_events ORDER BY sort_order ASC, id ASC')->fetchAll();
-    json_response(['items' => $rows]);
+    site_response_list($rows);
 }
 
 function site_evento_fields(): array {
     return [
-        trim($_POST['title'] ?? ''),
-        trim($_POST['artist'] ?? ''),
-        trim($_POST['location'] ?? ''),
-        trim($_POST['weekday'] ?? ''),
-        trim($_POST['day'] ?? ''),
-        trim($_POST['month'] ?? ''),
-        trim($_POST['year'] ?? ''),
-        trim($_POST['event_date'] ?? '') ?: null,
-        trim($_POST['time_label'] ?? ''),
-        trim($_POST['description'] ?? ''),
-        (int) ($_POST['sort_order'] ?? 0),
+        site_optional_text('artist'),
+        site_optional_text('location'),
+        site_optional_text('weekday'),
+        site_optional_text('day'),
+        site_optional_text('month'),
+        site_optional_text('year'),
+        site_valid_date('event_date', 'event_date'),
+        site_optional_text('time_label'),
+        site_optional_text('description'),
+        site_valid_int('sort_order', 'sort_order'),
     ];
 }
 
 function siteEventoCreate(PDO $pdo) {
-    site_require_director($pdo);
-    $title = trim($_POST['title'] ?? '');
-    if ($title === '') error_response('title es requerido', 400);
+    $actor = site_actor_context($pdo, 'site:write');
+    $title = site_required_text('title', 'title');
 
-    [, $artist, $location, $weekday, $day, $month, $year, $eventDate, $timeLabel, $description, $sortOrder] = site_evento_fields();
+    [$artist, $location, $weekday, $day, $month, $year, $eventDate, $timeLabel, $description, $sortOrder] = site_evento_fields();
     $image = site_handle_image('image', 'eventos', $title, '');
     $slug = site_unique_slug($pdo, 'radio_events', $title);
 
@@ -251,34 +249,45 @@ function siteEventoCreate(PDO $pdo) {
     $id = (int) $pdo->lastInsertId();
     $stmt = $pdo->prepare('SELECT * FROM radio_events WHERE id = ?');
     $stmt->execute([$id]);
-    json_response(['item' => $stmt->fetch()], 201);
+    $item = $stmt->fetch();
+    site_audit_log($pdo, $actor, 'eventos', 'create', $id, null, $item);
+    site_response_item($item, 201);
 }
 
 function siteEventoUpdate(PDO $pdo, string $id) {
-    site_require_director($pdo);
+    $actor = site_actor_context($pdo, 'site:write');
     $stmt = $pdo->prepare('SELECT * FROM radio_events WHERE id = ?');
     $stmt->execute([$id]);
     $existing = $stmt->fetch();
     if (!$existing) error_response('Evento no encontrado', 404);
 
-    $title = trim($_POST['title'] ?? '');
-    if ($title === '') error_response('title es requerido', 400);
-
-    [, $artist, $location, $weekday, $day, $month, $year, $eventDate, $timeLabel, $description, $sortOrder] = site_evento_fields();
+    $title = site_required_text('title', 'title');
+    [$artist, $location, $weekday, $day, $month, $year, $eventDate, $timeLabel, $description, $sortOrder] = site_evento_fields();
     $image = site_handle_image('image', 'eventos', $title, $existing['image'] ?? '');
 
     $stmt = $pdo->prepare('UPDATE radio_events SET title=?, artist=?, location=?, image=?, weekday=?, day=?, month=?, year=?, event_date=?, time_label=?, description=?, sort_order=? WHERE id=?');
     $stmt->execute([$title, $artist, $location, $image, $weekday, $day, $month, $year, $eventDate, $timeLabel, $description, $sortOrder, $id]);
+    if ($image !== ($existing['image'] ?? '')) {
+        site_delete_old_file($existing['image'] ?? '');
+    }
 
     $stmt = $pdo->prepare('SELECT * FROM radio_events WHERE id = ?');
     $stmt->execute([$id]);
-    json_response(['item' => $stmt->fetch()]);
+    $item = $stmt->fetch();
+    site_audit_log($pdo, $actor, 'eventos', 'update', (int) $id, $existing, $item);
+    site_response_item($item);
 }
 
 function siteEventoDelete(PDO $pdo, string $id) {
-    site_require_director($pdo);
+    $actor = site_actor_context($pdo, 'site:delete');
+    $stmt = $pdo->prepare('SELECT * FROM radio_events WHERE id = ?');
+    $stmt->execute([$id]);
+    $existing = $stmt->fetch();
+    if (!$existing) error_response('Resource not found', 404);
+
     $pdo->prepare('DELETE FROM radio_events WHERE id = ?')->execute([$id]);
-    json_response(['ok' => true]);
+    site_audit_log($pdo, $actor, 'eventos', 'delete', (int) $id, $existing, null);
+    json_response(['version' => '1', 'ok' => true]);
 }
 
 // ---- servicios (radio_services) --------------------------------------------
