@@ -44,10 +44,10 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
 
   late final _title =
       TextEditingController(text: widget.item?['title']?.toString() ?? '');
-  late final _filterIcon = TextEditingController(
-      text: widget.item?['filter_icon']?.toString() ?? '');
-  late final _sortOrder = TextEditingController(
-      text: widget.item?['sort_order']?.toString() ?? '0');
+  late String _filterIcon =
+      (widget.item?['filter_icon']?.toString().trim().isNotEmpty ?? false)
+          ? widget.item!['filter_icon'].toString().trim()
+          : 'headphones';
 
   late final List<_EpisodeRow> _episodes = _initialEpisodes();
 
@@ -55,6 +55,16 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
   bool _submitting = false;
 
   bool get _isEditing => widget.item != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _title.addListener(_refreshCta);
+  }
+
+  void _refreshCta() {
+    if (mounted) setState(() {});
+  }
 
   List<_EpisodeRow> _initialEpisodes() {
     final raw = widget.item?['episodes'] as List?;
@@ -67,6 +77,19 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
               description: e['description']?.toString() ?? '',
             ))
         .toList();
+  }
+
+  @override
+  void dispose() {
+    _title.removeListener(_refreshCta);
+    _title.dispose();
+    for (final episode in _episodes) {
+      episode.title.dispose();
+      episode.category.dispose();
+      episode.audio.dispose();
+      episode.description.dispose();
+    }
+    super.dispose();
   }
 
   Future<void> _pickCover() async {
@@ -134,11 +157,13 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
           'episode_audio_$index': filledEpisodes[index].audioFile!,
     };
 
+    final sortOrder = _isEditing
+        ? int.tryParse(widget.item?['sort_order']?.toString() ?? '') ?? 0
+        : await _api.nextSortOrder();
     final fields = {
       'title': _title.text.trim(),
-      'filter_icon': _filterIcon.text.trim(),
-      'sort_order':
-          _sortOrder.text.trim().isEmpty ? '0' : _sortOrder.text.trim(),
+      'filter_icon': _filterIcon,
+      'sort_order': sortOrder.toString(),
       'episodes_json': episodesJson,
     };
 
@@ -171,6 +196,25 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
     final existingCover = siteImageUrl(widget.item?['cover']?.toString());
 
     return AppScaffold(
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl, AppSpacing.md, AppSpacing.xl, AppSpacing.lg),
+          child: FilledButton.icon(
+            onPressed:
+                _title.text.trim().isEmpty || _submitting ? null : _submit,
+            icon: _submitting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check),
+            label: Text(_submitting ? 'Guardando...' : 'Guardar podcast'),
+          ),
+        ),
+      ),
       scrollable: true,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -189,20 +233,12 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
             hintText: 'Ej. Voces de la ciudad',
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
+          SiteIconPickerField(
             icon: Icons.filter_alt_outlined,
             label: 'Ícono de filtro',
             iconColor: SiteFieldColors.purple,
-            controller: _filterIcon,
-            hintText: 'Nombre del ícono',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SiteFormField(
-            icon: Icons.swap_vert,
-            label: 'Orden de aparición',
-            controller: _sortOrder,
-            hintText: 'Ej. 1',
-            textInputType: TextInputType.number,
+            value: _filterIcon,
+            onChanged: (option) => setState(() => _filterIcon = option.value),
           ),
           const SizedBox(height: AppSpacing.md),
           SiteImagePickerField(
@@ -241,12 +277,6 @@ class _PodcastFormScreenState extends State<PodcastFormScreen> {
             icon: Icon(Icons.add, color: AppColors.accent),
             label: Text('Agregar episodio',
                 style: TextStyle(color: AppColors.accent)),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          AppButton(
-            label: _submitting ? 'Guardando…' : 'Guardar',
-            loading: _submitting,
-            onPressed: _submitting ? null : _submit,
           ),
           if (_isEditing) ...[
             const SizedBox(height: AppSpacing.md),

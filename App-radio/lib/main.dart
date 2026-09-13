@@ -29,13 +29,15 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'package:doliv_social/core/connectivity_gate.dart';
 import 'package:doliv_social/core/audio/radio_player.dart';
 import 'package:doliv_social/core/route_refresh.dart';
+import 'package:doliv_social/core/notifications_controller.dart';
+import 'package:doliv_social/design/components/radio_bulletin_banner.dart';
+import 'package:doliv_social/shared/notifications/notification_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Push (FCM) solo está configurado para Android por ahora
-  final bool supportsPush =
-      defaultTargetPlatform == TargetPlatform.android;
+  final bool supportsPush = defaultTargetPlatform == TargetPlatform.android;
   if (supportsPush) {
     try {
       await ensureFirebaseInitialized();
@@ -128,7 +130,17 @@ class MyApp extends StatelessWidget {
           key: ValueKey(ThemeController.instance.isDark),
           child: ColoredBox(
             color: AppColors.bgBase,
-            child: ConnectivityGate(child: child),
+            child: RadioBulletinHost(
+              notice: NotificationsController.instance.bulletin,
+              onDismiss: NotificationsController.instance.dismissBulletin,
+              onOpen: (notice) {
+                final navigatorContext = appNavigatorKey.currentContext;
+                if (navigatorContext != null) {
+                  NotificationRouter.open(navigatorContext, notice.data);
+                }
+              },
+              child: ConnectivityGate(child: child),
+            ),
           ),
         );
       },

@@ -173,6 +173,19 @@ class PushService {
     try {
       final data = normalizePushData(_asObjectMap(message.data));
 
+      if (!background && data['type'] == 'internal_announcement') {
+        final generation = NotificationsController.instance.sessionGeneration;
+        final token = await _sessionToken();
+        if (token == null ||
+            generation != NotificationsController.instance.sessionGeneration) {
+          return;
+        }
+        NotificationsController.instance
+            .receiveAnnouncement(data, token: token);
+        unawaited(NotificationsController.instance.refresh(force: true));
+        return;
+      }
+
       // En segundo plano nadie escucha el controlador: refrescar sería HTTP en balde.
       if (!background) {
         unawaited(NotificationsController.instance.refresh(force: true));
@@ -186,7 +199,8 @@ class PushService {
       final title =
           (data['title'] ?? '').isNotEmpty ? data['title']! : 'Radio Doliv';
       final body = data['body'] ?? '';
-      final tag = data['type'] == 'chat' ? 'chat:${data['entityId'] ?? ''}' : null;
+      final tag =
+          data['type'] == 'chat' ? 'chat:${data['entityId'] ?? ''}' : null;
 
       await _localNotifications.show(
         id: localNotificationId(data),
@@ -201,7 +215,8 @@ class PushService {
             priority: Priority.high,
             tag: tag,
             // Los mensajes largos se expanden al deslizar en vez de cortarse.
-            styleInformation: BigTextStyleInformation(body, contentTitle: title),
+            styleInformation:
+                BigTextStyleInformation(body, contentTitle: title),
           ),
         ),
         payload: json.encode(data),

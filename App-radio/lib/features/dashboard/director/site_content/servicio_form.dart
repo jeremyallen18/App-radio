@@ -21,22 +21,57 @@ class _ServicioFormScreenState extends State<ServicioFormScreen> {
   final _api = SiteContentApi('servicios');
   final _picker = ImagePicker();
 
-  late final _title = TextEditingController(text: widget.item?['title']?.toString() ?? '');
-  late final _category = TextEditingController(text: widget.item?['category']?.toString() ?? '');
-  late final _icon = TextEditingController(text: widget.item?['icon']?.toString() ?? '');
-  late final _description = TextEditingController(text: widget.item?['description']?.toString() ?? '');
-  late final _whatsappUrl = TextEditingController(text: widget.item?['whatsapp_url']?.toString() ?? '');
-  late final _sortOrder = TextEditingController(text: widget.item?['sort_order']?.toString() ?? '0');
+  late final _title =
+      TextEditingController(text: widget.item?['title']?.toString() ?? '');
+  late String _category =
+      (widget.item?['category']?.toString().trim().isNotEmpty ?? false)
+          ? widget.item!['category'].toString().trim()
+          : 'anunciantes';
+  late String _icon =
+      (widget.item?['icon']?.toString().trim().isNotEmpty ?? false)
+          ? widget.item!['icon'].toString().trim()
+          : 'megaphone';
+  late final _description = TextEditingController(
+      text: widget.item?['description']?.toString() ?? '');
+  late final _whatsappUrl = TextEditingController(
+      text: widget.item?['whatsapp_url']?.toString() ?? '');
+
+  static const _categoryOptions = [
+    SiteChoiceOption('anunciantes', 'Anunciantes'),
+    SiteChoiceOption('produccion', 'Producción'),
+    SiteChoiceOption('cobertura', 'Cobertura'),
+    SiteChoiceOption('digital', 'Digital'),
+  ];
 
   File? _newImage;
   bool _submitting = false;
 
   bool get _isEditing => widget.item != null;
 
+  @override
+  void initState() {
+    super.initState();
+    _title.addListener(_refreshCta);
+  }
+
+  void _refreshCta() {
+    if (mounted) setState(() {});
+  }
+
   Future<void> _pickImage() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    final picked =
+        await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked == null) return;
     setState(() => _newImage = File(picked.path));
+  }
+
+  @override
+  void dispose() {
+    _title.removeListener(_refreshCta);
+    _title.dispose();
+    _description.dispose();
+    _whatsappUrl.dispose();
+    super.dispose();
   }
 
   Future<void> _delete() async {
@@ -69,18 +104,22 @@ class _ServicioFormScreenState extends State<ServicioFormScreen> {
     }
 
     setState(() => _submitting = true);
+    final sortOrder = _isEditing
+        ? int.tryParse(widget.item?['sort_order']?.toString() ?? '') ?? 0
+        : await _api.nextSortOrder();
     final fields = {
       'title': _title.text.trim(),
-      'category': _category.text.trim(),
-      'icon': _icon.text.trim(),
+      'category': _category,
+      'icon': _icon,
       'description': _description.text.trim(),
       'whatsapp_url': _whatsappUrl.text.trim(),
-      'sort_order': _sortOrder.text.trim().isEmpty ? '0' : _sortOrder.text.trim(),
+      'sort_order': sortOrder.toString(),
     };
 
     try {
       if (_isEditing) {
-        await _api.update(widget.item!['id'].toString(), fields, imageFile: _newImage);
+        await _api.update(widget.item!['id'].toString(), fields,
+            imageFile: _newImage);
       } else {
         await _api.create(fields, imageFile: _newImage);
       }
@@ -101,6 +140,25 @@ class _ServicioFormScreenState extends State<ServicioFormScreen> {
     final existingImage = siteImageUrl(widget.item?['image']?.toString());
 
     return AppScaffold(
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl, AppSpacing.md, AppSpacing.xl, AppSpacing.lg),
+          child: FilledButton.icon(
+            onPressed:
+                _title.text.trim().isEmpty || _submitting ? null : _submit,
+            icon: _submitting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check),
+            label: Text(_submitting ? 'Guardando...' : 'Guardar servicio'),
+          ),
+        ),
+      ),
       scrollable: true,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -119,20 +177,21 @@ class _ServicioFormScreenState extends State<ServicioFormScreen> {
             hintText: 'Ej. Transmisión en vivo',
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
+          SiteChoiceChipsField(
             icon: Icons.sell_outlined,
             label: 'Categoría',
             iconColor: SiteFieldColors.green,
-            controller: _category,
-            hintText: 'Selecciona una categoría',
+            options: _categoryOptions,
+            value: _category,
+            onChanged: (value) => setState(() => _category = value),
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
+          SiteIconPickerField(
             icon: Icons.campaign_outlined,
             label: 'Ícono',
             iconColor: SiteFieldColors.purple,
-            controller: _icon,
-            hintText: 'Ej. megaphone, music, camera',
+            value: _icon,
+            onChanged: (option) => setState(() => _icon = option.value),
           ),
           const SizedBox(height: AppSpacing.md),
           SiteFormField(
@@ -152,25 +211,11 @@ class _ServicioFormScreenState extends State<ServicioFormScreen> {
             hintText: 'https://wa.me/52XXXXXXXXXX',
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
-            icon: Icons.swap_vert,
-            label: 'Orden de aparición',
-            controller: _sortOrder,
-            hintText: 'Ej. 1',
-            textInputType: TextInputType.number,
-          ),
-          const SizedBox(height: AppSpacing.md),
           SiteImagePickerField(
             newImage: _newImage,
             existingImageUrl: existingImage,
             onPick: _pickImage,
             title: 'Imagen del servicio',
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          AppButton(
-            label: _submitting ? 'Guardando…' : 'Guardar',
-            loading: _submitting,
-            onPressed: _submitting ? null : _submit,
           ),
           if (_isEditing) ...[
             const SizedBox(height: AppSpacing.md),

@@ -36,12 +36,18 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
 
   late final _name =
       TextEditingController(text: widget.item?['name']?.toString() ?? '');
-  late final _category =
-      TextEditingController(text: widget.item?['category']?.toString() ?? '');
-  late final _categoryLabel = TextEditingController(
-      text: widget.item?['category_label']?.toString() ?? '');
-  late final _icon =
-      TextEditingController(text: widget.item?['icon']?.toString() ?? '');
+  late String _category =
+      (widget.item?['category']?.toString().trim().isNotEmpty ?? false)
+          ? widget.item!['category'].toString().trim()
+          : 'comercios';
+  late String _categoryLabel =
+      (widget.item?['category_label']?.toString().trim().isNotEmpty ?? false)
+          ? widget.item!['category_label'].toString().trim()
+          : 'Comercios';
+  late String _icon =
+      (widget.item?['icon']?.toString().trim().isNotEmpty ?? false)
+          ? widget.item!['icon'].toString().trim()
+          : 'store';
   late final _subtitle =
       TextEditingController(text: widget.item?['subtitle']?.toString() ?? '');
   late final _summary =
@@ -50,15 +56,41 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
       text: widget.item?['description']?.toString() ?? '');
   late final _map =
       TextEditingController(text: widget.item?['map']?.toString() ?? '');
-  late final _sortOrder = TextEditingController(
-      text: widget.item?['sort_order']?.toString() ?? '0');
-
   late final List<_SocialRow> _socials = _initialSocials();
+
+  static const _categoryOptions = [
+    SiteChoiceOption('comercios', 'Comercios'),
+    SiteChoiceOption('escuelas', 'Escuelas'),
+    SiteChoiceOption('restaurantes', 'Restaurantes'),
+    SiteChoiceOption('servicios', 'Servicios'),
+    SiteChoiceOption('salud', 'Salud'),
+  ];
 
   File? _newImage;
   bool _submitting = false;
 
   bool get _isEditing => widget.item != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _name.addListener(_refreshCta);
+  }
+
+  void _refreshCta() {
+    if (mounted) setState(() {});
+  }
+
+  void _selectCategory(String value) {
+    final option = _categoryOptions.firstWhere(
+      (option) => option.value == value,
+      orElse: () => _categoryOptions.first,
+    );
+    setState(() {
+      _category = option.value;
+      _categoryLabel = option.label;
+    });
+  }
 
   List<_SocialRow> _initialSocials() {
     final raw = widget.item?['socials'] as List?;
@@ -120,17 +152,19 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
             (s['url'] as String).isNotEmpty)
         .toList());
 
+    final sortOrder = _isEditing
+        ? int.tryParse(widget.item?['sort_order']?.toString() ?? '') ?? 0
+        : await _api.nextSortOrder();
     final fields = {
       'name': _name.text.trim(),
-      'category': _category.text.trim(),
-      'category_label': _categoryLabel.text.trim(),
-      'icon': _icon.text.trim(),
+      'category': _category,
+      'category_label': _categoryLabel,
+      'icon': _icon,
       'subtitle': _subtitle.text.trim(),
       'summary': _summary.text.trim(),
       'description': _description.text,
       'map': _map.text.trim(),
-      'sort_order':
-          _sortOrder.text.trim().isEmpty ? '0' : _sortOrder.text.trim(),
+      'sort_order': sortOrder.toString(),
       'socials_json': socialsJson,
     };
 
@@ -154,10 +188,45 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
   }
 
   @override
+  void dispose() {
+    _name.removeListener(_refreshCta);
+    _name.dispose();
+    _subtitle.dispose();
+    _summary.dispose();
+    _description.dispose();
+    _map.dispose();
+    for (final social in _socials) {
+      social.label.dispose();
+      social.icon.dispose();
+      social.url.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final existingImage = siteImageUrl(widget.item?['image']?.toString());
 
     return AppScaffold(
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl, AppSpacing.md, AppSpacing.xl, AppSpacing.lg),
+          child: FilledButton.icon(
+            onPressed:
+                _name.text.trim().isEmpty || _submitting ? null : _submit,
+            icon: _submitting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check),
+            label: Text(_submitting ? 'Guardando...' : 'Guardar patrocinador'),
+          ),
+        ),
+      ),
       scrollable: true,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -176,28 +245,21 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
             hintText: 'Ej. Panadería El Trigo',
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
+          SiteChoiceChipsField(
             icon: Icons.sell_outlined,
             label: 'Categoría',
             iconColor: SiteFieldColors.green,
-            controller: _category,
-            hintText: 'Clave, ej. escuelas',
+            options: _categoryOptions,
+            value: _category,
+            onChanged: _selectCategory,
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
-            icon: Icons.label_outline,
-            label: 'Etiqueta de categoría',
-            iconColor: SiteFieldColors.green,
-            controller: _categoryLabel,
-            hintText: 'Ej. Escuelas',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SiteFormField(
+          SiteIconPickerField(
             icon: Icons.emoji_symbols_outlined,
             label: 'Ícono',
             iconColor: SiteFieldColors.purple,
-            controller: _icon,
-            hintText: 'Nombre del ícono',
+            value: _icon,
+            onChanged: (option) => setState(() => _icon = option.value),
           ),
           const SizedBox(height: AppSpacing.md),
           SiteFormField(
@@ -235,24 +297,15 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
             hintText: 'URL embed de Google Maps',
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
-            icon: Icons.swap_vert,
-            label: 'Orden de aparición',
-            controller: _sortOrder,
-            hintText: 'Ej. 1',
-            textInputType: TextInputType.number,
-          ),
           const SizedBox(height: AppSpacing.xl),
           const SiteFormSectionTitle('Redes sociales'),
           const SizedBox(height: AppSpacing.sm),
           for (final social in _socials)
-            SiteRepeatRow(
-              controllers: [social.label, social.icon, social.url],
-              hints: const [
-                'Etiqueta (Facebook)',
-                'Ícono (facebook)',
-                'https://...'
-              ],
+            SiteSocialLinkRow(
+              key: ObjectKey(social),
+              labelController: social.label,
+              iconController: social.icon,
+              urlController: social.url,
               onRemove: () => setState(() => _socials.remove(social)),
             ),
           TextButton.icon(
@@ -267,12 +320,6 @@ class _PatrocinadorFormScreenState extends State<PatrocinadorFormScreen> {
             existingImageUrl: existingImage,
             onPick: _pickImage,
             title: 'Imagen del patrocinador',
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          AppButton(
-            label: _submitting ? 'Guardando…' : 'Guardar',
-            loading: _submitting,
-            onPressed: _submitting ? null : _submit,
           ),
           if (_isEditing) ...[
             const SizedBox(height: AppSpacing.md),

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 import 'package:doliv_social/design/design.dart';
@@ -578,7 +579,7 @@ class _SiteWeekdayPickerFieldState extends State<SiteWeekdayPickerField> {
     (value: 7, label: 'D'),
   ];
 
-  late Set<int> _selected = _readDays();
+  late final Set<int> _selected = _readDays();
 
   Set<int> _readDays() => widget.controller.text
       .split(',')
@@ -748,6 +749,279 @@ class SiteChoiceChipsField extends StatelessWidget {
   }
 }
 
+class SiteIconOption {
+  const SiteIconOption(this.value, this.label, this.icon, this.tags);
+
+  final String value;
+  final String label;
+  final IconData icon;
+  final List<String> tags;
+
+  static const catalog = [
+    SiteIconOption('megaphone', 'Anuncio', Icons.campaign_outlined,
+        ['anuncio', 'promo', 'servicio', 'megaphone']),
+    SiteIconOption('music', 'Música', Icons.music_note_outlined,
+        ['musica', 'radio', 'audio', 'podcast']),
+    SiteIconOption('camera', 'Foto / video', Icons.photo_camera_outlined,
+        ['foto', 'video', 'camara', 'media']),
+    SiteIconOption('mic-2', 'Micrófono', Icons.mic_outlined,
+        ['voz', 'entrevista', 'locucion']),
+    SiteIconOption('headphones', 'Podcast', Icons.headphones_outlined,
+        ['podcast', 'episodio', 'audio']),
+    SiteIconOption('briefcase', 'Negocios', Icons.business_center_outlined,
+        ['negocio', 'trabajo', 'empresa']),
+    SiteIconOption('landmark', 'Finanzas', Icons.account_balance_outlined,
+        ['finanzas', 'dinero', 'banco']),
+    SiteIconOption('heart', 'Salud', Icons.favorite_border,
+        ['salud', 'bienestar', 'health']),
+    SiteIconOption('dumbbell', 'Fitness', Icons.fitness_center,
+        ['fitness', 'deporte', 'ejercicio']),
+    SiteIconOption('graduation-cap', 'Educación', Icons.school_outlined,
+        ['educacion', 'escuela', 'curso']),
+    SiteIconOption('utensils', 'Comida', Icons.restaurant_outlined,
+        ['comida', 'restaurante', 'cocina']),
+    SiteIconOption('store', 'Comercio', Icons.storefront_outlined,
+        ['tienda', 'comercio', 'patrocinador']),
+    SiteIconOption('map-pin', 'Lugar', Icons.place_outlined,
+        ['ubicacion', 'mapa', 'lugar']),
+    SiteIconOption('sparkles', 'Destacado', Icons.auto_awesome_outlined,
+        ['destacado', 'especial', 'estrella']),
+    SiteIconOption('wrench', 'Servicio', Icons.handyman_outlined,
+        ['servicio', 'herramienta', 'soporte']),
+    SiteIconOption('message-circle', 'Comunidad', Icons.forum_outlined,
+        ['comunidad', 'chat', 'mensaje']),
+  ];
+
+  static SiteIconOption byValue(String value) => catalog.firstWhere(
+        (option) => option.value == value,
+        orElse: () => catalog.first,
+      );
+}
+
+class SiteIconPickerField extends StatelessWidget {
+  const SiteIconPickerField({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.icon = Icons.emoji_symbols_outlined,
+    this.iconColor,
+    this.options = SiteIconOption.catalog,
+  });
+
+  final String label;
+  final String value;
+  final ValueChanged<SiteIconOption> onChanged;
+  final IconData icon;
+  final Color? iconColor;
+  final List<SiteIconOption> options;
+
+  Future<void> _openPicker(BuildContext context) async {
+    final selected = await showModalBottomSheet<SiteIconOption>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
+      ),
+      builder: (_) => _SiteIconPickerSheet(
+        selectedValue: value,
+        options: options,
+      ),
+    );
+    if (selected == null) return;
+    HapticFeedback.selectionClick();
+    onChanged(selected);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = iconColor ?? SiteFieldColors.purple;
+    final selected = SiteIconOption.byValue(value);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _openPicker(context),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: AppColors.surfaceBorder),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
+                ),
+                child: Icon(
+                    selected.icon == Icons.campaign_outlined
+                        ? icon
+                        : selected.icon,
+                    color: color),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text(
+                      selected.label,
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.expand_more, color: AppColors.textMuted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SiteIconPickerSheet extends StatefulWidget {
+  const _SiteIconPickerSheet({
+    required this.selectedValue,
+    required this.options,
+  });
+
+  final String selectedValue;
+  final List<SiteIconOption> options;
+
+  @override
+  State<_SiteIconPickerSheet> createState() => _SiteIconPickerSheetState();
+}
+
+class _SiteIconPickerSheetState extends State<_SiteIconPickerSheet> {
+  final _search = TextEditingController();
+  late List<SiteIconOption> _filtered = widget.options;
+
+  void _filter(String value) {
+    final query = value.trim().toLowerCase();
+    setState(() {
+      _filtered = query.isEmpty
+          ? widget.options
+          : widget.options.where((option) {
+              return option.label.toLowerCase().contains(query) ||
+                  option.tags.any((tag) => tag.contains(query)) ||
+                  option.value.contains(query);
+            }).toList();
+    });
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: AppSpacing.lg,
+          right: AppSpacing.lg,
+          top: AppSpacing.lg,
+          bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
+        ),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.72,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Elige un ícono',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              const SizedBox(height: AppSpacing.md),
+              TextField(
+                controller: _search,
+                onChanged: _filter,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Buscar por tema: salud, finanzas, música...',
+                  isDense: true,
+                  filled: true,
+                  fillColor: AppColors.bgBase,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.chip),
+                    borderSide: BorderSide(color: AppColors.surfaceBorder),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Expanded(
+                child: GridView.builder(
+                  itemCount: _filtered.length,
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 112,
+                    mainAxisSpacing: AppSpacing.sm,
+                    crossAxisSpacing: AppSpacing.sm,
+                    childAspectRatio: 0.9,
+                  ),
+                  itemBuilder: (context, index) {
+                    final option = _filtered[index];
+                    final active = option.value == widget.selectedValue;
+                    return InkWell(
+                      onTap: () => Navigator.of(context).pop(option),
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: active
+                              ? AppColors.accent.withValues(alpha: 0.14)
+                              : AppColors.bgBase,
+                          borderRadius: BorderRadius.circular(AppRadius.chip),
+                          border: Border.all(
+                            color: active
+                                ? AppColors.accentStrong
+                                : AppColors.surfaceBorder,
+                            width: active ? 2 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(option.icon,
+                                size: 28, color: AppColors.textPrimary),
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(
+                              option.label,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Campo de color de identidad: pastilla que previsualiza el hex actual del
 /// [controller] y, al tocarla, abre una rueda de color (HSV) para elegir
 /// cualquier tono sin escribir el código a mano. Escribe el hex resultante
@@ -772,7 +1046,8 @@ class SiteColorWheelField extends StatefulWidget {
 
 class _SiteColorWheelFieldState extends State<SiteColorWheelField> {
   Future<void> _openPicker() async {
-    var pickedColor = parseHexColor(widget.controller.text) ?? SiteFieldColors.teal;
+    var pickedColor =
+        parseHexColor(widget.controller.text) ?? SiteFieldColors.teal;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -844,7 +1119,8 @@ class _SiteColorWheelFieldState extends State<SiteColorWheelField> {
                   decoration: BoxDecoration(
                     color: swatch ?? AppColors.bgBase,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.surfaceBorder, width: 1.5),
+                    border:
+                        Border.all(color: AppColors.surfaceBorder, width: 1.5),
                   ),
                   child: swatch == null
                       ? const Icon(Icons.colorize, size: 18)
@@ -960,7 +1236,8 @@ class _SiteTagInputFieldState extends State<SiteTagInputField> {
                   controller: _inputController,
                   decoration: InputDecoration(
                     isDense: true,
-                    hintText: widget.hintText ?? 'Escribe un interés y presiona +',
+                    hintText:
+                        widget.hintText ?? 'Escribe un interés y presiona +',
                   ),
                   onSubmitted: (_) => _addTag(),
                 ),
@@ -1107,8 +1384,9 @@ class SiteLinkPickerField extends StatelessWidget {
                     Text(
                       hasLink ? (selectedLabel ?? '') : placeholder,
                       style: TextStyle(
-                        color:
-                            hasLink ? AppColors.textPrimary : AppColors.textMuted,
+                        color: hasLink
+                            ? AppColors.textPrimary
+                            : AppColors.textMuted,
                         fontSize: 13,
                       ),
                       maxLines: 1,
@@ -1220,8 +1498,8 @@ class _SiteLinkPickerSheetState extends State<_SiteLinkPickerSheet> {
                       children: [
                         if (widget.selectedId != null)
                           ListTile(
-                            leading: Icon(Icons.link_off,
-                                color: AppColors.error),
+                            leading:
+                                Icon(Icons.link_off, color: AppColors.error),
                             title: Text('Quitar vínculo',
                                 style: TextStyle(color: AppColors.error)),
                             onTap: () =>
@@ -1396,7 +1674,8 @@ class SiteRepeatRow extends StatelessWidget {
 /// real en el sitio público. Así el director solo elige la red — nunca
 /// escribe el nombre del ícono a mano.
 class SiteSocialNetwork {
-  const SiteSocialNetwork(this.key, this.label, this.previewIcon, this.siteIcon);
+  const SiteSocialNetwork(
+      this.key, this.label, this.previewIcon, this.siteIcon);
 
   final String key;
   final String label;
@@ -1410,14 +1689,14 @@ class SiteSocialNetwork {
     SiteSocialNetwork('tiktok', 'TikTok', Icons.tiktok, 'music-2'),
     SiteSocialNetwork(
         'youtube', 'YouTube', Icons.smart_display_outlined, 'youtube'),
-    SiteSocialNetwork('whatsapp', 'WhatsApp', Icons.chat_outlined, 'smartphone'),
+    SiteSocialNetwork(
+        'whatsapp', 'WhatsApp', Icons.chat_outlined, 'smartphone'),
     SiteSocialNetwork(
         'twitter', 'X (Twitter)', Icons.alternate_email, 'twitter'),
     SiteSocialNetwork(
         'linkedin', 'LinkedIn', Icons.business_center_outlined, 'linkedin'),
     SiteSocialNetwork('threads', 'Threads', Icons.forum_outlined, 'at-sign'),
-    SiteSocialNetwork(
-        'spotify', 'Spotify', Icons.music_note_outlined, 'music'),
+    SiteSocialNetwork('spotify', 'Spotify', Icons.music_note_outlined, 'music'),
     SiteSocialNetwork('otro', 'Otra red', Icons.link, 'link'),
   ];
 
@@ -1503,8 +1782,8 @@ class _SiteSocialLinkRowState extends State<SiteSocialLinkRow> {
                   decoration: const InputDecoration(
                       isDense: true, border: InputBorder.none),
                   items: SiteSocialNetwork.catalog
-                      .map((n) => DropdownMenuItem(
-                          value: n.key, child: Text(n.label)))
+                      .map((n) =>
+                          DropdownMenuItem(value: n.key, child: Text(n.label)))
                       .toList(),
                   onChanged: _selectNetwork,
                 ),

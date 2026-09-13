@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:doliv_social/core/notifications_controller.dart';
 import 'package:doliv_social/shared/home/progress.dart';
 import 'package:doliv_social/shared/home/profile.dart';
 import 'package:doliv_social/design/tokens/colors.dart';
@@ -45,8 +48,36 @@ class _NavDestination {
   final String label;
 }
 
-class _BottomNavBarState extends State<BottomNavBar> {
+class _BottomNavBarState extends State<BottomNavBar>
+    with WidgetsBindingObserver {
   int currentPageIndex = 2;
+  Timer? _notificationPoll;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _startNotificationPoll();
+  }
+
+  void _startNotificationPoll() {
+    _notificationPoll?.cancel();
+    final state = WidgetsBinding.instance.lifecycleState;
+    if (state != null && state != AppLifecycleState.resumed) return;
+    unawaited(NotificationsController.instance.refresh());
+    _notificationPoll = Timer.periodic(const Duration(seconds: 20), (_) {
+      unawaited(NotificationsController.instance.refresh());
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startNotificationPoll();
+    } else {
+      _notificationPoll?.cancel();
+    }
+  }
 
   // Las pestañas viven en un PageView para poder cambiarlas deslizando el
   // dedo. Cada página se envuelve en [_KeepAlivePage] para que conserve su
@@ -70,6 +101,8 @@ class _BottomNavBarState extends State<BottomNavBar> {
 
   @override
   void dispose() {
+    _notificationPoll?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
     super.dispose();
   }

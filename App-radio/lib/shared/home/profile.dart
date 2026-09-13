@@ -167,12 +167,12 @@ class _ProfileState extends State<Profile> {
     if (confirmed != true || !mounted) return;
     // Cortar la transmisión en vivo: no debe seguir sonando tras cerrar sesión.
     await RadioPlayer.instance.stop();
-    NotificationsController.instance.clear();
     await PushService.instance.disable();
     // Solo se elimina el token: la sesión queda cerrada. El correo y la
     // contraseña guardados con "Recuérdame" se conservan a propósito para que
     // Login vuelva a aparecer precargado.
     await secureStorage.deleteSecureData(key);
+    NotificationsController.instance.clear();
     if (!mounted) return;
     Navigator.pushReplacementNamed(context, MyRoutes.loginRoutes);
   }
@@ -208,9 +208,8 @@ class _ProfileState extends State<Profile> {
           onEditPhoto: _editProfilePhoto,
           uploadingPhoto: _uploadingPhoto,
           verified: profile?.emailVerified ?? false,
-          statusBadgeLabel: profile?.controlNumber != null
-              ? 'SPPRD-ACTIVO'
-              : null,
+          statusBadgeLabel:
+              profile?.controlNumber != null ? 'SPPRD-ACTIVO' : null,
           email: profile?.email ?? '',
           onCopyEmail: _copyEmail,
           controlNumberLabel: profile?.controlNumberLabel ?? 'Sin asignar',
@@ -227,8 +226,7 @@ class _ProfileState extends State<Profile> {
           extraBadges: profile != null && !_isDirector
               ? [
                   AppBadge(
-                      label: profile.role.label,
-                      variant: AppBadgeVariant.info),
+                      label: profile.role.label, variant: AppBadgeVariant.info),
                   if (profile.department != null)
                     AppBadge(label: profile.department!.name),
                   if (profile.leadsOwnDepartment)

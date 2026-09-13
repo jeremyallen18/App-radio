@@ -6,6 +6,8 @@ import 'package:doliv_social/models/internal_announcement.dart';
 import 'package:doliv_social/services/internal_announcement_service.dart';
 import 'package:doliv_social/services/team_service.dart';
 import 'package:doliv_social/shared/calendar/date_pickers.dart';
+import 'package:doliv_social/core/notifications_controller.dart';
+import 'package:doliv_social/models/broadcast_notice.dart';
 
 /// Formulario para que el DIRECTOR publique o edite un anuncio interno.
 ///
@@ -126,6 +128,7 @@ class _InternalAnnouncementFormScreenState
   }
 
   Future<void> _save() async {
+    if (_saving) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final err = _validate();
     if (err != null) {
@@ -149,7 +152,14 @@ class _InternalAnnouncementFormScreenState
       if (widget.isEditing) {
         await InternalAnnouncementApi.update(widget.existing!.id, body);
       } else {
-        await InternalAnnouncementApi.create(body);
+        final published = await InternalAnnouncementApi.create(body);
+        if (!mounted) return;
+        NotificationsController.instance.showBulletin(BroadcastNotice(
+          id: 'published:${published.id}',
+          title: 'Anuncio publicado',
+          preview: published.title,
+          data: const {'type': 'internal_announcement'},
+        ));
       }
       if (!mounted) return;
       Navigator.of(context).pop(true);

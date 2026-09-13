@@ -36,6 +36,17 @@ class SiteContentApi {
     return items.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
+  Future<int> nextSortOrder() async {
+    final items = await list();
+    final maxOrder = items
+        .map((item) => int.tryParse(item['sort_order']?.toString() ?? ''))
+        .whereType<int>()
+        .fold<int>(0, (currentMax, value) {
+      return value > currentMax ? value : currentMax;
+    });
+    return maxOrder + 1;
+  }
+
   Future<Map<String, dynamic>> create(
     Map<String, String> fields, {
     File? imageFile,
@@ -87,7 +98,8 @@ class SiteContentApi {
     request.headers['Authorization'] = await _token();
     request.fields.addAll(fields);
     if (imageFile != null) {
-      request.files.add(await http.MultipartFile.fromPath(imageField, imageFile.path));
+      request.files
+          .add(await http.MultipartFile.fromPath(imageField, imageFile.path));
     }
     for (final entry in additionalFiles.entries) {
       request.files.add(

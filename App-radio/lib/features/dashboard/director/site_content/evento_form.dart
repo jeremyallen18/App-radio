@@ -21,25 +21,79 @@ class _EventoFormScreenState extends State<EventoFormScreen> {
   final _api = SiteContentApi('eventos');
   final _picker = ImagePicker();
 
-  late final _title = TextEditingController(text: widget.item?['title']?.toString() ?? '');
-  late final _artist = TextEditingController(text: widget.item?['artist']?.toString() ?? '');
-  late final _location = TextEditingController(text: widget.item?['location']?.toString() ?? '');
-  late final _eventDate = TextEditingController(text: widget.item?['event_date']?.toString() ?? '');
-  late final _weekday = TextEditingController(text: widget.item?['weekday']?.toString() ?? '');
-  late final _day = TextEditingController(text: widget.item?['day']?.toString() ?? '');
-  late final _month = TextEditingController(text: widget.item?['month']?.toString() ?? '');
-  late final _year = TextEditingController(text: widget.item?['year']?.toString() ?? '');
-  late final _timeLabel = TextEditingController(text: widget.item?['time_label']?.toString() ?? '');
-  late final _description = TextEditingController(text: widget.item?['description']?.toString() ?? '');
-  late final _sortOrder = TextEditingController(text: widget.item?['sort_order']?.toString() ?? '0');
+  late final _title =
+      TextEditingController(text: widget.item?['title']?.toString() ?? '');
+  late final _artist =
+      TextEditingController(text: widget.item?['artist']?.toString() ?? '');
+  late final _location =
+      TextEditingController(text: widget.item?['location']?.toString() ?? '');
+  late final _eventDate =
+      TextEditingController(text: widget.item?['event_date']?.toString() ?? '');
+  late final _weekday =
+      TextEditingController(text: widget.item?['weekday']?.toString() ?? '');
+  late final _day =
+      TextEditingController(text: widget.item?['day']?.toString() ?? '');
+  late final _month =
+      TextEditingController(text: widget.item?['month']?.toString() ?? '');
+  late final _year =
+      TextEditingController(text: widget.item?['year']?.toString() ?? '');
+  late final _timeLabel =
+      TextEditingController(text: widget.item?['time_label']?.toString() ?? '');
+  late final _description = TextEditingController(
+      text: widget.item?['description']?.toString() ?? '');
 
   File? _newImage;
   bool _submitting = false;
 
   bool get _isEditing => widget.item != null;
 
+  @override
+  void initState() {
+    super.initState();
+    _title.addListener(_refreshCta);
+    _eventDate.addListener(_syncDateParts);
+    _syncDateParts();
+  }
+
+  void _refreshCta() {
+    if (mounted) setState(() {});
+  }
+
+  void _syncDateParts() {
+    final date = DateTime.tryParse(_eventDate.text.trim());
+    if (date == null) return;
+    const weekdays = [
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+      'Domingo',
+    ];
+    const months = [
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
+    ];
+    _weekday.text = weekdays[date.weekday - 1];
+    _day.text = date.day.toString();
+    _month.text = months[date.month - 1];
+    _year.text = date.year.toString();
+  }
+
   Future<void> _pickImage() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    final picked =
+        await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked == null) return;
     setState(() => _newImage = File(picked.path));
   }
@@ -74,6 +128,9 @@ class _EventoFormScreenState extends State<EventoFormScreen> {
     }
 
     setState(() => _submitting = true);
+    final sortOrder = _isEditing
+        ? int.tryParse(widget.item?['sort_order']?.toString() ?? '') ?? 0
+        : await _api.nextSortOrder();
     final fields = {
       'title': _title.text.trim(),
       'artist': _artist.text.trim(),
@@ -85,12 +142,13 @@ class _EventoFormScreenState extends State<EventoFormScreen> {
       'year': _year.text.trim(),
       'time_label': _timeLabel.text.trim(),
       'description': _description.text.trim(),
-      'sort_order': _sortOrder.text.trim().isEmpty ? '0' : _sortOrder.text.trim(),
+      'sort_order': sortOrder.toString(),
     };
 
     try {
       if (_isEditing) {
-        await _api.update(widget.item!['id'].toString(), fields, imageFile: _newImage);
+        await _api.update(widget.item!['id'].toString(), fields,
+            imageFile: _newImage);
       } else {
         await _api.create(fields, imageFile: _newImage);
       }
@@ -107,10 +165,46 @@ class _EventoFormScreenState extends State<EventoFormScreen> {
   }
 
   @override
+  void dispose() {
+    _title.removeListener(_refreshCta);
+    _eventDate.removeListener(_syncDateParts);
+    _title.dispose();
+    _artist.dispose();
+    _location.dispose();
+    _eventDate.dispose();
+    _weekday.dispose();
+    _day.dispose();
+    _month.dispose();
+    _year.dispose();
+    _timeLabel.dispose();
+    _description.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final existingImage = siteImageUrl(widget.item?['image']?.toString());
 
     return AppScaffold(
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl, AppSpacing.md, AppSpacing.xl, AppSpacing.lg),
+          child: FilledButton.icon(
+            onPressed:
+                _title.text.trim().isEmpty || _submitting ? null : _submit,
+            icon: _submitting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check),
+            label: Text(_submitting ? 'Guardando...' : 'Guardar evento'),
+          ),
+        ),
+      ),
       scrollable: true,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -151,52 +245,6 @@ class _EventoFormScreenState extends State<EventoFormScreen> {
             hintText: 'Vacío = "Próximamente"',
           ),
           const SizedBox(height: AppSpacing.md),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: SiteFormField(
-                  icon: Icons.view_week_outlined,
-                  label: 'Día de semana',
-                  controller: _weekday,
-                  hintText: 'Ej. Sábado',
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: SiteFormField(
-                  icon: Icons.today_outlined,
-                  label: 'Día',
-                  controller: _day,
-                  hintText: 'Ej. 12',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: SiteFormField(
-                  icon: Icons.date_range_outlined,
-                  label: 'Mes',
-                  controller: _month,
-                  hintText: 'Ej. Julio',
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: SiteFormField(
-                  icon: Icons.event_note_outlined,
-                  label: 'Año',
-                  controller: _year,
-                  hintText: 'Ej. 2026',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
           SiteTimePickerField(
             label: 'Hora',
             controller: _timeLabel,
@@ -212,25 +260,11 @@ class _EventoFormScreenState extends State<EventoFormScreen> {
             maxLines: 4,
           ),
           const SizedBox(height: AppSpacing.md),
-          SiteFormField(
-            icon: Icons.swap_vert,
-            label: 'Orden de aparición',
-            controller: _sortOrder,
-            hintText: 'Ej. 1',
-            textInputType: TextInputType.number,
-          ),
-          const SizedBox(height: AppSpacing.md),
           SiteImagePickerField(
             newImage: _newImage,
             existingImageUrl: existingImage,
             onPick: _pickImage,
             title: 'Imagen del evento',
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          AppButton(
-            label: _submitting ? 'Guardando…' : 'Guardar',
-            loading: _submitting,
-            onPressed: _submitting ? null : _submit,
           ),
           if (_isEditing) ...[
             const SizedBox(height: AppSpacing.md),

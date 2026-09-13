@@ -9,6 +9,7 @@ import 'package:doliv_social/shared/attendance/attendance_screen.dart';
 import 'package:doliv_social/shared/home/teams.dart';
 import 'package:doliv_social/shared/leave/absence_justification_screen.dart';
 import 'package:doliv_social/shared/leave/my_leave_screen.dart';
+import 'package:doliv_social/shared/home/announcements_board.dart';
 
 /// Traduce una notificación en la pantalla a la que hay que ir al tocarla.
 ///
@@ -24,15 +25,26 @@ class NotificationRouter {
   static Future<bool> open(BuildContext context, Map notification) async {
     final String type = notification['type']?.toString() ?? '';
     final String? entityType = notification['entityType']?.toString();
-    final String? entityId = (notification['entityId']?.toString().isNotEmpty ?? false)
-        ? notification['entityId'].toString()
-        : null;
+    final String? entityId =
+        (notification['entityId']?.toString().isNotEmpty ?? false)
+            ? notification['entityId'].toString()
+            : null;
 
     Widget? target;
     try {
       switch (type) {
+        case 'internal_announcement':
+        case 'internal_announcement_reminder':
+          target = Scaffold(
+            appBar: AppBar(title: const Text('Anuncios internos')),
+            body: const AnnouncementsBoard(),
+          );
+          break;
+
         case 'chat':
-          if (entityType == 'user' && entityId != null && entityId.contains('@')) {
+          if (entityType == 'user' &&
+              entityId != null &&
+              entityId.contains('@')) {
             target = ChatScreen(peerEmail: entityId);
           } else {
             target = const ChatScreenfetch();
@@ -77,7 +89,7 @@ class NotificationRouter {
           target = const TeamPage();
           break;
 
-        // internal_announcement*, department_*, etc.: sin pantalla propia a la
+        // department_*, etc.: sin pantalla propia a la
         // que llevar; se quedan solo marcadas como leídas.
         default:
           return false;

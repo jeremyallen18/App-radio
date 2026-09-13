@@ -21,20 +21,42 @@ class _AnuncioFormScreenState extends State<AnuncioFormScreen> {
   final _api = SiteContentApi('anuncios');
   final _picker = ImagePicker();
 
-  late final _titulo = TextEditingController(text: widget.item?['titulo']?.toString() ?? '');
-  late final _descripcion = TextEditingController(text: widget.item?['descripcion']?.toString() ?? '');
-  late final _fecha = TextEditingController(text: widget.item?['fecha_publicacion']?.toString() ?? '');
-  late final _linkWeb = TextEditingController(text: widget.item?['link_web']?.toString() ?? '');
-  late final _linkFacebook = TextEditingController(text: widget.item?['link_facebook']?.toString() ?? '');
-  late final _linkWhatsapp = TextEditingController(text: widget.item?['link_whatsapp']?.toString() ?? '');
+  late final _titulo =
+      TextEditingController(text: widget.item?['titulo']?.toString() ?? '');
+  late final _descripcion = TextEditingController(
+      text: widget.item?['descripcion']?.toString() ?? '');
+  late final _fecha = TextEditingController(
+      text: widget.item?['fecha_publicacion']?.toString() ?? _todayIso());
+  late final _linkWeb =
+      TextEditingController(text: widget.item?['link_web']?.toString() ?? '');
+  late final _linkFacebook = TextEditingController(
+      text: widget.item?['link_facebook']?.toString() ?? '');
+  late final _linkWhatsapp = TextEditingController(
+      text: widget.item?['link_whatsapp']?.toString() ?? '');
 
   File? _newImage;
   bool _submitting = false;
 
   bool get _isEditing => widget.item != null;
 
+  String _todayIso() {
+    final today = DateTime.now();
+    return '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _titulo.addListener(_refreshCta);
+  }
+
+  void _refreshCta() {
+    if (mounted) setState(() {});
+  }
+
   Future<void> _pickImage() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    final picked =
+        await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked == null) return;
     setState(() => _newImage = File(picked.path));
   }
@@ -80,7 +102,8 @@ class _AnuncioFormScreenState extends State<AnuncioFormScreen> {
 
     try {
       if (_isEditing) {
-        await _api.update(widget.item!['id'].toString(), fields, imageFile: _newImage, imageField: 'imagen');
+        await _api.update(widget.item!['id'].toString(), fields,
+            imageFile: _newImage, imageField: 'imagen');
       } else {
         await _api.create(fields, imageFile: _newImage, imageField: 'imagen');
       }
@@ -97,10 +120,41 @@ class _AnuncioFormScreenState extends State<AnuncioFormScreen> {
   }
 
   @override
+  void dispose() {
+    _titulo.removeListener(_refreshCta);
+    _titulo.dispose();
+    _descripcion.dispose();
+    _fecha.dispose();
+    _linkWeb.dispose();
+    _linkFacebook.dispose();
+    _linkWhatsapp.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final existingImage = siteImageUrl(widget.item?['imagen_url']?.toString());
 
     return AppScaffold(
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl, AppSpacing.md, AppSpacing.xl, AppSpacing.lg),
+          child: FilledButton.icon(
+            onPressed:
+                _titulo.text.trim().isEmpty || _submitting ? null : _submit,
+            icon: _submitting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check),
+            label: Text(_submitting ? 'Guardando...' : 'Guardar anuncio'),
+          ),
+        ),
+      ),
       scrollable: true,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -162,12 +216,6 @@ class _AnuncioFormScreenState extends State<AnuncioFormScreen> {
             existingImageUrl: existingImage,
             onPick: _pickImage,
             title: 'Imagen del anuncio',
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          AppButton(
-            label: _submitting ? 'Guardando…' : 'Guardar',
-            loading: _submitting,
-            onPressed: _submitting ? null : _submit,
           ),
           if (_isEditing) ...[
             const SizedBox(height: AppSpacing.md),

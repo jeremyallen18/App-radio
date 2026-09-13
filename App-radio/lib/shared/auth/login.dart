@@ -16,6 +16,7 @@ import 'package:doliv_social/core/session_keys.dart';
 import 'package:doliv_social/services/auth_service.dart';
 import 'package:doliv_social/shared/auth/widgets/auth_form_panel.dart';
 import 'package:doliv_social/shared/auth/widgets/auth_header.dart';
+import 'package:doliv_social/shared/auth/widgets/radio_login_transition.dart';
 
 // `secureStorage`, `key` y `rememberMeKey` se movieron a
 // `core/session_keys.dart` (las usan servicios, APIs y `main.dart`). Se
@@ -36,6 +37,8 @@ class _LoginState extends State<Login> {
   final _formKey = GlobalKey<FormState>();
   bool _rememberMe = false;
   bool _isLoading = false;
+  bool _isEntering = false;
+  bool _didNavigate = false;
   bool _obscure = true;
 
   @override
@@ -62,6 +65,7 @@ class _LoginState extends State<Login> {
   }
 
   Future<void> _login() async {
+    if (_isLoading || _isEntering) return;
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
 
@@ -89,54 +93,75 @@ class _LoginState extends State<Login> {
       return;
     }
     if (!mounted) return;
-    setState(() => _isLoading = false);
 
     if (response.statusCode == 200) {
-      final dynamic decoded = jsonDecode(response.body);
-      // El backend nuevo responde { token, emailVerified }; el viejo devolvía
-      // el token como string a secas. Se admiten ambas formas.
-      final String accessToken =
-          decoded is Map ? decoded['token'].toString() : decoded.toString();
-      final bool emailVerified =
-          decoded is Map ? decoded['emailVerified'] == true : true;
+      try {
+        final dynamic decoded = jsonDecode(response.body);
+        // El backend nuevo responde { token, emailVerified }; el viejo devolvía
+        // el token como string a secas. Se admiten ambas formas.
+        final token = decoded is Map ? decoded['token'] : decoded;
+        if (token is! String || token.trim().isEmpty) {
+          throw const FormatException('Missing login token');
+        }
+        final accessToken = token;
+        final bool emailVerified =
+            decoded is Map ? decoded['emailVerified'] == true : true;
 
-      await secureStorage.writeSecureData(key, accessToken);
-      // Solo recuerda el estado del check. El correo y la contrasena se los
-      // lleva el gestor de contrasenas del sistema: al cerrar el contexto de
-      // autofill con `shouldSave`, Android/iOS ofrecen guardarlos si el check
-      // esta activo. No afecta a la permanencia de la sesion.
-      await RememberMe.saveFlag(_rememberMe);
-      TextInput.finishAutofillContext(shouldSave: _rememberMe);
-      await secureStorage.writeSecureData(
-          emailVerifiedKey, emailVerified ? '1' : '0');
-      // No bloquea el login: si /user/me falla, el rol simplemente queda
-      // sin cachear y se puede volver a pedir más adelante.
-      unawaited(Session.fetchCurrentUser(accessToken));
-      // Igual que en main.dart: el push solo aplica en Android nativo; en
-      // escritorio/web `init()` fallaría y dejaría un log de error en cada login.
-      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-        unawaited(PushService.instance.init());
+        await secureStorage.writeSecureData(key, accessToken);
+        // Solo recuerda el estado del check. El correo y la contrasena se los
+        // lleva el gestor de contrasenas del sistema: al cerrar el contexto de
+        // autofill con `shouldSave`, Android/iOS ofrecen guardarlos si el check
+        // esta activo. No afecta a la permanencia de la sesion.
+        await RememberMe.saveFlag(_rememberMe);
+        TextInput.finishAutofillContext(shouldSave: _rememberMe);
+        await secureStorage.writeSecureData(
+            emailVerifiedKey, emailVerified ? '1' : '0');
+        // No bloquea el login: si /user/me falla, el rol simplemente queda
+        // sin cachear y se puede volver a pedir más adelante.
+        unawaited(Session.fetchCurrentUser(accessToken));
+        // Igual que en main.dart: el push solo aplica en Android nativo; en
+        // escritorio/web `init()` fallaría y dejaría un log de error en cada login.
+        if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+          unawaited(PushService.instance.init());
+        }
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        setState(() => _isEntering = true);
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'No se pudo completar el inicio de sesión. Intenta de nuevo.'),
+          ),
+        );
       }
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Inicio de sesión exitoso')),
-      );
-      await Navigator.pushNamedAndRemoveUntil(
-        context,
-        MyRoutes.bottomNavBar,
-        (route) => false,
-      );
     } else if (response.statusCode == 403 &&
         _isUnverifiedEmailResponse(response.body)) {
+      setState(() => _isLoading = false);
       // El backend NO emite token si el correo no está verificado; ya
       // reenvió el enlace (con su límite anti-abuso) al recibir este intento.
       _showUnverifiedEmailNotice(emailController.text.trim());
     } else {
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Correo o contraseña incorrectos')),
       );
     }
+  }
+
+  void _openDashboard() {
+    if (!mounted || _didNavigate || ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
+    _didNavigate = true;
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      MyRoutes.bottomNavBar,
+      (route) => false,
+    );
   }
 
   bool _isUnverifiedEmailResponse(String body) {
@@ -179,6 +204,9 @@ class _LoginState extends State<Login> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isEntering) {
+      return RadioLoginTransition(onCompleted: _openDashboard);
+    }
     final heightOfScreen = MediaQuery.of(context).size.height;
 
     return AppScaffold(

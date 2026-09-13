@@ -47,8 +47,8 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
       (widget.item?['category']?.toString().trim().isNotEmpty ?? false)
           ? widget.item!['category'].toString().trim()
           : 'locutores';
-  late final _accent =
-      TextEditingController(text: widget.item?['accent']?.toString() ?? '');
+  late final _accent = TextEditingController(
+      text: widget.item?['accent']?.toString() ?? '#2563EB');
   late final _shortDesc =
       TextEditingController(text: widget.item?['short_desc']?.toString() ?? '');
   late final _bio =
@@ -68,12 +68,40 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
 
   bool get _isEditing => widget.item != null;
 
+  @override
+  void initState() {
+    super.initState();
+    _name.addListener(_refreshCta);
+  }
+
+  void _refreshCta() {
+    if (mounted) setState(() {});
+  }
+
   static Set<int> _parseProgramIds(dynamic value) {
     if (value is! List) return <int>{};
     return value
         .map((v) => int.tryParse(v.toString()))
         .whereType<int>()
         .toSet();
+  }
+
+  @override
+  void dispose() {
+    _name.removeListener(_refreshCta);
+    _name.dispose();
+    _role.dispose();
+    _accent.dispose();
+    _shortDesc.dispose();
+    _bio.dispose();
+    _path.dispose();
+    _interests.dispose();
+    for (final social in _socials) {
+      social.label.dispose();
+      social.icon.dispose();
+      social.url.dispose();
+    }
+    super.dispose();
   }
 
   List<_SocialRow> _initialSocials() {
@@ -146,7 +174,8 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
               'url': s.url.text.trim()
             })
         .where((s) =>
-            (s['label'] as String).isNotEmpty || (s['url'] as String).isNotEmpty)
+            (s['label'] as String).isNotEmpty ||
+            (s['url'] as String).isNotEmpty)
         .toList());
 
     final fields = {
@@ -186,6 +215,25 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
     final existingImage = siteImageUrl(widget.item?['image']?.toString());
 
     return AppScaffold(
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl, AppSpacing.md, AppSpacing.xl, AppSpacing.lg),
+          child: FilledButton.icon(
+            onPressed:
+                _name.text.trim().isEmpty || _submitting ? null : _submit,
+            icon: _submitting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check),
+            label: Text(_submitting ? 'Guardando...' : 'Guardar integrante'),
+          ),
+        ),
+      ),
       scrollable: true,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -307,12 +355,6 @@ class _EquipoFormScreenState extends State<EquipoFormScreen> {
             existingImageUrl: existingImage,
             onPick: _pickImage,
             title: 'Imagen del integrante',
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          AppButton(
-            label: _submitting ? 'Guardando…' : 'Guardar',
-            loading: _submitting,
-            onPressed: _submitting ? null : _submit,
           ),
           if (_isEditing) ...[
             const SizedBox(height: AppSpacing.md),

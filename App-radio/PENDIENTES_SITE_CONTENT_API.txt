@@ -1,0 +1,108 @@
+PENDIENTES - Endurecimiento del API de contenido del sitio (/site/*)
+=====================================================================
+Estado: los 14 pasos del plan estan implementados, revisados y subidos a
+GitHub (main en 5c773fd). Lo que sigue es verificacion y despliegue.
+Plan: docs/superpowers/plans/2026-09-12-site-content-api-hardening.md
+Contrato del API: docs/site-content-api.md
+
+
+1. PROBAR LA APP FLUTTER DE VERDAD  [pendiente - lo unico no automatizado]
+---------------------------------------------------------------------
+Correr la app contra http://localhost/hive-backend con la cuenta de
+director y hacer un crear / editar / borrar real en los 7 editores:
+  [ ] Anuncios
+  [ ] Eventos
+  [ ] Servicios
+  [ ] Equipo
+  [ ] Programas
+  [ ] Patrocinadores
+  [ ] Podcasts (incluyendo subir un audio de episodio)
+Solo se hizo un cruce estatico de nombres de campo; nunca se corrio la
+app end-to-end contra el backend endurecido.
+
+
+2. AJUSTE EN LA APP (opcional, recomendable)
+---------------------------------------------------------------------
+  [ ] lib/.../servicio_form.dart      -> validar `category` no vacio antes de enviar
+  [ ] lib/.../patrocinador_form.dart  -> validar `category` y `category_label`
+El backend ahora los exige (400 si van vacios). Hoy eso aparece como un
+error en SnackBar en vez de guardar mal: no es grave, pero conviene
+validar en el formulario como ya hace equipo_form.dart.
+
+
+3. ANTES DE DESPLEGAR A PRODUCCION
+---------------------------------------------------------------------
+Seguir la seccion "Despliegue" de docs/site-content-api.md:
+  [ ] Aplicar migrations/036_site_content_audit_log.sql ANTES de subir el PHP.
+      Si la tabla no existe, cada alta/edicion/borrado en /site/* se guarda
+      pero luego responde 500 al registrar la auditoria -> el director cree
+      que fallo y reintenta -> duplicados.
+  [ ] .env de produccion: APP_ENV=production
+      (si falta, queda en 'local' y la validacion de largo de llave NO aplica)
+  [ ] .env de produccion: SITE_CONTENT_KEY de 32+ caracteres
+      (generar con: php -r "echo bin2hex(random_bytes(24)).PHP_EOL;")
+  [ ] php.ini del hosting: upload_max_filesize >= 110M y post_max_size >= 110M
+      (si el servidor corta antes, PHP vacia $_POST y sale un error confuso
+      tipo "title es requerido" en vez de un mensaje de tamano)
+  [ ] Revisar datos legado en la BD de PRODUCCION antes de subir el codigo.
+      Ahora son estrictas (http/https obligatorio, sin comillas ni espacios)
+      estas columnas; solo 2 de 7 se verificaron antes de hacerlas estrictas.
+      En local estan limpias, pero produccion puede tener filas viejas que
+      bloquearian editar ese registro desde la app:
+        - anuncios.link_web / link_facebook / link_whatsapp
+        - radio_services.whatsapp_url
+        - team_socials.url
+        - sponsor_socials.url
+        - sponsors.map
+      Tambien: sponsors.category / category_label y radio_services.category
+      ya no pueden ir vacios.
+      SELECT sugerido (correr en produccion, solo lectura):
+        SELECT 'anuncios' t, id, link_web v FROM anuncios WHERE link_web <> '' AND link_web NOT LIKE 'http%'
+        UNION ALL SELECT 'anuncios', id, link_facebook FROM anuncios WHERE link_facebook <> '' AND link_facebook NOT LIKE 'http%'
+        UNION ALL SELECT 'anuncios', id, link_whatsapp FROM anuncios WHERE link_whatsapp <> '' AND link_whatsapp NOT LIKE 'http%'
+        UNION ALL SELECT 'radio_services', id, whatsapp_url FROM radio_services WHERE whatsapp_url <> '' AND whatsapp_url NOT LIKE 'http%'
+        UNION ALL SELECT 'team_socials', id, url FROM team_socials WHERE url NOT LIKE 'http%'
+        UNION ALL SELECT 'sponsor_socials', id, url FROM sponsor_socials WHERE url NOT LIKE 'http%'
+        UNION ALL SELECT 'sponsors.map', id, map FROM sponsors WHERE map <> '' AND map NOT LIKE 'http%'
+        UNION ALL SELECT 'sponsors.cat', id, category FROM sponsors WHERE category = '' OR category_label = ''
+        UNION ALL SELECT 'radio_services.cat', id, category FROM radio_services WHERE category IS NULL OR category = '';
+      Si devuelve filas: corregirlas a mano antes del despliegue.
+
+
+4. LIMPIEZA DE ARCHIVOS HUERFANOS (cuando quieras)
+---------------------------------------------------------------------
+Script: hive-backend/site_content_orphan_cleanup.php (solo CLI, ya no es
+alcanzable por web). Por defecto SOLO LISTA; borra unicamente con --force.
+  [ ] php hive-backend/site_content_orphan_cleanup.php      (lista, no borra)
+  [ ] Revisar la lista a mano. OJO con img/patrocinadores: sponsors.php
+      (RADIODOLIV_PAGINA/inc/data/) tiene un arreglo estatico que referencia
+      imagenes que el script NO ve (solo lee la BD). No borrar ahi sin
+      confirmar contra ese archivo.
+  [ ] php hive-backend/site_content_orphan_cleanup.php --force   (borra)
+Contexto: durante el desarrollo el script borro 11 archivos con la version
+anterior (todos recuperados con git); 3 eran falsos positivos por rutas con
+%20 / ?v=... en la BD. Esos bugs ya estan corregidos.
+
+
+5. TRAILERS DE CLAUDE EN LOS COMMITS  [decision tuya]
+---------------------------------------------------------------------
+La memoria del proyecto dice que los commits van solo a tu nombre. Esta
+sesion traia una instruccion que reemplazaba esa regla, asi que los 22
+commits ya en GitHub (75d19e1..5c773fd) llevan "Co-Authored-By: Claude".
+  [ ] Dejarlos asi, o
+  [ ] Reescribir historial local + push forzado para quitarlos
+      (es historia publicada: solo hacerlo si lo pides expresamente).
+
+
+6. HALLAZGOS MENORES DEJADOS A PROPOSITO (no bloquean nada)
+---------------------------------------------------------------------
+  - site_programa_fields() usa trim($_POST[..]) directo en vez de
+    site_optional_text() como los demas recursos. Solo estilo.
+  - siteSponsorCreate/Update validan category/category_label/sort_order
+    dentro de la transaccion (heredado del plan; el rollback implicito de
+    MySQL al cerrar conexion esta comprobado en este stack).
+  - Un commit (e727433) tiene los trailers pegados en la linea de asunto.
+  - site_valid_date acepta fechas sin cero a la izquierda (2026-1-5);
+    checkdate valida bien y MySQL normaliza al guardar.
+  - Subir un archivo y luego fallar la validacion deja el archivo en disco:
+    es por diseno, para eso existe el script del punto 4.
