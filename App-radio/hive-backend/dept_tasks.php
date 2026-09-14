@@ -1015,9 +1015,21 @@ function deptTaskDelete(PDO $pdo, string $id) {
         error_response('No tienes permiso para eliminar esta tarea', 403);
     }
 
-    // La FK ON DELETE CASCADE se lleva las subtareas.
+    // La FK ON DELETE CASCADE se lleva las subtareas, pero no sus archivos de
+    // evidencia en disco: se recogen antes de borrar (tarea + subtareas).
+    $stmt = $pdo->prepare(
+        "SELECT evidence_path FROM dept_tasks
+          WHERE (id = ? OR parent_id = ?) AND evidence_path IS NOT NULL"
+    );
+    $stmt->execute([$id, $id]);
+    $evidencePaths = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
     $stmt = $pdo->prepare('DELETE FROM dept_tasks WHERE id = ?');
     $stmt->execute([$id]);
+
+    foreach ($evidencePaths as $path) {
+        @unlink(TASK_EVIDENCE_DIR . basename($path));
+    }
 
     json_response(['success' => true, 'message' => 'Tarea eliminada.']);
 }

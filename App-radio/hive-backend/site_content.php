@@ -208,6 +208,7 @@ function siteAnuncioDelete(PDO $pdo, string $id) {
     if (!$existing) error_response('Resource not found', 404);
 
     $pdo->prepare('DELETE FROM anuncios WHERE id = ?')->execute([$id]);
+    site_delete_old_file($existing['imagen_url'] ?? '');
     site_audit_log($pdo, $actor, 'anuncios', 'delete', (int) $id, $existing, null);
     json_response(['version' => '1', 'ok' => true]);
 }
@@ -286,6 +287,7 @@ function siteEventoDelete(PDO $pdo, string $id) {
     if (!$existing) error_response('Resource not found', 404);
 
     $pdo->prepare('DELETE FROM radio_events WHERE id = ?')->execute([$id]);
+    site_delete_old_file($existing['image'] ?? '');
     site_audit_log($pdo, $actor, 'eventos', 'delete', (int) $id, $existing, null);
     json_response(['version' => '1', 'ok' => true]);
 }
@@ -365,6 +367,7 @@ function siteServicioDelete(PDO $pdo, string $id) {
     if (!$existing) error_response('Resource not found', 404);
 
     $pdo->prepare('DELETE FROM radio_services WHERE id = ?')->execute([$id]);
+    site_delete_old_file($existing['image'] ?? '');
     site_audit_log($pdo, $actor, 'servicios', 'delete', (int) $id, $existing, null);
     json_response(['version' => '1', 'ok' => true]);
 }
@@ -606,6 +609,7 @@ function siteEquipoDelete(PDO $pdo, string $id) {
     // team_socials y radio_program_hosts tienen ON DELETE CASCADE hacia
     // radio_team.
     $pdo->prepare('DELETE FROM radio_team WHERE id = ?')->execute([$id]);
+    site_delete_old_file($existing['image'] ?? '');
     site_audit_log($pdo, $actor, 'equipo', 'delete', (int) $id, $before, null);
     json_response(['version' => '1', 'ok' => true]);
 }
@@ -820,6 +824,7 @@ function siteProgramaDelete(PDO $pdo, string $id) {
     $before = site_program_with_hosts($pdo, (int) $id);
 
     $pdo->prepare('DELETE FROM radio_programs WHERE id = ?')->execute([$id]);
+    site_delete_old_file($existing['image'] ?? '');
     site_audit_log($pdo, $actor, 'programas', 'delete', (int) $id, $before, null);
     json_response(['version' => '1', 'ok' => true]);
 }
@@ -992,6 +997,7 @@ function siteSponsorDelete(PDO $pdo, string $id) {
 
     // sponsor_socials tiene ON DELETE CASCADE hacia sponsors.
     $pdo->prepare('DELETE FROM sponsors WHERE id = ?')->execute([$id]);
+    site_delete_old_file($existing['image'] ?? '');
     site_audit_log($pdo, $actor, 'patrocinadores', 'delete', (int) $id, $before, null);
     json_response(['version' => '1', 'ok' => true]);
 }
@@ -1126,6 +1132,10 @@ function sitePodcastDelete(PDO $pdo, string $id) {
 
     // radio_podcast_episodes tiene ON DELETE CASCADE hacia radio_podcasts.
     $pdo->prepare('DELETE FROM radio_podcasts WHERE id = ?')->execute([$id]);
+    site_delete_old_file($existing['cover'] ?? '');
+    foreach ($before['episodes'] as $episode) {
+        site_delete_old_file($episode['audio_url'] ?? '');
+    }
     site_audit_log($pdo, $actor, 'podcasts', 'delete', (int) $id, $before, null);
     json_response(['version' => '1', 'ok' => true]);
 }
