@@ -902,6 +902,23 @@ CREATE TABLE IF NOT EXISTS radio_program_hosts (
   CONSTRAINT radio_program_hosts_team_fk FOREIGN KEY (team_id) REFERENCES radio_team (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Franjas horarias de un programa: cualquier cantidad de (día ISO, hora de
+-- inicio, hora de fin), para representar horarios distintos en días
+-- distintos del mismo programa (p. ej. miércoles 9-13, viernes 11-13). Las
+-- columnas radio_programs.weekdays/slot_start/slot_end se conservan como
+-- agregado (unión de días / min inicio / max fin) para compatibilidad.
+CREATE TABLE IF NOT EXISTS radio_program_slots (
+  id INT NOT NULL AUTO_INCREMENT,
+  program_id INT NOT NULL,
+  weekday TINYINT NOT NULL COMMENT '1=lunes..7=domingo',
+  start_hour TINYINT NOT NULL COMMENT '0-23',
+  end_hour TINYINT NOT NULL COMMENT '0-23; <= start_hour = cruza medianoche',
+  sort_order INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  KEY program_id (program_id),
+  CONSTRAINT radio_program_slots_program_fk FOREIGN KEY (program_id) REFERENCES radio_programs (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS team_socials (
   id INT NOT NULL AUTO_INCREMENT,
   team_id INT NOT NULL,

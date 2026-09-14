@@ -620,10 +620,27 @@ function siteProgramasList(PDO $pdo) {
     site_actor_context($pdo, 'site:read');
     $rows = $pdo->query('SELECT * FROM radio_programs ORDER BY sort_order ASC, id ASC')->fetchAll();
     $byProgram = site_program_host_ids_by_program($pdo);
+    $slotsByProgram = site_program_slots_by_program($pdo);
     foreach ($rows as &$row) {
         $row['host_team_ids'] = $byProgram[$row['id']] ?? [];
+        $row['slots'] = $slotsByProgram[$row['id']] ?? [];
     }
     site_response_list($rows);
+}
+
+// Franjas horarias (radio_program_slots) de cada programa, en un solo query
+// -- mismo enfoque que site_program_host_ids_by_program().
+function site_program_slots_by_program(PDO $pdo): array {
+    $rows = $pdo->query('SELECT program_id, weekday, start_hour, end_hour FROM radio_program_slots ORDER BY program_id ASC, weekday ASC')->fetchAll();
+    $byProgram = [];
+    foreach ($rows as $row) {
+        $byProgram[(int) $row['program_id']][] = [
+            'weekday'    => (int) $row['weekday'],
+            'start_hour' => (int) $row['start_hour'],
+            'end_hour'   => (int) $row['end_hour'],
+        ];
+    }
+    return $byProgram;
 }
 
 // Ids de radio_team vinculados a cada programa (host_team_ids), en un solo
@@ -644,7 +661,24 @@ function site_program_with_hosts(PDO $pdo, int $id): array {
     $hostsStmt = $pdo->prepare('SELECT team_id FROM radio_program_hosts WHERE program_id = ? ORDER BY sort_order ASC, id ASC');
     $hostsStmt->execute([$id]);
     $program['host_team_ids'] = array_map('intval', $hostsStmt->fetchAll(PDO::FETCH_COLUMN));
+    $slotsStmt = $pdo->prepare('SELECT weekday, start_hour, end_hour FROM radio_program_slots WHERE program_id = ? ORDER BY weekday ASC');
+    $slotsStmt->execute([$id]);
+    $program['slots'] = array_map(fn($row) => [
+        'weekday'    => (int) $row['weekday'],
+        'start_hour' => (int) $row['start_hour'],
+        'end_hour'   => (int) $row['end_hour'],
+    ], $slotsStmt->fetchAll());
     return $program;
+}
+
+// Reemplaza por completo las franjas horarias de un programa -- mismo
+// enfoque de "borrar todo y re-insertar" que site_sync_program_hosts().
+function site_sync_program_slots(PDO $pdo, int $programId, array $slots): void {
+    $pdo->prepare('DELETE FROM radio_program_slots WHERE program_id = ?')->execute([$programId]);
+    $insert = $pdo->prepare('INSERT INTO radio_program_slots (program_id, weekday, start_hour, end_hour, sort_order) VALUES (?, ?, ?, ?, ?)');
+    foreach (array_values($slots) as $order => $slot) {
+        $insert->execute([$programId, $slot['weekday'], $slot['start_hour'], $slot['end_hour'], $order]);
+    }
 }
 
 // Reemplaza por completo los locutores vinculados a un programa con los ids
@@ -670,26 +704,10 @@ function site_join_names_with_y(array $names): string {
 }
 
 function site_programa_fields(PDO $pdo): array {
-    $slotStart = site_valid_hour('slot_start', 'slot_start');
-    $slotEnd = site_valid_hour('slot_end', 'slot_end');
-    if (($slotStart === null) !== ($slotEnd === null)) {
-        error_response('Indica la hora de inicio y la hora final, o deja ambas vacías.', 400);
-    }
-    if ($slotStart !== null && $slotStart === $slotEnd) {
-        error_response('La hora de inicio y la hora final no pueden ser iguales.', 400);
-    }
+    $slots = site_programa_slots();
+    [$schedule, $badgeTime, $weekdays, $slotStart, $slotEnd] = site_programa_schedule_from_slots($slots);
 
     [$hostTeamIds, $host] = site_programa_host($pdo);
-
-    $weekdays = site_programa_weekdays();
-    $schedule = trim($_POST['schedule'] ?? '');
-    $badgeTime = trim($_POST['badge_time'] ?? '');
-    if ($slotStart !== null && $slotEnd !== null) {
-        $timeRange = sprintf('%02d:00 - %02d:00', $slotStart, $slotEnd);
-        $daysLabel = site_programa_days_label($weekdays);
-        $schedule = $daysLabel . ' | ' . $timeRange;
-        $badgeTime = $timeRange;
-    }
 
     return [
         trim($_POST['modal_title'] ?? ''),
@@ -698,7 +716,8 @@ function site_programa_fields(PDO $pdo): array {
         $schedule,
         $slotStart,
         $slotEnd,
-        $weekdays === [] ? null : implode(',', $weekdays),
+        $weekdays,
+        $slots,
         trim($_POST['badge_icon'] ?? ''),
         $badgeTime,
         trim($_POST['badge_label'] ?? ''),
@@ -739,30 +758,92 @@ function site_programa_host(PDO $pdo): array {
     return [$ids, site_join_names_with_y($names)];
 }
 
-function site_programa_weekdays(): array {
-    $raw = trim((string) ($_POST['weekdays'] ?? ''));
-    if ($raw === '') return [];
-    $days = array_values(array_unique(array_map('intval', explode(',', $raw))));
-    foreach ($days as $day) {
-        if ($day < 1 || $day > 7) {
-            error_response('Los días de transmisión deben estar entre 1 (lunes) y 7 (domingo).', 400);
+// Lee y valida `slots_json`: una lista de franjas horarias
+// [{"weekday":3,"start_hour":9,"end_hour":13}, {"weekday":5,"start_hour":11,"end_hour":13}, ...]
+// -- reemplaza al viejo par weekdays+slot_start/slot_end único, que forzaba
+// el MISMO horario a todos los días seleccionados (no se podía representar
+// "miércoles 9-13, viernes 11-13"). Lista vacía = sin horario fijo (música
+// 24/7). Un mismo día no puede repetirse -- editar el horario existente de
+// ese día en vez de agregar uno nuevo.
+function site_programa_slots(): array {
+    $raw = site_decode_json_array((string) ($_POST['slots_json'] ?? '[]'), 'slots_json');
+    $slots = [];
+    $seenWeekdays = [];
+    foreach ($raw as $i => $row) {
+        if (!is_array($row)) {
+            error_response("slots_json[$i] debe ser un objeto con weekday, start_hour y end_hour", 400);
         }
+        $weekday = filter_var($row['weekday'] ?? null, FILTER_VALIDATE_INT);
+        if ($weekday === false || $weekday < 1 || $weekday > 7) {
+            error_response("slots_json[$i].weekday debe ser un día entre 1 (lunes) y 7 (domingo)", 400);
+        }
+        if (isset($seenWeekdays[$weekday])) {
+            error_response('No puedes agregar dos horarios para el mismo día; edita el horario existente de ese día.', 400);
+        }
+        $seenWeekdays[$weekday] = true;
+
+        $start = filter_var($row['start_hour'] ?? null, FILTER_VALIDATE_INT);
+        if ($start === false || $start < 0 || $start > 23) {
+            error_response("slots_json[$i].start_hour debe ser una hora entre 0 y 23", 400);
+        }
+        $end = filter_var($row['end_hour'] ?? null, FILTER_VALIDATE_INT);
+        if ($end === false || $end < 0 || $end > 23) {
+            error_response("slots_json[$i].end_hour debe ser una hora entre 0 y 23", 400);
+        }
+        if ($start === $end) {
+            error_response("slots_json[$i]: la hora de inicio y la hora final no pueden ser iguales", 400);
+        }
+        $slots[] = ['weekday' => $weekday, 'start_hour' => $start, 'end_hour' => $end];
     }
-    sort($days, SORT_NUMERIC);
-    return $days;
+    usort($slots, fn($a, $b) => $a['weekday'] <=> $b['weekday']);
+    return $slots;
 }
 
-function site_programa_days_label(array $days): string {
-    if ($days === []) return 'Todos los días';
+// Deriva, a partir de las franjas horarias, los campos que el resto del
+// sitio todavía lee: `schedule`/`badge_time` (texto legible autogenerado,
+// ver componentes de RADIODOLIV_PAGINA) y `weekdays`/`slot_start`/`slot_end`
+// (agregado -- unión de días, hora mínima de inicio, hora máxima de fin --
+// que conservan con sentido a los consumidores que aún no leen `slots`
+// directamente, como el dial de 24h). Agrupa los días que comparten
+// exactamente el mismo horario para no repetir el rango de hora por cada
+// día ("Lun, Mar, Mié, Jue, Vie | 09:00 - 11:00" sigue viéndose igual que
+// antes cuando todos los días comparten horario).
+// Devuelve [$schedule, $badgeTime, $weekdaysCsv, $slotStart, $slotEnd].
+function site_programa_schedule_from_slots(array $slots): array {
+    if ($slots === []) {
+        return ['', '', null, null, null];
+    }
+
     $labels = [1 => 'Lun', 2 => 'Mar', 3 => 'Mié', 4 => 'Jue', 5 => 'Vie', 6 => 'Sáb', 7 => 'Dom'];
-    return implode(', ', array_map(fn(int $day) => $labels[$day], $days));
+    $groups = [];
+    foreach ($slots as $slot) {
+        $key = $slot['start_hour'] . '-' . $slot['end_hour'];
+        $groups[$key]['start'] ??= $slot['start_hour'];
+        $groups[$key]['end'] ??= $slot['end_hour'];
+        $groups[$key]['days'][] = $slot['weekday'];
+    }
+
+    $scheduleParts = [];
+    $timeParts = [];
+    foreach ($groups as $group) {
+        $daysLabel = implode(', ', array_map(fn(int $d) => $labels[$d], $group['days']));
+        $timeLabel = sprintf('%02d:00 - %02d:00', $group['start'], $group['end']);
+        $scheduleParts[] = "$daysLabel | $timeLabel";
+        $timeParts[] = count($groups) === 1 ? $timeLabel : "$daysLabel $timeLabel";
+    }
+
+    $starts = array_column($slots, 'start_hour');
+    $ends = array_column($slots, 'end_hour');
+    $weekdaysCsv = implode(',', array_values(array_unique(array_column($slots, 'weekday'))));
+
+    return [implode('; ', $scheduleParts), implode('; ', $timeParts), $weekdaysCsv, min($starts), max($ends)];
 }
 
 function siteProgramaCreate(PDO $pdo) {
     $actor = site_actor_context($pdo, 'site:write');
     $title = site_required_text('title', 'title');
 
-    [$modalTitle, $host, $hostTeamIds, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $categories, $cardDesc, $indexDesc, $summary, $sortOrder] = site_programa_fields($pdo);
+    [$modalTitle, $host, $hostTeamIds, $schedule, $slotStart, $slotEnd, $weekdays, $slots, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $categories, $cardDesc, $indexDesc, $summary, $sortOrder] = site_programa_fields($pdo);
     $image = site_handle_image('image', 'programas', $title, '');
     $slug = site_unique_slug($pdo, 'radio_programs', $title);
 
@@ -773,6 +854,7 @@ function siteProgramaCreate(PDO $pdo) {
 
         $id = (int) $pdo->lastInsertId();
         site_sync_program_hosts($pdo, $id, $hostTeamIds);
+        site_sync_program_slots($pdo, $id, $slots);
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
@@ -793,7 +875,7 @@ function siteProgramaUpdate(PDO $pdo, string $id) {
     $before = site_program_with_hosts($pdo, (int) $id);
 
     $title = site_required_text('title', 'title');
-    [$modalTitle, $host, $hostTeamIds, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $categories, $cardDesc, $indexDesc, $summary, $sortOrder] = site_programa_fields($pdo);
+    [$modalTitle, $host, $hostTeamIds, $schedule, $slotStart, $slotEnd, $weekdays, $slots, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $categories, $cardDesc, $indexDesc, $summary, $sortOrder] = site_programa_fields($pdo);
     $image = site_handle_image('image', 'programas', $title, $existing['image'] ?? '');
 
     try {
@@ -801,6 +883,7 @@ function siteProgramaUpdate(PDO $pdo, string $id) {
         $stmt = $pdo->prepare('UPDATE radio_programs SET title=?, modal_title=?, host=?, schedule=?, slot_start=?, slot_end=?, weekdays=?, badge_icon=?, badge_time=?, badge_label=?, accent=?, icon=?, image=?, categories=?, card_desc=?, index_desc=?, summary=?, sort_order=? WHERE id=?');
         $stmt->execute([$title, $modalTitle, $host, $schedule, $slotStart, $slotEnd, $weekdays, $badgeIcon, $badgeTime, $badgeLabel, $accent, $icon, $image, $categories, $cardDesc, $indexDesc, $summary, $sortOrder, $id]);
         site_sync_program_hosts($pdo, (int) $id, $hostTeamIds);
+        site_sync_program_slots($pdo, (int) $id, $slots);
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
