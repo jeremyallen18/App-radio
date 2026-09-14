@@ -55,14 +55,18 @@ class PushService {
   bool _localReady = false;
   bool _coldStartHandled = false;
   String? _activeChatPeerEmail;
+  String? _activeChatGroupId;
   String? _lastToken;
 
   // Guardadas para que un reintento de `_wireOnce()` no duplique la suscripción.
   StreamSubscription<RemoteMessage>? _onMessageSub;
   StreamSubscription<RemoteMessage>? _onMessageOpenedAppSub;
 
-  /// Lo fija/limpia la pantalla de un hilo de chat abierto.
+  /// Lo fija/limpia la pantalla de un hilo de chat 1 a 1 abierto.
   void setActiveChatPeer(String? email) => _activeChatPeerEmail = email;
+
+  /// Lo fija/limpia la pantalla de un chat grupal abierto.
+  void setActiveChatGroup(String? groupId) => _activeChatGroupId = groupId;
 
   /// Se llama una vez tras iniciar sesión (ya hay token guardado).
   Future<void> init() async {
@@ -191,7 +195,10 @@ class PushService {
         unawaited(NotificationsController.instance.refresh(force: true));
       }
 
-      if (!shouldShowLocalNotification(data, _activeChatPeerEmail)) return;
+      if (!shouldShowLocalNotification(
+          data, _activeChatPeerEmail, _activeChatGroupId)) {
+        return;
+      }
 
       // En segundo plano `_wireOnce()` no corrió: asegurar plugin y canal.
       await _ensureLocalNotifications();
@@ -199,8 +206,9 @@ class PushService {
       final title =
           (data['title'] ?? '').isNotEmpty ? data['title']! : 'Radio Doliv';
       final body = data['body'] ?? '';
-      final tag =
-          data['type'] == 'chat' ? 'chat:${data['entityId'] ?? ''}' : null;
+      final tag = (data['type'] == 'chat' || data['type'] == 'chat_group')
+          ? 'chat:${data['entityId'] ?? ''}'
+          : null;
 
       await _localNotifications.show(
         id: localNotificationId(data),

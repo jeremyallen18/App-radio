@@ -627,7 +627,7 @@ function notify_user(
     try {
         // FCM sólo respeta 4 collapse keys distintas por dispositivo; una clave
         // única por mensaje es peor que ninguna, así que sólo el chat colapsa.
-        $collapse = ($type === 'chat' && $entityId)
+        $collapse = (in_array($type, ['chat', 'chat_group'], true) && $entityId)
             ? 'chat:' . $entityId
             : null;
         push_send_to_user(

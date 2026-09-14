@@ -32,10 +32,13 @@ function chat_resolve_peer(PDO $pdo, string $ref, array $me): array {
     return $peer;
 }
 
-// GET /chat/conversations — una fila por persona con la que hay hilo: último
-// mensaje, cuándo, si lo mandé yo, y cuántos me faltan por leer.
+// GET /chat/conversations — una fila por persona con la que hay hilo (más
+// las de los chats grupales a los que pertenezco): último mensaje, cuándo,
+// si lo mandé yo, y cuántos me faltan por leer.
 function chatConversations(PDO $pdo) {
     $me = require_auth($pdo);
+
+    $conversations = chat_group_conversation_rows($pdo, $me);
 
     $stmt = $pdo->prepare(
         'SELECT m.conversation_key, m.sender_id, m.recipient_id, m.body, m.created_at
@@ -57,7 +60,6 @@ function chatConversations(PDO $pdo) {
           WHERE conversation_key = ? AND recipient_id = ? AND read_at IS NULL'
     );
 
-    $conversations = [];
     foreach ($rows as $r) {
         $peerId = $r['sender_id'] === $me['id'] ? $r['recipient_id'] : $r['sender_id'];
         $peerStmt->execute([$peerId]);
@@ -65,6 +67,7 @@ function chatConversations(PDO $pdo) {
         if (!$peer) continue; // la otra persona fue dada de baja
         $unreadStmt->execute([$r['conversation_key'], $me['id']]);
         $conversations[] = [
+            'type'         => 'direct',
             'peerId'       => $peer['id'],
             'peerName'     => $peer['name'],
             'peerEmail'    => $peer['email'],
@@ -76,7 +79,55 @@ function chatConversations(PDO $pdo) {
         ];
     }
 
+    // Grupos sin mensajes aún (lastAt null) al final; el resto por actividad.
+    usort($conversations, function ($a, $b) {
+        if ($a['lastAt'] === null) return $b['lastAt'] === null ? 0 : 1;
+        if ($b['lastAt'] === null) return -1;
+        return strcmp($b['lastAt'], $a['lastAt']);
+    });
+
     json_response(['conversations' => $conversations]);
+}
+
+// Filas de chat grupal para la bandeja: una por cada grupo del que $me es
+// miembro ahora mismo (empresa + su departamento, si tiene). Mismo shape que
+// una fila directa, con `type: 'group'` y `groupId` en vez de `peerEmail`.
+function chat_group_conversation_rows(PDO $pdo, array $me): array {
+    $rows = [];
+    foreach (chat_user_groups($pdo, $me) as $group) {
+        $stmt = $pdo->prepare(
+            'SELECT m.sender_id, m.body, m.created_at, u.name AS sender_name
+               FROM chat_group_messages m
+               JOIN users u ON u.id = m.sender_id
+              WHERE m.group_id = ?
+              ORDER BY m.id DESC LIMIT 1'
+        );
+        $stmt->execute([$group['id']]);
+        $last = $stmt->fetch();
+
+        $readStmt = $pdo->prepare(
+            'SELECT last_read_message_id FROM chat_group_reads WHERE group_id = ? AND user_id = ?'
+        );
+        $readStmt->execute([$group['id'], $me['id']]);
+        $lastRead = (int) ($readStmt->fetchColumn() ?: 0);
+
+        $unreadStmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM chat_group_messages
+              WHERE group_id = ? AND id > ? AND sender_id != ?'
+        );
+        $unreadStmt->execute([$group['id'], $lastRead, $me['id']]);
+
+        $rows[] = [
+            'type'        => 'group',
+            'groupId'     => $group['id'],
+            'peerName'    => chat_group_display_name($pdo, $group),
+            'lastMessage' => $last ? db_decrypt($last['body']) : null,
+            'lastAt'      => $last['created_at'] ?? null,
+            'lastFromMe'  => $last ? $last['sender_id'] === $me['id'] : false,
+            'unread'      => (int) $unreadStmt->fetchColumn(),
+        ];
+    }
+    return $rows;
 }
 
 // GET /chat/thread/{peerEmailOrId} — el hilo completo con esa persona, en

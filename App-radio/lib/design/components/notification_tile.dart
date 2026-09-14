@@ -31,6 +31,12 @@ class NotificationTile extends StatelessWidget {
           color: AppColors.accent,
           category: 'Mensaje'
         );
+      case 'chat_group':
+        return (
+          icon: Icons.chat_bubble_outline,
+          color: AppColors.accent,
+          category: 'Grupo'
+        );
       case 'member_removed':
         return (
           icon: Icons.person_remove_outlined,

@@ -5,13 +5,16 @@ import 'package:doliv_social/design/design.dart';
 import 'package:doliv_social/core/api_config.dart';
 import 'package:doliv_social/shared/auth/login.dart';
 import 'package:doliv_social/shared/chat/chat.dart';
+import 'package:doliv_social/shared/chat/group_chat.dart';
+import 'package:doliv_social/shared/teams/user_picker_sheet.dart';
 
-/// Bandeja de conversaciones: una fila por persona con la que hay un hilo,
-/// con el último mensaje y cuántos quedan sin leer. Al tocar una fila se abre
-/// la conversación 1 a 1 ([ChatScreen]).
+/// Bandeja de conversaciones: una fila por persona con la que hay un hilo
+/// 1 a 1, más una fila por cada chat grupal al que se pertenece (empresa y,
+/// si aplica, el propio departamento). Al tocar una fila se abre
+/// [ChatScreen] (1 a 1) o [GroupChatScreen] (grupo) según `type`.
 ///
 /// Datos de `GET /chat/conversations` (hive-backend), que solo devuelve los
-/// hilos en los que participa quien pregunta.
+/// hilos y grupos en los que participa quien pregunta.
 class ChatScreenfetch extends StatefulWidget {
   const ChatScreenfetch({super.key});
 
@@ -71,20 +74,29 @@ class _ChatScreenfetchState extends State<ChatScreenfetch> {
   Future<void> _openThread(Map<String, dynamic> convo) async {
     if (_opening) return;
     _opening = true;
+    final bool isGroup = convo['type'] == 'group';
     try {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ChatScreen(
-            peerEmail: convo['peerEmail']?.toString() ?? '',
-            peerName: convo['peerName']?.toString(),
-          ),
+          builder: (_) => isGroup
+              ? GroupChatScreen(groupId: convo['groupId']?.toString() ?? '')
+              : ChatScreen(
+                  peerEmail: convo['peerEmail']?.toString() ?? '',
+                  peerName: convo['peerName']?.toString(),
+                ),
         ),
       );
     } finally {
       _opening = false;
     }
     if (mounted) _fetch(); // refresca no leídos al volver
+  }
+
+  Future<void> _startNewChat() async {
+    final person = await pickPerson(context, title: 'Iniciar chat con...');
+    if (person == null || !mounted) return;
+    await _openThread({'peerEmail': person.email, 'peerName': person.name});
   }
 
   @override
@@ -103,10 +115,16 @@ class _ChatScreenfetchState extends State<ChatScreenfetch> {
     if (_loading) return const LoadingState();
     if (_hasError) return ErrorState(onRetry: _fetch);
     if (_conversations.isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.forum_outlined,
         title: 'Todavía no tienes conversaciones',
-        message: 'Abre el perfil de un compañero y toca "Enviar mensaje".',
+        message: 'Abre el perfil de un compañero y toca "Enviar mensaje",\n'
+            'o inicia un chat directamente.',
+        action: OutlinedButton.icon(
+          onPressed: _startNewChat,
+          icon: const Icon(Icons.add_comment_outlined, size: 18),
+          label: const Text('Iniciar chat'),
+        ),
       );
     }
     return RefreshIndicator(
@@ -119,16 +137,26 @@ class _ChatScreenfetchState extends State<ChatScreenfetch> {
             Divider(height: 1, color: AppColors.surfaceBorder),
         itemBuilder: (context, index) {
           final c = _conversations[index];
+          final bool isGroup = c['type'] == 'group';
           final int unread = (c['unread'] as num?)?.toInt() ?? 0;
           final bool fromMe = c['lastFromMe'] == true;
           final String name = c['peerName']?.toString() ?? '';
-          final String preview =
-              '${fromMe ? 'Tú: ' : ''}${c['lastMessage']?.toString() ?? ''}';
+          final String? lastMessage = c['lastMessage']?.toString();
+          final String preview = lastMessage == null
+              ? 'Todavía no hay mensajes'
+              : '${fromMe ? 'Tú: ' : ''}$lastMessage';
           return ListTile(
-            leading: IdentityAvatar(
-              id: c['peerEmail']?.toString() ?? name,
-              radius: 20,
-            ),
+            leading: isGroup
+                ? CircleAvatar(
+                    radius: 20,
+                    backgroundColor: AppColors.accent.withValues(alpha: 0.15),
+                    child: Icon(Icons.groups_rounded,
+                        color: AppColors.accent, size: 22),
+                  )
+                : IdentityAvatar(
+                    id: c['peerEmail']?.toString() ?? name,
+                    radius: 20,
+                  ),
             title: Text(
               name,
               style: TextStyle(

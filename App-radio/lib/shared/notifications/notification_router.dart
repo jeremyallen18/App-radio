@@ -4,6 +4,7 @@ import 'package:doliv_social/features/dashboard/director/admin_absence_screen.da
 import 'package:doliv_social/shared/calendar/calendar_screen.dart';
 import 'package:doliv_social/shared/chat/chat.dart';
 import 'package:doliv_social/shared/chat/chat_history.dart';
+import 'package:doliv_social/shared/chat/group_chat.dart';
 import 'package:doliv_social/shared/attendance/attendance_history_screen.dart';
 import 'package:doliv_social/shared/attendance/attendance_screen.dart';
 import 'package:doliv_social/shared/home/teams.dart';
@@ -46,6 +47,14 @@ class NotificationRouter {
               entityId != null &&
               entityId.contains('@')) {
             target = ChatScreen(peerEmail: entityId);
+          } else {
+            target = const ChatScreenfetch();
+          }
+          break;
+
+        case 'chat_group':
+          if (entityType == 'group' && entityId != null) {
+            target = GroupChatScreen(groupId: entityId);
           } else {
             target = const ChatScreenfetch();
           }

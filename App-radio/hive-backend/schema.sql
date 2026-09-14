@@ -164,6 +164,38 @@ CREATE TABLE IF NOT EXISTS chat_messages_legacy_global (
   created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+-- Chat grupal: uno para toda la empresa y uno por departamento (migración
+-- 038). La membresía NO se guarda aquí: se calcula en vivo desde
+-- companies/departments + users.department_id (chat_groups.php). `ref_id`
+-- apunta a companies.id o departments.id según `kind`, resuelto en PHP.
+CREATE TABLE IF NOT EXISTS chat_groups (
+  id CHAR(24) PRIMARY KEY,
+  kind ENUM('company','department') NOT NULL,
+  ref_id CHAR(24) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_chat_group_ref (kind, ref_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS chat_group_messages (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  group_id CHAR(24) NOT NULL,
+  sender_id CHAR(24) NOT NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_cgm_group (group_id, id),
+  FOREIGN KEY (group_id) REFERENCES chat_groups(id) ON DELETE CASCADE,
+  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS chat_group_reads (
+  group_id CHAR(24) NOT NULL,
+  user_id CHAR(24) NOT NULL,
+  last_read_message_id BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (group_id, user_id),
+  FOREIGN KEY (group_id) REFERENCES chat_groups(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS images (
   id INT AUTO_INCREMENT PRIMARY KEY,
   team_id CHAR(24) NOT NULL,

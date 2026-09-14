@@ -18,6 +18,7 @@ require __DIR__ . '/sub_teams.php';
 require __DIR__ . '/internal_announcements.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/chat.php';
+require __DIR__ . '/chat_groups.php';
 require __DIR__ . '/devices.php';
 require __DIR__ . '/documents.php';
 require __DIR__ . '/department_documents.php';
@@ -67,6 +68,10 @@ $routes = [
     ['GET',  '#^/chat/conversations/?$#',                     'chatConversations'],
     ['GET',  '#^/chat/thread/([^/]+)/?$#',                    'chatThread'],
     ['POST', '#^/chat/sendMessage/?$#',                       'sendChatMessage'],
+    // Chat grupal: empresa + departamento (migración 038). Membresía
+    // calculada en vivo, ver chat_groups.php.
+    ['GET',  '#^/chat/group/([^/]+)/thread/?$#',              'chatGroupThread'],
+    ['POST', '#^/chat/group/([^/]+)/sendMessage/?$#',         'sendChatGroupMessage'],
     ['GET',  '#^/image/showImage/([^/]+)/?$#',                'showImage'],
     ['POST', '#^/image/addImage/?$#',                         'addImage'],
     ['POST', '#^/text/addText/([^/]+)/?$#',                   'addText'],

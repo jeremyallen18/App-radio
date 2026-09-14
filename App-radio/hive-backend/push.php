@@ -126,6 +126,7 @@ function fcm_access_token(): string {
 function push_title_for_type(string $type): string {
     switch ($type) {
         case 'chat':
+        case 'chat_group':
             return 'Nuevo mensaje';
         case 'dept_task':
             return 'Tarea';

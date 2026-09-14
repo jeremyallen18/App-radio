@@ -14,15 +14,23 @@ Map<String, String> normalizePushData(Map<Object?, Object?> raw) {
   return out;
 }
 
-/// `false` solo cuando el mensaje es de un chat cuyo hilo el usuario tiene
-/// abierto ahora mismo (se refresca el badge, sin toast). `true` en el resto.
+/// `false` solo cuando el mensaje es de un chat (1 a 1 o grupal) cuyo hilo el
+/// usuario tiene abierto ahora mismo (se refresca el badge, sin toast).
+/// `true` en el resto.
 bool shouldShowLocalNotification(
   Map<String, String> data,
-  String? activeChatPeerEmail,
-) {
+  String? activeChatPeerEmail, [
+  String? activeChatGroupId,
+]) {
   if (data['type'] == 'chat') {
     final peer = data['entityId'];
     if (peer != null && peer.isNotEmpty && peer == activeChatPeerEmail) {
+      return false;
+    }
+  }
+  if (data['type'] == 'chat_group') {
+    final groupId = data['entityId'];
+    if (groupId != null && groupId.isNotEmpty && groupId == activeChatGroupId) {
       return false;
     }
   }
