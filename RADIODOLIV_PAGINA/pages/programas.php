@@ -103,10 +103,17 @@ function program_daypart(?int $slotStart): string {
     return 'noche';
 }
 
+// Cada programa se aplana en una ocurrencia por franja horaria, para que
+// un programa con horarios distintos en días distintos (p. ej. miércoles
+// 9-13, viernes 11-13) aparezca con el horario correcto en cada bloque del
+// día, en el dial y en el rundown -- antes una sola fila por programa
+// forzaba el mismo horario a todos sus días (ver program_occurrences() en
+// inc/data/programs.php).
+$occurrences = program_occurrences($programs);
+
 $grouped = [];
-foreach ($programs as $index => $program) {
-    $program['_index'] = $index;
-    $grouped[program_daypart($program['slot_start'] !== null ? (int) $program['slot_start'] : null)][] = $program;
+foreach ($occurrences as $occurrence) {
+    $grouped[program_daypart($occurrence['slot_start'] !== null ? (int) $occurrence['slot_start'] : null)][] = $occurrence;
 }
 // Orden de lectura del dia completo, saltando franjas sin programas.
 $daypartOrder = array_values(array_filter(
@@ -114,9 +121,9 @@ $daypartOrder = array_values(array_filter(
     fn(string $key) => !empty($grouped[$key])
 ));
 
-// Programas con horario fijo: alimentan los segmentos del dial de 24 h.
+// Ocurrencias con horario fijo: alimentan los segmentos del dial de 24 h.
 $dialPrograms = array_values(array_filter(
-    $programs,
+    $occurrences,
     fn(array $p) => $p['slot_start'] !== null && $p['slot_end'] !== null
 ));
 ?>
@@ -191,7 +198,7 @@ $dialPrograms = array_values(array_filter(
                     $segHiddenToday = !program_runs_on($program, $mexicoWeekday);
                 ?>
                 <button type="button" class="dial-seg<?= $segHiddenToday ? ' is-hidden-day' : '' ?>"
-                        data-dial-target="programa-<?= h($program['slug']) ?>"
+                        data-dial-target="programa-<?= h($program['_occurrence_key'] ?? $program['slug']) ?>"
                         data-dial-weekdays="<?= h($program['weekdays'] ?? '') ?>"
                         style="--from: <?= $start ?>; --span: <?= $span ?>; --show-accent: <?= h($program['accent']) ?>;"
                         title="<?= h($program['title']) ?> · <?= h($program['badge_time'] ?? '') ?>">

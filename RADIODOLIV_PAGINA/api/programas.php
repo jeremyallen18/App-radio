@@ -27,6 +27,15 @@ api_run(function () {
             'slotStart' => $p['slot_start'] !== null ? (int) $p['slot_start'] : null,
             'slotEnd'   => $p['slot_end'] !== null ? (int) $p['slot_end'] : null,
             'weekdays'  => $weekdays,
+            // Nuevo: franjas horarias reales del programa (puede tener horas
+            // distintas en días distintos, ver radio_program_slots) -- los
+            // campos de arriba siguen siendo el agregado (unión de días, hora
+            // mínima/máxima) para no romper a quien ya los consume.
+            'slots' => array_map(fn($s) => [
+                'weekday'  => (int) $s['weekday'],
+                'startHour' => (int) $s['start_hour'],
+                'endHour'   => (int) $s['end_hour'],
+            ], $p['slots'] ?? []),
             'accent'    => $p['accent'],
             'image'     => api_absolute_url((string) ($p['image'] ?? '')),
         ];

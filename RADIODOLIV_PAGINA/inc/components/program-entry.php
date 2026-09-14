@@ -5,10 +5,22 @@ require_once __DIR__ . '/../helpers/html.php';
 // a la izquierda, el arte flota sin marco y el titulo va directo sobre el
 // fondo de la pagina, para que la parrilla se lea como el minutado de una
 // cabina y no como una rejilla de cajas.
-// Espera $program (fila de get_programs()), $programIndex y SITE_BASE_PATH.
+// Espera $program (una OCURRENCIA de program_occurrences(), ver
+// inc/data/programs.php: trae el horario de UNA franja propia en
+// slot_start/slot_end/weekdays, no el agregado del programa), $programIndex
+// y SITE_BASE_PATH.
 $base = SITE_BASE_PATH;
 [$scheduleDays, $scheduleTime] = array_map('trim', explode('|', $program['schedule'] . '|'));
 $hasSlot = $program['slot_start'] !== null && $program['slot_end'] !== null;
+// Con más de una franja, `schedule`/`badge_time` describen TODOS los
+// horarios del programa a la vez ("Mié | 09:00-13:00; Vie | 11:00-13:00")
+// -- para esta ocurrencia puntual se calcula el rango de su propia franja
+// en su lugar, igual de compacto que el badge_time de un programa de una
+// sola franja.
+$occurrenceRange = $hasSlot && !empty($program['_multi_slot'])
+    ? sprintf('%02d:00 - %02d:00', (int) $program['slot_start'], (int) $program['slot_end'])
+    : ($program['badge_time'] ?? $scheduleTime);
+$occurrenceKey = $program['_occurrence_key'] ?? $program['slug'];
 
 // Etiquetas del programa (categories es texto separado por comas). Al
 // filtro viajan NORMALIZADAS (minusculas, sin acentos, ver
@@ -19,13 +31,13 @@ $allTags = array_filter(array_map('trim', explode(',', (string) ($program['categ
 $tagList = array_slice($allTags, 0, 3);
 $tagKeys = program_tag_keys($program['categories'] ?? '');
 ?>
-<article class="rundown-item<?= !empty($programHiddenToday) ? ' is-hidden-day' : '' ?>" id="programa-<?= h($program['slug']) ?>"
+<article class="rundown-item<?= !empty($programHiddenToday) ? ' is-hidden-day' : '' ?>" id="programa-<?= h($occurrenceKey) ?>"
     data-categories="<?= h(implode(',', $tagKeys)) ?>"
     data-title="<?= h($program['title']) ?>"
     data-host="<?= h($program['host']) ?>"
     data-accent="<?= h($program['accent']) ?>"
     data-image="<?= h($base . $program['image']) ?>"
-    data-time="<?= h($program['badge_time'] ?? $scheduleTime) ?>"
+    data-time="<?= h($occurrenceRange) ?>"
     <?php if ($hasSlot): ?>
     data-slot-start="<?= (int) $program['slot_start'] ?>"
     data-slot-end="<?= (int) $program['slot_end'] ?>"
@@ -37,7 +49,7 @@ $tagKeys = program_tag_keys($program['categories'] ?? '');
     <div class="rundown-item-clock">
         <?php if ($hasSlot): ?>
         <span class="rundown-item-hour"><?= sprintf('%02d', (int) $program['slot_start']) ?><i>:00</i></span>
-        <span class="rundown-item-range"><?= h($program['badge_time'] ?? $scheduleTime) ?></span>
+        <span class="rundown-item-range"><?= h($occurrenceRange) ?></span>
         <?php else: ?>
         <span class="rundown-item-hour rundown-item-hour--always">24/7</span>
         <?php endif; ?>

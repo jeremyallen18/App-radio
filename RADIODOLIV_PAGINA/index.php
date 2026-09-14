@@ -283,12 +283,18 @@ try {
                 </div>
             </div>
             <ul class="home-schedule">
-                <?php foreach ($programs as $program):
+                <?php foreach (program_occurrences($programs) as $program):
                     $hasSlot = $program['slot_start'] !== null && $program['slot_end'] !== null;
                     $rowHostEntries = host_team_entries($program['host_team_ids'] ?? [], $teamById);
+                    // Con más de una franja, el badge_time compartido ("09:00 -
+                    // 11:00") no describe cada ocurrencia por separado -- se
+                    // calcula la hora propia de esta franja en su lugar.
+                    $rowTime = $hasSlot && $program['_multi_slot']
+                        ? sprintf('%02d:00', (int) $program['slot_start'])
+                        : $program['badge_time'];
                 ?>
                 <li class="home-schedule-row"<?= $hasSlot ? ' data-slot-start="' . (int) $program['slot_start'] . '" data-slot-end="' . (int) $program['slot_end'] . '"' : '' ?> data-slot-weekdays="<?= h($program['weekdays'] ?? '') ?>" data-slot-name="<?= h($program['title']) ?>" data-slot-host="<?= h($program['host']) ?>" data-slot-hosts="<?= h(json_encode($rowHostEntries)) ?>" data-slot-image="<?= h(asset_url($program['image'])) ?>">
-                    <span class="home-schedule-time"><?= h($program['badge_time']) ?></span>
+                    <span class="home-schedule-time"><?= h($rowTime) ?></span>
                     <span class="home-schedule-name"><?= h($program['title']) ?></span>
                     <span class="home-schedule-host">Con <?= h($program['host']) ?></span>
                 </li>
