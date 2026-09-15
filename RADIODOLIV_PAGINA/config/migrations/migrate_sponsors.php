@@ -9,10 +9,10 @@ load_env(__DIR__ . '/../.env');
 
 require_once __DIR__ . '/../../inc/data/sponsors.php';
 
-$host = getenv('DB_HOST') ?: '127.0.0.1';
-$db = getenv('DB_NAME') ?: 'hive_db';
-$user = getenv('DB_USER') ?: 'hive_user';
-$pass = getenv('DB_PASS') ?: '';
+$host = env_get('DB_HOST') ?: '127.0.0.1';
+$db = env_get('DB_NAME') ?: 'hive_db';
+$user = env_get('DB_USER') ?: 'hive_user';
+$pass = env_get('DB_PASS') ?: '';
 
 $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

@@ -355,7 +355,7 @@ $catCol3      = anw_cycle_indexed($anuncios, 5);
     <?php $footerExtended = false; include __DIR__ . '/../inc/partials/footer.php'; ?>
     <?php include __DIR__ . '/../inc/partials/scripts.php'; ?>
     <script type="application/json" id="announcements-data" data-page-content><?= $anunciosJson ?: '[]' ?></script>
-    <script src="<?php require_once __DIR__ . '/../inc/helpers/assets.php'; echo asset_url('assets/js/pages/anuncios.js'); ?>" data-page-script></script>
-    <script src="<?= asset_url('assets/js/pages/anuncios-news.js') ?>" data-page-script></script>
+    <script src="<?php require_once __DIR__ . '/../inc/helpers/assets.php'; echo asset_url('assets/js/pages/anuncios.js'); ?>" defer data-page-script></script>
+    <script src="<?= asset_url('assets/js/pages/anuncios-news.js') ?>" defer data-page-script></script>
 </body>
 </html>

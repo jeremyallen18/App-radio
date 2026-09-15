@@ -11,7 +11,7 @@ function get_programs(): array {
     $rows = $pdo->query('
         SELECT id, slug, title, modal_title, host, schedule, slot_start, slot_end, weekdays,
                badge_icon, badge_time, badge_label, accent, icon, image,
-               categories, card_desc, index_desc, summary
+               categories, card_desc, index_desc, summary, sort_order
         FROM radio_programs
         ORDER BY sort_order ASC, id ASC
     ')->fetchAll();

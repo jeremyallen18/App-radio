@@ -1,0 +1,226 @@
+/* =========================================================
+   components/mobile-dock.css
+   "Dock" persistente SOLO para movil (<=768px): mini-reproductor
+   + barra inferior de 5 pestanas. Marcado en
+   inc/partials/mobile-dock.php (incluido desde footer.php, fuera
+   de <main>, sobrevive a la navegacion AJAX).
+
+   REGLA DE ALCANCE: todo lo visual vive dentro de
+   @media (max-width: 768px). Fuera de ese ancho, .mobile-dock
+   queda display:none y no toca nada del escritorio -- este
+   rediseno es exclusivo de dispositivos moviles.
+   ========================================================= */
+
+/* Escritorio / tablet ancho: el dock existe en el DOM pero no se ve. */
+.mobile-dock {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    :root {
+        /* Alto reservado por el dock (fila reproductor + barra de
+           pestanas). Se usa para separar el footer y subir los
+           flotantes (chatbot, sugerencia de scroll, volver arriba). */
+        --mobile-dock-h: 118px;
+        --dock-accent: #0070d1;
+        --dock-surface: #0b0b0b;
+        --dock-hairline: rgba(255, 255, 255, 0.12);
+        --dock-ink: #ffffff;
+        --dock-muted: rgba(255, 255, 255, 0.55);
+    }
+
+    body.light-theme {
+        --dock-surface: #0b1220;
+    }
+
+    /* --- Contenedor fijo al borde inferior --- */
+    .mobile-dock {
+        display: block;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 900; /* debajo del menu movil (2200), chatbot (2800) y modales */
+        background: var(--dock-surface);
+        border-top: 1px solid var(--dock-hairline);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        /* Respeta prefers-reduced-motion: sin animacion de entrada. */
+    }
+
+    /* --- Fila 1: mini-reproductor --- */
+    .mobile-dock-player {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .mobile-dock-art {
+        flex: 0 0 auto;
+        width: 38px;
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        color: #fff;
+        background: linear-gradient(135deg, var(--dock-accent), #0a1931);
+    }
+
+    .mobile-dock-meta {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .mobile-dock-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--dock-ink);
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .mobile-dock-live {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: var(--dock-accent);
+    }
+
+    .mobile-dock .pulse-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--dock-accent);
+        display: inline-block;
+    }
+
+    .mobile-dock-status {
+        display: block;
+        font-size: 11px;
+        color: var(--dock-muted);
+        line-height: 1.3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 1px;
+    }
+
+    .mobile-dock-play {
+        flex: 0 0 auto;
+        width: 44px;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 50%;
+        background: var(--dock-accent);
+        color: #fff;
+        cursor: pointer;
+        transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1), background 120ms ease;
+    }
+
+    .mobile-dock-play:active {
+        transform: scale(0.94);
+        background: #0064b7;
+    }
+
+    /* Intercambio play/pausa: por defecto se ve "play". Cuando el
+       audio suena, el dock lleva .is-playing (ver mobile-dock.js). */
+    .mobile-dock-ico-pause { display: none; }
+    .mobile-dock.is-playing .mobile-dock-ico-play { display: none; }
+    .mobile-dock.is-playing .mobile-dock-ico-pause { display: inline-block; }
+
+    /* --- Fila 2: barra de pestanas --- */
+    .mobile-dock-tabs {
+        display: flex;
+        justify-content: space-around;
+        padding: 7px 4px 10px;
+    }
+
+    .mobile-dock-tab {
+        flex: 1 1 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        min-height: 44px;
+        padding: 2px 0;
+        font-size: 10px;
+        font-weight: 500;
+        text-decoration: none;
+        color: var(--dock-muted);
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-dock-tab svg {
+        width: 21px;
+        height: 21px;
+    }
+
+    /* Estado activo resuelto por CSS contra <html data-page="...">,
+       que el router AJAX mantiene al dia (core/page-router.js). Sin JS. */
+    html[data-page="inicio"]     .mobile-dock-tab[data-tab="inicio"],
+    html[data-page="programas"]  .mobile-dock-tab[data-tab="programas"],
+    html[data-page="podcast"]    .mobile-dock-tab[data-tab="podcast"],
+    html[data-page="eventos"]    .mobile-dock-tab[data-tab="eventos"],
+    html[data-page="equipo"]     .mobile-dock-tab[data-tab="equipo"] {
+        color: var(--dock-accent);
+        font-weight: 600;
+    }
+
+    /* --- Convivencia con el resto de la UI movil --- */
+
+    /* El footer "presta" su padding inferior para que su fondo quede
+       detras del dock y ningun enlace del footer quede tapado. */
+    .main-footer {
+        padding-bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 12px);
+    }
+
+    /* La barra "estilo Spotify" del escritorio se retira en movil:
+       el dock la reemplaza con mas funcion (navegacion incluida). */
+    .sticky-player {
+        display: none !important;
+    }
+
+    /* Flotantes de esquina: se elevan por encima del dock. El dock real mide
+       --mobile-dock-h MAS el safe-area-inset-bottom del telefono (linea 46:
+       .mobile-dock tiene su propio padding-bottom con ese inset, para
+       telefonos con navegacion por gestos en vez de botones fisicos). Sin
+       sumar aqui ese mismo inset, estos flotantes se calculaban con la
+       altura "de contenido" del dock nada mas y terminaban hundidos
+       tapando parte de la barra de pestanas en cualquier telefono con
+       gesture nav (la mayoria de Android/Samsung recientes). */
+    .doliv-bot-launcher {
+        bottom: calc(18px + var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    .doliv-bot-window {
+        bottom: calc(10px + var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    .home-scroll-tip {
+        bottom: calc(14px + var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    .back-to-top {
+        bottom: calc(16px + var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px)) !important;
+    }
+}
+
+/* En pantallas muy bajas en horizontal, compacta el dock. */
+@media (max-width: 768px) and (max-height: 480px) {
+    .mobile-dock-status { display: none; }
+    .mobile-dock-player { padding-block: 6px; }
+    :root { --mobile-dock-h: 96px; }
+}

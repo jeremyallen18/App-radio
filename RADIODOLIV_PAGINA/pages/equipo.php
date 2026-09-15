@@ -124,6 +124,6 @@ $initialLocutorSlug = isset($_GET['locutor']) ? preg_replace('/[^a-z0-9\-]/', ''
     <?php include __DIR__ . '/../inc/partials/scripts.php'; ?>
     <script type="application/json" id="team-data" data-page-content><?= $teamJson ?: '[]' ?></script>
     <script type="application/json" id="initial-locutor-data" data-page-content><?= json_encode($initialLocutorSlug, JSON_UNESCAPED_UNICODE) ?></script>
-    <script src="<?= asset_url('assets/js/pages/equipo.js') ?>" data-page-script></script>
+    <script src="<?= asset_url('assets/js/pages/equipo.js') ?>" defer data-page-script></script>
 </body>
 </html>

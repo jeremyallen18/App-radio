@@ -248,6 +248,40 @@
     stroke: currentColor;
 }
 
+.rundown-item-schedule {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 14px;
+}
+
+.rundown-slot-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 32px;
+    padding: 5px 9px;
+    border: 1px solid color-mix(in srgb, var(--show-accent) 42%, var(--glass-border));
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--show-accent) 10%, transparent);
+}
+
+.rundown-slot-group strong {
+    color: var(--text-main);
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.rundown-slot-group em {
+    color: var(--show-accent);
+    font-family: "JetBrains Mono", "SFMono-Regular", monospace;
+    font-size: 0.7rem;
+    font-style: normal;
+    font-weight: 700;
+}
+
 .rundown-item-desc {
     max-width: 54ch;
     color: var(--soft-text);

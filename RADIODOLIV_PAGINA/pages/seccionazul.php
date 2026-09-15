@@ -9,11 +9,14 @@ $pageDescription = 'Directorio de aliados de Radio Doliv: escuelas, negocios, in
 $pageStylesheet  = ['pages/seccionazul-hero', 'pages/seccionazul-grid', 'pages/seccionazul-dossier'];
 $canonicalRelative = 'pages/seccionazul.php';
 
-// Archivo Narrow: condensada, que es como se componen las entradas de un
-// directorio impreso para que quepan en columna. JetBrains Mono para los
-// datos (conteos, pie de edicion, codigos de giro). Solo en esta pagina.
+// JetBrains Mono para los datos (conteos, pie de edicion, codigos de
+// giro): monoespaciada para que los digitos alineen. Los titulos y
+// nombres de entrada usan Bebas como el resto del sitio (ya no se carga
+// Archivo Narrow). Solo esta pagina trae la mono.
 $pageExtraHead = <<<HTML
-    <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 HTML;
 
 $sponsors = get_sponsors();
@@ -244,6 +247,6 @@ $activeCategories = array_values(array_filter(
     <?php $footerExtended = false; include __DIR__ . '/../inc/partials/footer.php'; ?>
     <?php include __DIR__ . '/../inc/partials/scripts.php'; ?>
     <script type="application/json" id="sponsors-data" data-page-content><?= $sponsorsJson ?: '[]' ?></script>
-    <script src="<?= asset_url('assets/js/pages/seccionazul.js') ?>" data-page-script></script>
+    <script src="<?= asset_url('assets/js/pages/seccionazul.js') ?>" defer data-page-script></script>
 </body>
 </html>

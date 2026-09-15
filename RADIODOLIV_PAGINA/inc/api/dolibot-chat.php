@@ -203,11 +203,11 @@ foreach ($history as $turn) {
 }
 $conversation[] = ['role' => 'user', 'content' => $userMessage];
 
-$apiKey = getenv('OPENROUTER_API_KEY') ?: '';
+$apiKey = env_get('OPENROUTER_API_KEY') ?: '';
 if ($apiKey === '') {
     dolibot_fail('DoliBot IA no está configurado todavía.', 503);
 }
-$model = getenv('OPENROUTER_MODEL') ?: 'openai/gpt-4o-mini';
+$model = env_get('OPENROUTER_MODEL') ?: 'openai/gpt-4o-mini';
 $knowledgeBase = build_dolibot_knowledge();
 
 // Contexto que le da a DoliBot personalidad, límites claros y conocimiento

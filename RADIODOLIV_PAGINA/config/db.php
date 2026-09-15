@@ -18,16 +18,16 @@ function get_pdo(): PDO {
     load_env(__DIR__ . '/.env');
 
     // Host del servidor MySQL.
-    $host = getenv('DB_HOST') ?: '127.0.0.1';
+    $host = env_get('DB_HOST') ?: '127.0.0.1';
 
     // Nombre exacto de la base de datos (compartida con hive-backend).
-    $db = getenv('DB_NAME') ?: 'hive_db';
+    $db = env_get('DB_NAME') ?: 'hive_db';
 
     // Usuario de la base de datos.
-    $user = getenv('DB_USER') ?: 'hive_user';
+    $user = env_get('DB_USER') ?: 'hive_user';
 
     // Contraseña del usuario de base de datos.
-    $pass = getenv('DB_PASS') ?: '';
+    $pass = env_get('DB_PASS') ?: '';
 
     try {
         // Creamos la conexión PDO con charset utf8mb4 para soportar todos los caracteres.
@@ -42,6 +42,17 @@ function get_pdo(): PDO {
 
         // Define resultado asociativo por defecto en consultas fetch.
         $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+        // Zona horaria de la SESIÓN de MySQL (no la de PHP): inc/data/live_comments.php
+        // calcula todo con NOW()/created_at del propio MySQL a propósito, para
+        // no mezclar relojes de PHP y MySQL. En XAMPP local el motor ya corre
+        // en hora de México (config del SO), pero en Hostinger MySQL arranca
+        // en UTC -> sin esto los timestamps salen 6h adelantados. Offset fijo
+        // (no nombre de zona) porque hosting compartido normalmente no trae
+        // cargadas las tablas de zonas horarias de MySQL; México ya no cambia
+        // de horario (DST abolido desde 2022 salvo franja fronteriza), así que
+        // un offset fijo no se desactualiza.
+        $pdo->exec("SET time_zone = '-06:00'");
     } catch (PDOException $e) {
         // Lanzamos un error genérico para que la página decida cómo mostrarlo.
         throw new RuntimeException("Error de conexión a la base de datos.");

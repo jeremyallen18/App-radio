@@ -140,5 +140,8 @@ class SiteContentException implements Exception {
 /// RADIODOLIV_PAGINA. Devuelve null si no hay imagen todavía.
 String? siteImageUrl(String? relativePath) {
   if (relativePath == null || relativePath.isEmpty) return null;
-  return kSiteBaseUrl + relativePath;
+  if (RegExp(r'^https?://', caseSensitive: false).hasMatch(relativePath)) {
+    return relativePath;
+  }
+  return '$kSiteBaseUrl/${relativePath.replaceFirst(RegExp(r'^/'), '')}';
 }

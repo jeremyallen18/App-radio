@@ -5,14 +5,17 @@ require_once __DIR__ . '/../inc/data/programs.php';
 $activePage      = 'programas';
 $pageTitle       = 'Programas | Radio Doliv';
 $pageDescription = 'Horarios, categorías y detalles de cada programa al aire en Radio Doliv.';
-$pageStylesheet  = ['pages/programas-hero', 'pages/programas-list', 'pages/programas-modal'];
+$pageStylesheet  = ['pages/programas-hero', 'pages/programas-list', 'pages/programas-modal', 'pages/programas-mobile', 'pages/programas-design'];
 $canonicalRelative = 'pages/programas.php';
 
-// Tipografia propia de esta pagina: "Space Grotesk" para titulares (voz de
-// cabina) y "JetBrains Mono" para los horarios (lectura tipo dial/reloj de
-// transmision). No se cargan globalmente, solo aqui via $pageExtraHead.
+// "JetBrains Mono" para los horarios (lectura tipo dial/reloj de
+// transmision): monoespaciada para que los digitos alineen. Solo se
+// carga aqui. Los titulares usan Bebas como el resto del sitio (ya no
+// se carga Space Grotesk).
 $pageExtraHead = <<<HTML
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 HTML;
 
 $programs = get_programs();
@@ -33,6 +36,12 @@ $weekdayFull   = [1 => 'lunes', 2 => 'martes', 3 => 'miércoles', 4 => 'jueves',
 // vacia/NULL = todos los dias, y los programas sin horario fijo (musica
 // 24/7) suenan siempre.
 function program_runs_on(array $program, int $weekday): bool {
+    if (!empty($program['slots'])) {
+        foreach ($program['slots'] as $slot) {
+            if ((int) ($slot['weekday'] ?? 0) === $weekday) return true;
+        }
+        return false;
+    }
     $days = array_filter(array_map('trim', explode(',', (string) ($program['weekdays'] ?? ''))));
     return !$days || in_array((string) $weekday, $days, true);
 }
@@ -67,6 +76,12 @@ function program_tag_score(string $tag): int {
 function program_tag_keys(?string $categories): array {
     $tags = array_filter(array_map('trim', explode(',', (string) $categories)));
     return array_values(array_unique(array_map('program_tag_key', $tags)));
+}
+
+function program_first_slot_start(array $program): ?int {
+    $starts = array_map(fn(array $slot) => (int) $slot['start_hour'], $program['slots'] ?? []);
+    if ($starts) return min($starts);
+    return $program['slot_start'] !== null ? (int) $program['slot_start'] : null;
 }
 
 $categoryLabels = [];
@@ -126,6 +141,26 @@ $dialPrograms = array_values(array_filter(
     $occurrences,
     fn(array $p) => $p['slot_start'] !== null && $p['slot_end'] !== null
 ));
+
+// La lista visible agrupa por PROGRAMA, no por franja. El dial y la cabina
+// necesitan ocurrencias por horario, pero al usuario le confunde ver
+// "Rincon Lunar" cinco veces si solo cambia el dia de emision. Cada ficha
+// muestra sus horarios dentro de la misma identidad del programa.
+$displayGrouped = [];
+foreach ($programs as $program) {
+    $displayGrouped[program_daypart(program_first_slot_start($program))][] = $program;
+}
+foreach ($displayGrouped as &$programList) {
+    usort($programList, function (array $a, array $b): int {
+        return [program_first_slot_start($a) ?? 99, (int) ($a['sort_order'] ?? 0), (int) ($a['id'] ?? 0)]
+            <=> [program_first_slot_start($b) ?? 99, (int) ($b['sort_order'] ?? 0), (int) ($b['id'] ?? 0)];
+    });
+}
+unset($programList);
+$displayDaypartOrder = array_values(array_filter(
+    ['madrugada', 'manana', 'tarde', 'noche', 'siempre'],
+    fn(string $key) => !empty($displayGrouped[$key])
+));
 ?>
 <!DOCTYPE html>
 <html lang="es" data-page="<?= $activePage ?? '' ?>">
@@ -134,6 +169,14 @@ $dialPrograms = array_values(array_filter(
     <?php include __DIR__ . '/../inc/partials/navbar.php'; ?>
 
     <main class="shows-main">
+        <header class="shows-intro">
+            <div>
+                <p class="shows-eyebrow"><span aria-hidden="true"></span> La radio que se escucha y se siente</p>
+                <h1 class="shows-heading">Tu día. <span>Tu programación.</span></h1>
+                <p class="shows-description">Encuentra tus voces favoritas, descubre nuevos programas y haz espacio para escuchar.</p>
+            </div>
+            <a class="shows-schedule-link" href="#programacion">Explorar horarios <i data-lucide="arrow-down" aria-hidden="true"></i></a>
+        </header>
         <!-- ============================================================
              CABINA EN VIVO — el encabezado no es un titulo decorativo
              sino el estado real de la emisora: que suena AHORA, con que
@@ -154,7 +197,7 @@ $dialPrograms = array_values(array_filter(
                     <span class="booth-clock" id="booth-clock" aria-label="Hora de Ciudad de México">--:--</span>
                 </p>
 
-                <h1 class="booth-title" id="booth-title">Radio Doliv Music</h1>
+                <h2 class="booth-title" id="booth-title">Radio Doliv Music</h2>
                 <p class="booth-host" id="booth-host">Selección continua</p>
 
                 <div class="booth-progress" id="booth-progress" aria-hidden="true">
@@ -171,7 +214,8 @@ $dialPrograms = array_values(array_filter(
             </div>
 
             <div class="booth-art" id="booth-art" aria-hidden="true">
-                <img id="booth-art-img" src="" alt="">
+                <div class="booth-record"><span>Radio<br><strong>Doliv</strong><small>Música sin pausa</small></span></div>
+                <img id="booth-art-img" alt="">
             </div>
         </section>
 
@@ -185,6 +229,10 @@ $dialPrograms = array_values(array_filter(
              como se reparte el dia y, al hacer click, salta al programa.
              ============================================================ -->
         <div class="dial" id="dial">
+            <div class="dial-heading">
+                <span><i data-lucide="radio" aria-hidden="true"></i> Así suena hoy</span>
+                <span class="dial-heading-note">Un recorrido por las 24 horas</span>
+            </div>
             <div class="dial-track" id="dial-track">
                 <?php foreach ($dialPrograms as $program):
                     $start = (int) $program['slot_start'];
@@ -198,7 +246,7 @@ $dialPrograms = array_values(array_filter(
                     $segHiddenToday = !program_runs_on($program, $mexicoWeekday);
                 ?>
                 <button type="button" class="dial-seg<?= $segHiddenToday ? ' is-hidden-day' : '' ?>"
-                        data-dial-target="programa-<?= h($program['_occurrence_key'] ?? $program['slug']) ?>"
+                        data-dial-target="programa-<?= h($program['slug']) ?>"
                         data-dial-weekdays="<?= h($program['weekdays'] ?? '') ?>"
                         style="--from: <?= $start ?>; --span: <?= $span ?>; --show-accent: <?= h($program['accent']) ?>;"
                         title="<?= h($program['title']) ?> · <?= h($program['badge_time'] ?? '') ?>">
@@ -222,6 +270,15 @@ $dialPrograms = array_values(array_filter(
              (ver pages/programas.js). Antes se mostraba la semana entera
              de golpe, lo que confundia sobre la programacion real del dia.
              ============================================================ -->
+        <section class="shows-schedule" id="programacion" aria-labelledby="shows-schedule-title">
+        <header class="shows-schedule-heading">
+            <div>
+                <p class="shows-eyebrow">Elige cuándo sintonizar</p>
+                <h2 id="shows-schedule-title">Explora la semana</h2>
+            </div>
+            <p class="shows-timezone"><i data-lucide="clock-3" aria-hidden="true"></i> Horarios de Ciudad de México</p>
+        </header>
+        <div class="shows-controls">
         <div class="rundown-days" role="group" aria-label="Ver la parrilla de otro día" data-today="<?= $mexicoWeekday ?>">
             <span class="rundown-days-label">Día</span>
             <?php foreach ($weekdayLabels as $num => $label): ?>
@@ -238,22 +295,23 @@ $dialPrograms = array_values(array_filter(
         <!-- Filtro por genero: texto subrayado, no pastillas -- la
              orientacion principal ya la da el dial de arriba. -->
         <div class="rundown-filters" role="group" aria-label="Filtrar programas por género">
-            <span class="rundown-filters-label">Filtrar</span>
+            <span class="rundown-filters-label">Género</span>
             <button type="button" class="rundown-filter is-active" data-filter="todos">Todos</button>
             <?php foreach ($categoryLabels as $key => $label): ?>
             <button type="button" class="rundown-filter" data-filter="<?= h($key) ?>"><?= h($label) ?></button>
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
+        </div>
 
         <div class="rundown" id="rundown">
-            <?php foreach ($daypartOrder as $daypartKey):
+            <?php foreach ($displayDaypartOrder as $daypartKey):
                 $meta = $daypartMeta[$daypartKey];
                 // Franja sin ningun programa hoy: se oculta ya en el render
                 // (asi tambien queda bien sin JS); el JS la reevalua al
                 // cambiar de dia o de genero.
                 $blockHiddenToday = true;
-                foreach ($grouped[$daypartKey] as $blockProgram) {
+                foreach ($displayGrouped[$daypartKey] as $blockProgram) {
                     if (program_runs_on($blockProgram, $mexicoWeekday)) { $blockHiddenToday = false; break; }
                 }
             ?>
@@ -264,16 +322,16 @@ $dialPrograms = array_values(array_filter(
                     <p class="rundown-block-note"><?= h($meta['note']) ?></p>
                 </header>
 
-                <?php foreach ($grouped[$daypartKey] as $program):
-                    $programIndex = $program['_index'];
+                <?php foreach ($displayGrouped[$daypartKey] as $programIndex => $program):
                     $programHiddenToday = !program_runs_on($program, $mexicoWeekday);
                     include __DIR__ . '/../inc/components/program-entry.php';
                 endforeach; ?>
             </section>
             <?php endforeach; ?>
 
-            <p class="rundown-empty" id="rundown-empty" hidden>Ningún programa coincide con ese día y género por ahora.</p>
+            <p class="rundown-empty" id="rundown-empty" role="status" hidden>Ningún programa coincide con ese día y género por ahora. Prueba con otro día o selecciona Todos.</p>
         </div>
+        </section>
     </main>
 
     <div class="show-modal" id="show-modal" aria-hidden="true" data-page-content>
@@ -291,6 +349,6 @@ $dialPrograms = array_values(array_filter(
 
     <?php $footerExtended = false; include __DIR__ . '/../inc/partials/footer.php'; ?>
     <?php include __DIR__ . '/../inc/partials/scripts.php'; ?>
-    <script src="<?= asset_url('assets/js/pages/programas.js') ?>" data-page-script></script>
+    <script src="<?= asset_url('assets/js/pages/programas.js') ?>" defer data-page-script></script>
 </body>
 </html>

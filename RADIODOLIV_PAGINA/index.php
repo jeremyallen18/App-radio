@@ -9,7 +9,7 @@ require_once __DIR__ . '/inc/helpers/html.php';
 $activePage      = 'inicio';
 $pageTitle       = 'Radio Doliv | Tu Radio Digital en Vivo';
 $pageDescription = 'Radio Doliv: radio digital en vivo las 24 horas, programas, podcasts originales y una comunidad que crece cada día desde el Estado de México.';
-$pageStylesheet  = ['pages/index-fresh-hero', 'pages/index-fresh-content', 'pages/index-fresh-footer'];
+$pageStylesheet  = ['pages/index-fresh-hero', 'pages/index-fresh-content', 'pages/index-fresh-footer', 'pages/index-fresh-mobile'];
 $canonicalRelative = '';
 $footerExtended  = true;
 
@@ -282,8 +282,19 @@ try {
                     <h2 class="section-title">Parrilla del día</h2>
                 </div>
             </div>
+            <?php
+            // Esta lista es la parrilla de HOY (hora de Ciudad de México), no la
+            // semana completa: program_occurrences() aplana cada programa en una
+            // fila por cada dia que transmite (ver inc/data/programs.php), asi que
+            // sin filtrar aqui un programa de Lun/Mar/Jue/Vie salia 4 veces
+            // seguidas. Mismo criterio de "corre hoy" que pages/programas.php.
+            $todayOccurrences = array_values(array_filter(program_occurrences($programs), function (array $program) use ($serverWeekday): bool {
+                $days = array_filter(array_map('trim', explode(',', (string) ($program['weekdays'] ?? ''))));
+                return !$days || in_array((string) $serverWeekday, $days, true);
+            }));
+            ?>
             <ul class="home-schedule">
-                <?php foreach (program_occurrences($programs) as $program):
+                <?php foreach ($todayOccurrences as $program):
                     $hasSlot = $program['slot_start'] !== null && $program['slot_end'] !== null;
                     $rowHostEntries = host_team_entries($program['host_team_ids'] ?? [], $teamById);
                     // Con más de una franja, el badge_time compartido ("09:00 -
@@ -644,7 +655,7 @@ try {
          (data-bs-ride, data-bs-slide-to) para la logica de slide/autoplay/
          swipe; el aspecto visual sigue siendo 100% nuestro (ver
          assets/css/components/carousel.css). -->
-    <script src="<?= asset_url('assets/js/vendor/bootstrap.bundle.min.js') ?>" data-page-script></script>
-    <script src="<?= asset_url('assets/js/pages/index.js') ?>" data-page-script></script>
+    <script src="<?= asset_url('assets/js/vendor/bootstrap.bundle.min.js') ?>" defer data-page-script></script>
+    <script src="<?= asset_url('assets/js/pages/index.js') ?>" defer data-page-script></script>
 </body>
 </html>

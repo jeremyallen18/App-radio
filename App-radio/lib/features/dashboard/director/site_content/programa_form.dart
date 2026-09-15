@@ -70,16 +70,18 @@ class ProgramFormController extends ChangeNotifier {
     ));
   }
 
-  void updateSlotStart(int? hour) {
-    _set(_withSyncedSchedule(_model.copyWith(slotStart: hour)));
+  /// Los horarios se editan en el propio [SiteScheduleSlot] (mutable) y esto
+  /// solo dispara la notificación para refrescar la UI y la validación.
+  void notifySlotsChanged() => notifyListeners();
+
+  void addSlot() {
+    _model.slots.add(SiteScheduleSlot());
+    notifyListeners();
   }
 
-  void updateSlotEnd(int? hour) {
-    _set(_withSyncedSchedule(_model.copyWith(slotEnd: hour)));
-  }
-
-  void updateWeekdays(Set<int> days) {
-    _set(_withSyncedSchedule(_model.copyWith(weekdays: days)));
+  void removeSlot(SiteScheduleSlot slot) {
+    _model.slots.remove(slot);
+    notifyListeners();
   }
 
   void updateOrderIndex(int orderIndex) {
@@ -90,25 +92,6 @@ class ProgramFormController extends ChangeNotifier {
     if (next == _model) return;
     _model = next;
     notifyListeners();
-  }
-
-  ProgramModel _withSyncedSchedule(ProgramModel current) {
-    final start = current.slotStart;
-    final end = current.slotEnd;
-    if (start == null || end == null) {
-      return current.copyWith(schedule: '', badgeTime: '');
-    }
-    const labels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-    final days = current.weekdays.toList()..sort();
-    final daysLabel = days.isEmpty
-        ? 'Todos los días'
-        : days.map((day) => labels[day - 1]).join(', ');
-    final timeRange =
-        '${start.toString().padLeft(2, '0')}:00 - ${end.toString().padLeft(2, '0')}:00';
-    return current.copyWith(
-      schedule: '$daysLabel | $timeRange',
-      badgeTime: timeRange,
-    );
   }
 
   static String _hexFromColor(Color color) {
@@ -232,6 +215,15 @@ class _ProgramaFormScreenState extends State<ProgramaFormScreen> {
 
   Future<void> _submit() async {
     if (!_form.isValid || _submitting) return;
+    if (_form.model.slots
+        .any((s) => s.startHour == null || s.endHour == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Elige la hora de inicio y de fin de cada horario'),
+        ),
+      );
+      return;
+    }
 
     setState(() => _submitting = true);
     try {
@@ -1086,37 +1078,18 @@ class _ProgramTagManagerFieldState extends State<ProgramTagManagerField> {
   }
 }
 
+/// Un horario por franja: cada día en que transmite el programa puede tener
+/// su propio rango de hora (p.ej. miércoles 9-13, viernes 11-13) — ver
+/// `site_programa_slots()` en hive-backend, que ya no acepta el horario
+/// único de antes.
 class _ScheduleSection extends StatelessWidget {
   const _ScheduleSection({required this.form});
 
   final ProgramFormController form;
 
-  static const _days = [
-    (value: 1, label: 'L'),
-    (value: 2, label: 'M'),
-    (value: 3, label: 'X'),
-    (value: 4, label: 'J'),
-    (value: 5, label: 'V'),
-    (value: 6, label: 'S'),
-    (value: 7, label: 'D'),
-  ];
-
-  Future<void> _pickHour(
-    BuildContext context,
-    int? current,
-    ValueChanged<int?> onChanged,
-  ) async {
-    final selected = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: current ?? TimeOfDay.now().hour, minute: 0),
-    );
-    if (selected == null) return;
-    onChanged(selected.hour);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final model = form.model;
+    final slots = form.model.slots;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -1140,73 +1113,32 @@ class _ScheduleSection extends StatelessWidget {
                     color: SiteFieldColors.orange),
               ),
               const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Horario',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 2),
-                    Text(
-                      model.schedule.isEmpty
-                          ? 'Sin horario fijo'
-                          : model.schedule,
-                      style:
-                          TextStyle(color: AppColors.textMuted, fontSize: 12),
-                    ),
-                  ],
-                ),
+              const Expanded(
+                child: Text('Horarios',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _pickHour(
-                    context,
-                    model.slotStart,
-                    form.updateSlotStart,
-                  ),
-                  icon: const Icon(Icons.play_arrow, size: 18),
-                  label: Text(model.slotStart == null
-                      ? 'Inicio'
-                      : '${model.slotStart!.toString().padLeft(2, '0')}:00'),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _pickHour(
-                    context,
-                    model.slotEnd,
-                    form.updateSlotEnd,
-                  ),
-                  icon: const Icon(Icons.stop, size: 18),
-                  label: Text(model.slotEnd == null
-                      ? 'Fin'
-                      : '${model.slotEnd!.toString().padLeft(2, '0')}:00'),
-                ),
-              ),
-            ],
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Un programa puede tener horas distintas en días distintos: '
+            'agrega un horario por cada día en que transmite. Sin '
+            'horarios, se muestra como música 24/7.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
           const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: AppSpacing.xs,
-            runSpacing: AppSpacing.xs,
-            children: _days.map((day) {
-              final selected = model.weekdays.contains(day.value);
-              return FilterChip(
-                label: Text(day.label),
-                selected: selected,
-                onSelected: (value) {
-                  final updated = Set<int>.from(model.weekdays);
-                  value ? updated.add(day.value) : updated.remove(day.value);
-                  form.updateWeekdays(updated);
-                },
-              );
-            }).toList(),
+          for (final slot in slots)
+            SiteScheduleSlotRow(
+              key: ObjectKey(slot),
+              slot: slot,
+              onChanged: form.notifySlotsChanged,
+              onRemove: () => form.removeSlot(slot),
+            ),
+          TextButton.icon(
+            onPressed: form.addSlot,
+            icon: Icon(Icons.add, color: AppColors.accent),
+            label:
+                Text('Agregar horario', style: TextStyle(color: AppColors.accent)),
           ),
         ],
       ),

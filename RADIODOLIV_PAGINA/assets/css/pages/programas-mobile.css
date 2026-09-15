@@ -1,0 +1,101 @@
+/* =============================================
+   pages/programas-mobile.css
+   Programas, capa 4/4: ajustes EXCLUSIVOS para teléfono en el espíritu
+   del prototipo "Radio Doliv Móvil". Todo dentro de
+   @media (max-width: 768px); solo recompacta el marcado existente (no
+   cambia el DOM, no toca assets/js/pages/programas.js). Se carga en
+   último lugar desde programas.php ($pageStylesheet), así que gana la
+   cascada sobre los breakpoints de programas-hero.css / -list.css.
+
+   La página ya trae mucho responsive propio (booth apilado a <=860,
+   dial simplificado a <=720, rundown-item reflowado a <=900/520). Lo
+   que falta para móvil:
+   - Menos "page shell" muerto arriba (130px -> ~92px bajo la navbar).
+   - Cabina en vivo más compacta.
+   - Filtro por género como TIRA HORIZONTAL deslizable (antes envolvía
+     en tres líneas en el ancho del teléfono).
+   - Objetivos táctiles de 44px en filtros y en el CTA de cada programa.
+
+   NOTA: el prototipo mostraba pestañas por día de la semana. No se
+   trasladan: la página real filtra por GÉNERO y navega por el DIAL de
+   24 h -- añadir un selector por día sería una función nueva que el
+   escritorio no tiene y duplicaría esa orientación.
+   ============================================= */
+
+@media (max-width: 768px) {
+
+    /* --page-shell-padding es 130px 5% 90px (compartido por las páginas
+       interiores). En móvil, con la navbar de ~70px, sobra la mitad. */
+    .shows-main {
+        padding: 92px 18px 32px;
+    }
+
+    /* --- CABINA EN VIVO: más compacta --------------------------- */
+    .booth {
+        padding: 22px 18px;
+        gap: 18px;
+        margin-bottom: var(--space-5);
+    }
+
+    .booth-status {
+        margin-bottom: 10px;
+    }
+
+    .booth-title {
+        font-size: clamp(1.8rem, 8vw, 2.3rem);
+    }
+
+    .booth-host {
+        font-size: var(--text-base);
+        margin-bottom: 16px;
+    }
+
+    /* La imagen ya se limita a 190px a <=860; en el teléfono aún pesa. */
+    .booth-art img {
+        max-width: 124px;
+    }
+
+    /* --- DIAL: solo un poco más de aire abajo (ya se simplifica a
+           <=720: estático, sin nombres, como mapa de color). --- */
+    .dial {
+        margin-bottom: var(--space-6);
+    }
+
+    /* --- FILTRO POR GÉNERO: tira horizontal deslizable ---------- */
+    .rundown-filters {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: var(--space-3);
+        /* Sangra a los bordes de .shows-main (padding inline 18px). */
+        margin-inline: -18px;
+        padding-inline: 18px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .rundown-filters::-webkit-scrollbar {
+        display: none;
+    }
+
+    .rundown-filters-label {
+        flex: 0 0 auto;
+    }
+
+    .rundown-filter {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    /* --- Objetivo táctil del CTA "Ver detalles del programa" ---- */
+    .rundown-item-cta {
+        min-height: 44px;
+    }
+
+    /* --- Bloques del rundown: encabezado un poco más ajustado --- */
+    .rundown-block-head {
+        margin-bottom: var(--space-5);
+    }
+}

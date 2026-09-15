@@ -52,19 +52,37 @@ const items = Array.from(document.querySelectorAll(".rundown-item"));
    la cabina, el dial y las entradas del rundown, para que los tres
    no puedan contradecirse entre si.
    ------------------------------------------------------------------ */
-function readSlot(item) {
-    if (!item.dataset.slotStart) return null;
+function readSlots(item) {
+    if (item.dataset.slots) {
+        try {
+            const parsed = JSON.parse(item.dataset.slots);
+            if (Array.isArray(parsed)) {
+                return parsed
+                    .map((slot) => ({
+                        item,
+                        start: Number(slot.start),
+                        end: Number(slot.end),
+                        weekdays: slot.weekday ? [String(slot.weekday)] : [],
+                    }))
+                    .filter((slot) => Number.isFinite(slot.start) && Number.isFinite(slot.end));
+            }
+        } catch (_) {
+            return [];
+        }
+    }
+
+    if (!item.dataset.slotStart) return [];
     const weekdays = (item.dataset.slotWeekdays || "")
         .split(",").map((d) => d.trim()).filter(Boolean);
-    return {
+    return [{
         item,
         start: Number(item.dataset.slotStart),
         end: Number(item.dataset.slotEnd),
         weekdays,
-    };
+    }];
 }
 
-const slots = items.map(readSlot).filter(Boolean);
+const slots = items.flatMap(readSlots);
 
 function runsToday(slot, weekday) {
     return !slot.weekdays.length || slot.weekdays.includes(String(weekday));
@@ -171,7 +189,7 @@ function paintBooth(liveSlot, now, next) {
     if (next && next.slot !== liveSlot) {
         boothNext.hidden = false;
         boothNextName.textContent = next.slot.item.dataset.title;
-        const time = next.slot.item.dataset.time || `${pad(next.slot.start)}:00`;
+        const time = `${pad(next.slot.start)}:00 - ${pad(next.slot.end)}:00`;
         // Si el siguiente programa no es de hoy, se antepone el dia para
         // que no parezca que empieza en unas horas.
         boothNextTime.textContent = next.day === now.weekday
@@ -244,33 +262,60 @@ if (pageSignal) {
 }
 
 /* ------------------------------------------------------------------
-   Revelado por scroll de cada entrada, escalonando sus partes (hora,
-   texto y arte entran por separado) para que el rundown se lea como
-   una secuencia y no como un bloque que aparece de golpe.
+   Reveal progresivo: un solo observador para encabezado, cabina,
+   controles y fichas. Solo se ocultan después de activar el observador;
+   sin JS, sin soporte o con movimiento reducido el contenido es visible.
+   Los filtros conservan su clase is-visible para mostrar los resultados.
    ------------------------------------------------------------------ */
-if ("IntersectionObserver" in window && items.length) {
-    const revealObserver = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-            if (!entry.isIntersecting) return;
-            entry.target.classList.add("is-visible");
-            revealObserver.unobserve(entry.target);
-        });
-    }, { threshold: 0.18, rootMargin: "0px 0px -8% 0px" });
-    items.forEach((item) => revealObserver.observe(item));
+(function initShowsReveal() {
+    const main = document.querySelector(".shows-main");
+    if (!main) return;
+    const targets = Array.from(main.querySelectorAll(
+        ".shows-intro > *, .booth, .dial, .shows-schedule-heading, " +
+        ".shows-controls, .rundown-block-head, .rundown-item"
+    ));
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!("IntersectionObserver" in window) || motion.matches) {
+        targets.forEach((target) => target.classList.add("is-visible"));
+        return;
+    }
 
-    const blockHeads = document.querySelectorAll(".rundown-block-head");
-    const headObserver = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-            if (!entry.isIntersecting) return;
+    const observer = new IntersectionObserver((entries) => {
+        const entering = entries.filter((entry) => entry.isIntersecting);
+        entering.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        entering.forEach((entry, index) => {
+            entry.target.style.setProperty("--shows-reveal-delay", `${Math.min(index, 3) * 70}ms`);
             entry.target.classList.add("is-visible");
-            headObserver.unobserve(entry.target);
+            observer.unobserve(entry.target);
         });
-    }, { threshold: 0.3 });
-    blockHeads.forEach((head) => headObserver.observe(head));
-} else {
-    items.forEach((item) => item.classList.add("is-visible"));
-    document.querySelectorAll(".rundown-block-head").forEach((h) => h.classList.add("is-visible"));
-}
+    }, { threshold: 0.06, rootMargin: "0px 0px -24px 0px" });
+
+    targets.forEach((target) => {
+        target.classList.add("shows-reveal");
+        observer.observe(target);
+    });
+
+    // Un control enfocado con teclado nunca espera al scroll para verse.
+    function revealFocused(event) {
+        const target = event.target.closest(".shows-reveal");
+        if (!target) return;
+        target.style.setProperty("--shows-reveal-delay", "0ms");
+        target.classList.add("is-visible");
+        observer.unobserve(target);
+    }
+    function reduceMotion(event) {
+        if (!event.matches) return;
+        observer.disconnect();
+        targets.forEach((target) => target.classList.add("is-visible"));
+    }
+    main.addEventListener("focusin", revealFocused);
+    motion.addEventListener("change", reduceMotion);
+    pageSignal?.addEventListener("abort", () => {
+        observer.disconnect();
+        main.removeEventListener("focusin", revealFocused);
+        motion.removeEventListener("change", reduceMotion);
+    }, { once: true });
+})();
 
 /* ------------------------------------------------------------------
    Filtros de la parrilla: DIA (que se emite ese dia) + GENERO. Son
@@ -294,6 +339,10 @@ let activeDay = getMexicoNow().weekday;
 function itemRunsOnDay(item, day) {
     /* Sin lista de dias = suena todos los dias (incluye la musica 24/7,
        que ni siquiera trae el atributo). */
+    const itemSlots = readSlots(item);
+    if (itemSlots.length) {
+        return itemSlots.some((slot) => runsToday(slot, day));
+    }
     const days = (item.dataset.slotWeekdays || "")
         .split(",").map((d) => d.trim()).filter(Boolean);
     return !days.length || days.includes(String(day));
@@ -377,7 +426,7 @@ const modalSummary = document.getElementById("show-modal-summary");
 
 function openModal(data) {
     modalTitle.textContent = data.title || "Programa";
-    modalTime.textContent = (data.time || "").replace("|", "·");
+    modalTime.textContent = (data.schedule || data.time || "").replace(/\|/g, "·");
     modalSummary.textContent = data.summary || "";
     modalCats.innerHTML = (data.categories || "")
         .split(",")

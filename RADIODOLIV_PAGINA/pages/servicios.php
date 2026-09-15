@@ -110,6 +110,6 @@ function services_category_id(string $categoryName): string {
 
     <?php $footerExtended = false; include __DIR__ . '/../inc/partials/footer.php'; ?>
     <?php include __DIR__ . '/../inc/partials/scripts.php'; ?>
-    <script src="<?= asset_url('assets/js/pages/servicios.js') ?>" data-page-script></script>
+    <script src="<?= asset_url('assets/js/pages/servicios.js') ?>" defer data-page-script></script>
 </body>
 </html>

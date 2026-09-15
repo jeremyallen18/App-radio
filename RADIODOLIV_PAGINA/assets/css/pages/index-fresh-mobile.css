@@ -1,0 +1,183 @@
+/* =============================================
+   pages/index-fresh-mobile.css
+   Inicio, capa 4/4: rediseño EXCLUSIVO para teléfono del prototipo
+   "Radio Doliv Móvil". Todo vive dentro de @media (max-width: 768px)
+   y solo reordena / recompacta el marcado que ya existe (no cambia
+   el DOM, para no tocar assets/js/pages/index.js ni core/radio.js).
+   Se carga en último lugar desde index.php ($pageStylesheet), así que
+   gana la cascada sobre los breakpoints de index-fresh-*.css.
+
+   Ideas del prototipo aplicadas aquí:
+   - El hero abre con la ACCIÓN de reproducir: el reproductor sube
+     por encima de los comentarios en vivo.
+   - Copy del hero más corto y compacto.
+   - Comentarios en vivo recogidos (lista más baja, menos aire).
+   - "Nuestras voces" pasa a riel horizontal con scroll-snap.
+   - Cifras en rejilla de 2 con divisores hairline (sin bordes sueltos).
+   - Arreglos de la auditoría: alto del carrusel, objetivos táctiles.
+   ============================================= */
+
+@media (max-width: 768px) {
+
+    /* --- HERO: lead-with-play ------------------------------------ */
+
+    /* El reproductor sube; los comentarios quedan debajo. */
+    .home-hero {
+        grid-template-areas:
+            "copy"
+            "player"
+            "comments";
+        gap: var(--space-6);
+    }
+
+    /* La navbar móvil mide ~70px: menos aire muerto arriba que el
+       padding-top de escritorio. */
+    .ps-band--hero {
+        padding-top: 100px;
+    }
+
+    .home-hero h1 {
+        font-size: clamp(1.9rem, 8vw, 2.25rem);
+        margin-bottom: var(--space-3);
+    }
+
+    .home-hero-subtitle {
+        font-size: 1rem;
+        margin-bottom: var(--space-5);
+    }
+
+    .home-eyebrow {
+        margin-bottom: var(--space-3);
+    }
+
+    .home-hero-links {
+        gap: var(--space-3);
+    }
+
+    /* Objetivo táctil: los enlaces del hero eran texto suelto (~18px). */
+    .home-hero-links a {
+        min-height: 44px;
+        align-items: center;
+        font-size: 1rem;
+    }
+
+    /* --- Reproductor: más contenido, imagen del locutor contenida - */
+    .home-player {
+        padding: var(--space-6) var(--space-5);
+    }
+
+    .home-player-top {
+        gap: var(--space-4);
+    }
+
+    /* En escritorio la portada del programa al aire puede crecer hasta
+       220px; en el ancho del teléfono se comía la tarjeta. */
+    .home-player-cover-link {
+        max-height: 128px;
+    }
+
+    /* --- Comentarios en vivo: recogidos, pero sin amontonar el texto --- */
+    .home-comments-list {
+        max-height: 220px;
+        padding: var(--space-4) var(--space-5);
+        gap: var(--space-4);
+    }
+
+    .home-comment + .home-comment {
+        padding-top: var(--space-3);
+    }
+
+    .home-comments-card-head,
+    .home-comments-form {
+        padding: var(--space-4) var(--space-5);
+    }
+
+    .home-comments-hint {
+        padding: 0 var(--space-5) var(--space-4);
+    }
+
+    /* --- CIFRAS: rejilla de 2 con divisores hairline ------------- */
+    /* Antes: flex-wrap con border-left por item -> al envolver dejaba
+       bordes sueltos a media fila. Ahora el "gap" de 1px sobre un
+       fondo hairline hace de divisor limpio en ambos ejes. */
+    .home-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1px;
+        background: var(--ps-hairline-light);
+    }
+
+    .home-stat {
+        flex: none;
+        background: var(--ps-canvas-light);
+        border-left: none;
+        padding: var(--space-5) var(--space-4);
+    }
+
+    .home-stat:first-child {
+        padding-left: var(--space-4);
+    }
+
+    /* --- NUESTRAS VOCES: riel horizontal con scroll-snap --------- */
+    .home-hosts {
+        display: flex;
+        gap: var(--space-4);
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        /* Sangra hasta el borde de la banda (padding inline 20px a <=640). */
+        margin-inline: -20px;
+        padding-inline: 20px;
+        scrollbar-width: none;
+    }
+
+    .home-hosts::-webkit-scrollbar {
+        display: none;
+    }
+
+    .home-hosts > * {
+        flex: 0 0 auto;
+        width: 124px;
+        scroll-snap-align: start;
+    }
+
+    .home-host-photo {
+        width: 112px;
+        height: 112px;
+        border-radius: var(--ps-radius-lg);
+    }
+
+    /* --- PODCASTS: rejilla de 2 más apretada -------------------- */
+    .home-podcast-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-4);
+    }
+
+    /* --- ANUNCIOS: alto del key art y objetivos táctiles -------- */
+    /* Auditoría: a <=980 el media queda en 260px con background-size
+       contain -> bandas vacías arriba/abajo con un logo. 200 aprieta
+       el hueco sin recortar. */
+    .home-announce-media {
+        height: 200px;
+    }
+
+    .home-announce-controls {
+        margin-top: var(--space-5);
+    }
+
+    .home-announce-dots {
+        gap: var(--space-3);
+    }
+
+    .home-announce-dot {
+        width: 10px;
+        height: 10px;
+    }
+
+    /* --- Riel genérico: oculta la barra de scroll en "Descubre más"
+           si el navegador la pinta sobre el contenido. --- */
+    .home-podcast-grid,
+    .home-hosts {
+        overscroll-behavior-x: contain;
+    }
+}

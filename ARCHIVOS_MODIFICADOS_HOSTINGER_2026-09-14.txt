@@ -1,0 +1,57 @@
+ARCHIVOS MODIFICADOS PARA SUBIR A HOSTINGER
+=============================================
+Última actualización (2026-09-14): se quitó la foto del locutor de la
+tarjeta "Suena ahora" del reproductor y el botón "Pide tu canción" (que
+redirige a WhatsApp) de la caja "Comentarios en vivo"; se actualizó
+api/programas.php al nuevo contrato que usa la app Flutter; se retiraron
+del sitio los programas "Tickets to my comeback" y "Rincón Lunar" (aún no
+deben publicarse).
+
+Todos los cambios se hicieron sobre la copia de producción en
+C:\Users\jerem\Desktop\public_html — son los mismos archivos que hay que
+reflejar en Hostinger, con la misma ruta relativa.
+
+------------------------------------------------
+1) PÁGINA WEB PÚBLICA — subir a Hostinger (sobrescribir)
+------------------------------------------------
+index.php
+assets/js/pages/index.js
+api/programas.php
+
+------------------------------------------------
+2) ARCHIVOS A BORRAR EN HOSTINGER
+------------------------------------------------
+assets/img/programas/rinconlunar.png
+  (imagen del programa "Rincón Lunar"; ya no se usa en el sitio)
+
+(La imagen "tickets-to-my-comeback-473250ea.jpg" se agregó y se volvió a
+quitar en la misma sesión: NO hace falta subirla ni borrarla en el
+servidor, ya que nunca llegó a estar ahí.)
+
+------------------------------------------------
+3) PENDIENTE — BASE DE DATOS (no resuelto todavía)
+------------------------------------------------
+Los programas "Tickets to my comeback" y "Rincón Lunar" viven en la tabla
+"radio_programs" (contenido gestionado desde el panel hive-backend), no en
+archivos de código. Borrar la imagen NO los quita de la parrilla: si esas
+filas siguen existiendo en la base de datos, el programa se sigue viendo
+en el sitio pero con la imagen rota.
+
+Falta, antes o junto con esta subida:
+- Entrar al panel hive-backend y despublicar/eliminar esos dos programas
+  (o confirmar que ya no existen ahí), para que "Tickets to my comeback"
+  no aparezca todavía y "Rincón Lunar" quede fuera por completo.
+
+------------------------------------------------
+NOTAS
+------------------------------------------------
+- Antes de subir, haz respaldo de los archivos actuales en el servidor
+  (index.php, assets/js/pages/index.js, api/programas.php).
+- Esta actualización NO toca config/.env, config/db.php, .htaccess, la
+  tipografía Bebas Neue ni el mobile dock: esos archivos de producción se
+  dejaron intactos a propósito durante el sync de este día y no necesitan
+  subirse de nuevo.
+- inc/data/programs.php, inc/data/team.php, pages/programas.php e
+  inc/helpers/moderation.php quedaron pendientes de revisión (no se
+  tocaron por riesgo de romper producción); no están en esta lista porque
+  no se modificaron.

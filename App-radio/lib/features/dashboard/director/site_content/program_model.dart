@@ -1,5 +1,29 @@
+import 'dart:convert';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
+
+/// Una franja horaria de un programa: un día + su propia hora de inicio/fin.
+/// Reemplaza al viejo horario único (mismo rango para todos los días
+/// seleccionados) para poder representar p.ej. "miércoles 9-13, viernes
+/// 11-13" del mismo programa — ver `site_programa_slots()` en hive-backend.
+class SiteScheduleSlot {
+  SiteScheduleSlot({this.weekday = 1, this.startHour, this.endHour});
+
+  int weekday;
+  int? startHour;
+  int? endHour;
+
+  factory SiteScheduleSlot.fromJson(Map<String, dynamic> json) =>
+      SiteScheduleSlot(
+        weekday: int.tryParse(json['weekday']?.toString() ?? '') ?? 1,
+        startHour: int.tryParse(json['start_hour']?.toString() ?? ''),
+        endHour: int.tryParse(json['end_hour']?.toString() ?? ''),
+      );
+
+  Map<String, dynamic> toJson() =>
+      {'weekday': weekday, 'start_hour': startHour, 'end_hour': endHour};
+}
 
 @immutable
 class ProgramModel extends Equatable {
@@ -9,12 +33,8 @@ class ProgramModel extends Equatable {
     required this.modalTitle,
     required this.host,
     required this.hostTeamIds,
-    required this.schedule,
-    required this.slotStart,
-    required this.slotEnd,
-    required this.weekdays,
+    required this.slots,
     required this.badgeIcon,
-    required this.badgeTime,
     required this.badgeLabel,
     required this.accent,
     required this.icon,
@@ -30,12 +50,8 @@ class ProgramModel extends Equatable {
   final String modalTitle;
   final String host;
   final Set<int> hostTeamIds;
-  final String schedule;
-  final int? slotStart;
-  final int? slotEnd;
-  final Set<int> weekdays;
+  final List<SiteScheduleSlot> slots;
   final String badgeIcon;
-  final String badgeTime;
   final String badgeLabel;
   final String accent;
   final String icon;
@@ -55,12 +71,8 @@ class ProgramModel extends Equatable {
         modalTitle: '',
         host: '',
         hostTeamIds: const {},
-        schedule: '',
-        slotStart: null,
-        slotEnd: null,
-        weekdays: const {},
+        slots: const [],
         badgeIcon: defaultBadgeIcon,
-        badgeTime: '',
         badgeLabel: 'Al aire',
         accent: defaultAccent,
         icon: defaultIcon,
@@ -72,21 +84,23 @@ class ProgramModel extends Equatable {
       );
 
   factory ProgramModel.fromSiteItem(Map<String, dynamic> item) {
+    final rawSlots = item['slots'];
     return ProgramModel(
       id: int.tryParse(item['id']?.toString() ?? ''),
       title: item['title']?.toString() ?? '',
       modalTitle: item['modal_title']?.toString() ?? '',
       host: item['host']?.toString() ?? '',
       hostTeamIds: _parseIntSet(item['host_team_ids']),
-      schedule: item['schedule']?.toString() ?? '',
-      slotStart: int.tryParse(item['slot_start']?.toString() ?? ''),
-      slotEnd: int.tryParse(item['slot_end']?.toString() ?? ''),
-      weekdays: _parseIntCsv(item['weekdays']?.toString() ?? ''),
+      slots: rawSlots is List
+          ? rawSlots
+              .map((s) => SiteScheduleSlot.fromJson(
+                  Map<String, dynamic>.from(s as Map)))
+              .toList()
+          : const [],
       badgeIcon: _orDefault(
         item['badge_icon']?.toString(),
         defaultBadgeIcon,
       ),
-      badgeTime: item['badge_time']?.toString() ?? '',
       badgeLabel: _orDefault(item['badge_label']?.toString(), 'Al aire'),
       accent: _orDefault(item['accent']?.toString(), defaultAccent),
       icon: _orDefault(item['icon']?.toString(), defaultIcon),
@@ -106,12 +120,8 @@ class ProgramModel extends Equatable {
     String? modalTitle,
     String? host,
     Set<int>? hostTeamIds,
-    String? schedule,
-    int? slotStart,
-    int? slotEnd,
-    Set<int>? weekdays,
+    List<SiteScheduleSlot>? slots,
     String? badgeIcon,
-    String? badgeTime,
     String? badgeLabel,
     String? accent,
     String? icon,
@@ -127,12 +137,8 @@ class ProgramModel extends Equatable {
       modalTitle: modalTitle ?? this.modalTitle,
       host: host ?? this.host,
       hostTeamIds: hostTeamIds ?? this.hostTeamIds,
-      schedule: schedule ?? this.schedule,
-      slotStart: slotStart ?? this.slotStart,
-      slotEnd: slotEnd ?? this.slotEnd,
-      weekdays: weekdays ?? this.weekdays,
+      slots: slots ?? this.slots,
       badgeIcon: badgeIcon ?? this.badgeIcon,
-      badgeTime: badgeTime ?? this.badgeTime,
       badgeLabel: badgeLabel ?? this.badgeLabel,
       accent: accent ?? this.accent,
       icon: icon ?? this.icon,
@@ -149,12 +155,8 @@ class ProgramModel extends Equatable {
         'modal_title': modalTitle.trim(),
         'host': host.trim(),
         'host_team_ids': hostTeamIds.join(','),
-        'schedule': schedule.trim(),
-        'slot_start': slotStart?.toString() ?? '',
-        'slot_end': slotEnd?.toString() ?? '',
-        'weekdays': (weekdays.toList()..sort()).join(','),
+        'slots_json': jsonEncode(slots.map((s) => s.toJson()).toList()),
         'badge_icon': badgeIcon,
-        'badge_time': badgeTime.trim(),
         'badge_label': badgeLabel.trim(),
         'accent': accent,
         'icon': icon,
@@ -172,12 +174,8 @@ class ProgramModel extends Equatable {
         modalTitle,
         host,
         hostTeamIds,
-        schedule,
-        slotStart,
-        slotEnd,
-        weekdays,
+        slots,
         badgeIcon,
-        badgeTime,
         badgeLabel,
         accent,
         icon,
@@ -203,15 +201,6 @@ class ProgramModel extends Equatable {
     return value
         .map((v) => int.tryParse(v.toString()))
         .whereType<int>()
-        .toSet();
-  }
-
-  static Set<int> _parseIntCsv(String value) {
-    return value
-        .split(',')
-        .map((part) => int.tryParse(part.trim()))
-        .whereType<int>()
-        .where((day) => day >= 1 && day <= 7)
         .toSet();
   }
 

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 import 'package:doliv_social/design/design.dart';
+import 'package:doliv_social/features/dashboard/director/site_content/program_model.dart';
 
 /// Paleta de colores de ícono para las tarjetas de campo — cada tipo de dato
 /// (texto, fecha, color, número...) usa un color distinto para que el ojo
@@ -553,6 +554,133 @@ class SiteTimePickerField extends StatelessWidget {
       readOnly: true,
       onTap: () => _pick(context),
       trailing: Icon(Icons.expand_more, color: AppColors.textMuted),
+    );
+  }
+}
+
+/// Una fila editable de [SiteScheduleSlot]: elige el día y la hora de
+/// inicio/fin de una sola franja horaria. `slot` se muta en el lugar (no es
+/// inmutable) y `onChanged` solo avisa al padre para refrescar/validar.
+class SiteScheduleSlotRow extends StatefulWidget {
+  const SiteScheduleSlotRow({
+    super.key,
+    required this.slot,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  final SiteScheduleSlot slot;
+  final VoidCallback onChanged;
+  final VoidCallback onRemove;
+
+  @override
+  State<SiteScheduleSlotRow> createState() => _SiteScheduleSlotRowState();
+}
+
+class _SiteScheduleSlotRowState extends State<SiteScheduleSlotRow> {
+  static const _days = [
+    (value: 1, label: 'Lunes'),
+    (value: 2, label: 'Martes'),
+    (value: 3, label: 'Miércoles'),
+    (value: 4, label: 'Jueves'),
+    (value: 5, label: 'Viernes'),
+    (value: 6, label: 'Sábado'),
+    (value: 7, label: 'Domingo'),
+  ];
+
+  Future<void> _pickHour(bool isStart) async {
+    final currentHour = isStart ? widget.slot.startHour : widget.slot.endHour;
+    final initial =
+        TimeOfDay(hour: currentHour ?? TimeOfDay.now().hour, minute: 0);
+    final selected = await showTimePicker(context: context, initialTime: initial);
+    if (selected == null) return;
+    setState(() {
+      if (isStart) {
+        widget.slot.startHour = selected.hour;
+      } else {
+        widget.slot.endHour = selected.hour;
+      }
+    });
+    widget.onChanged();
+  }
+
+  String _hourLabel(int? hour) =>
+      hour == null ? 'Elige la hora' : '${hour.toString().padLeft(2, '0')}:00';
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.bgBase,
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: SiteFieldColors.blue.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
+                ),
+                child: Icon(Icons.calendar_today_outlined,
+                    color: SiteFieldColors.blue, size: 18),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  initialValue: widget.slot.weekday,
+                  isExpanded: true,
+                  decoration:
+                      const InputDecoration(isDense: true, border: InputBorder.none),
+                  items: _days
+                      .map((d) =>
+                          DropdownMenuItem(value: d.value, child: Text(d.label)))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => widget.slot.weekday = value);
+                    widget.onChanged();
+                  },
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.red, size: 18),
+                onPressed: widget.onRemove,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickHour(true),
+                  icon: const Icon(Icons.access_time_outlined, size: 16),
+                  label: Text(_hourLabel(widget.slot.startHour)),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                child: Text('a'),
+              ),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickHour(false),
+                  icon: const Icon(Icons.access_time_outlined, size: 16),
+                  label: Text(_hourLabel(widget.slot.endHour)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

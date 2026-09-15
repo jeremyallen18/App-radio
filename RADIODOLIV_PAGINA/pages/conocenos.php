@@ -16,7 +16,7 @@ $canonicalRelative = 'pages/conocenos.php';
     <main class="about-main">
 
         <!-- ============================================
-             1. HERO â?? capitulo a pantalla completa: el
+             1. HERO ï¿½?? capitulo a pantalla completa: el
              titulo es el protagonista, sin banda de color,
              solo el fondo continuo del sitio.
              ============================================ -->
@@ -31,7 +31,7 @@ $canonicalRelative = 'pages/conocenos.php';
         </section>
 
         <!-- ============================================
-             2. QUIENES SOMOS â?? su propio capitulo.
+             2. QUIENES SOMOS ï¿½?? su propio capitulo.
              ============================================ -->
         <section class="about-chapter" aria-label="QuiÃ©nes somos">
             <div class="about-chapter-inner about-intro scroll-tilt-up">
@@ -44,7 +44,7 @@ $canonicalRelative = 'pages/conocenos.php';
         </section>
 
         <!-- ============================================
-             3. MISION / VISION / VALORES â?? su propio
+             3. MISION / VISION / VALORES ï¿½?? su propio
              capitulo, rejilla de 3 tarjetas.
              ============================================ -->
         <section class="about-chapter" aria-label="MisiÃ³n, visiÃ³n y valores">
@@ -83,7 +83,7 @@ $canonicalRelative = 'pages/conocenos.php';
         </section>
 
         <!-- ============================================
-             4. VALORES (detalle) â?? su propio capitulo.
+             4. VALORES (detalle) ï¿½?? su propio capitulo.
              ============================================ -->
         <section class="about-chapter" aria-label="Nuestros valores">
             <div class="about-chapter-inner" data-reveal>
@@ -101,6 +101,6 @@ $canonicalRelative = 'pages/conocenos.php';
 
     <?php $footerExtended = false; include __DIR__ . '/../inc/partials/footer.php'; ?>
     <?php include __DIR__ . '/../inc/partials/scripts.php'; ?>
-    <script src="<?= asset_url('assets/js/pages/conocenos.js') ?>" data-page-script></script>
+    <script src="<?= asset_url('assets/js/pages/conocenos.js') ?>" defer data-page-script></script>
 </body>
 </html>

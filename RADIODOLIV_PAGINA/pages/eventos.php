@@ -285,6 +285,6 @@ $whatsappOrganizer = 'https://wa.me/5217131205259?text=' . rawurlencode('Hola, q
 
     <?php $footerExtended = false; include __DIR__ . '/../inc/partials/footer.php'; ?>
     <?php include __DIR__ . '/../inc/partials/scripts.php'; ?>
-    <script src="<?= asset_url('assets/js/pages/eventos.js') ?>" data-page-script></script>
+    <script src="<?= asset_url('assets/js/pages/eventos.js') ?>" defer data-page-script></script>
 </body>
 </html>

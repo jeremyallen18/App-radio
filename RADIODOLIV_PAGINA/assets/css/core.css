@@ -11,6 +11,7 @@
    ========================================================= */
 
 @import url("base/variables.css");
+@import url("base/fonts.css");
 @import url("base/reset.css");
 @import url("base/animations.css");
 @import url("components/cards.css");
@@ -26,5 +27,6 @@
 @import url("components/sticky-player.css");
 @import url("components/carousel.css");
 @import url("components/interactions.css");
+@import url("components/mobile-dock.css");
 @import url("themes/light.css");
 @import url("responsive.css");

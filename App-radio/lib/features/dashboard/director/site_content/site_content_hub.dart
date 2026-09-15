@@ -175,8 +175,15 @@ class _SiteContentHubScreenState extends State<SiteContentHubScreen> {
   Future<void> _loadSummaries() async {
     final sections = _categories.expand((category) => category.sections);
     final entries = await Future.wait(sections.map((section) async {
-      final items = await SiteContentApi(section.resource).list();
-      return MapEntry(section.resource, _SectionSummary(items: items));
+      try {
+        final items = await SiteContentApi(section.resource).list();
+        return MapEntry(section.resource, _SectionSummary(items: items));
+      } catch (e) {
+        return MapEntry(
+          section.resource,
+          _SectionSummary(items: const [], error: e.toString()),
+        );
+      }
     }));
     if (!mounted) return;
     setState(() => _summaries
@@ -640,9 +647,10 @@ class _CardMetadata extends StatelessWidget {
 }
 
 class _SectionSummary {
-  const _SectionSummary({required this.items});
+  const _SectionSummary({required this.items, this.error});
 
   final List<Map<String, dynamic>> items;
+  final String? error;
 }
 
 class _HubCategory {

@@ -34,10 +34,11 @@
     font-family: var(--font-body);
 }
 
-/* Titulos y etiquetas destacadas usan la fuente de despliegue
-   (Space Grotesk): mas caracter/contraste que el cuerpo de texto,
-   sin tocar la legibilidad de parrafos, botones ni formularios
-   (que se quedan en --font-body via el reset de arriba). */
+/* Bebas es la fuente unica del sitio: --font-body (el reset de arriba)
+   y --font-display apuntan ambos a ella (base/variables.css), asi que
+   cuerpo, titulos, botones y formularios comparten tipografia. Esta
+   regla se conserva para que cualquier ajuste futuro de la fuente de
+   titulos tenga un unico punto donde engancharse. */
 h1, h2, h3, h4, h5, h6,
 .section-title,
 .section-eyebrow {

@@ -46,11 +46,18 @@
     --space-8: 64px;
     --space-9: 96px;
 
-    /* Tipografia: Space Grotesk para titulos (h1-h6, .section-title,
-       eyebrows), Inter para texto de lectura y botones -- ver
-       base/reset.css. Cargadas juntas en inc/partials/head.php. */
-    --font-body: "Inter", sans-serif;
-    --font-display: "Space Grotesk", sans-serif;
+    /* Tipografia: Bebas Neue (Dharma Type) es la fuente predeterminada
+       de TODO el sitio -- cuerpo y titulos -- auto-hospedada en
+       base/fonts.css (archivo en assets/fonts/bebas-neue/). Es una
+       display condensada de caja alta con cobertura completa de
+       acentos y signos del español; los fallbacks (Oswald / Impact)
+       tambien son condensados para que un fallo de carga no descuadre
+       el layout. Inter / Space Grotesk ya no se cargan.
+       --font-bebas se conserva como alias explicito por si algun
+       componente quiere nombrar la fuente directamente. */
+    --font-bebas: "Bebas", "Oswald", "Impact Condensed", "Impact", sans-serif;
+    --font-body: var(--font-bebas);
+    --font-display: var(--font-bebas);
 
     /* Escala tipografica. */
     --text-xs: 0.75rem;

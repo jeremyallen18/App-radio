@@ -31,10 +31,17 @@ $canonicalUrl = $scheme . '://' . $host . '/' . ltrim($canonicalRelative ?? '', 
     <link rel="canonical" href="<?= h($canonicalUrl) ?>">
     <link rel="icon" type="image/png" href="<?= h(asset_url('assets/img/logo/logo.png')) ?>">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <?php // Bebas Neue (Dharma Type) es la unica fuente del sitio: se
+          // auto-hospeda en assets/fonts/bebas-neue/ y se declara en
+          // assets/css/base/fonts.css. Se precarga el WOFF2 (mismo formato
+          // que usa el @font-face) para que el texto no parpadee al primer
+          // render. Ya no se carga Inter / Space Grotesk desde Google Fonts;
+          // el preconnect a Google Fonts vive ahora solo en el $pageExtraHead
+          // de programas.php y seccionazul.php, las unicas paginas que aun
+          // traen "JetBrains Mono". ?>
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="<?= h(asset_url('assets/fonts/bebas-neue/BebasNeue-Regular.woff2')) ?>">
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <script src="https://unpkg.com/lucide@1.38.0/dist/umd/lucide.min.js"></script>
 
     <?php // Recursos extra de una página específica (ej. Bootstrap CDN o una
           // fuente de Google puntual), cargados ANTES que el CSS del sitio a

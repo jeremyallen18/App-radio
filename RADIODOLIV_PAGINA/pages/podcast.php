@@ -94,7 +94,7 @@ $episodeCount = array_sum(array_map(fn($podcast) => count($podcast['episodes']),
     <?php include __DIR__ . '/../inc/partials/scripts.php'; ?>
     <!-- GSAP solo se carga aqui (no en scripts.php): unicamente esta pagina
          anima el scroll de las tarjetas de podcast. -->
-    <script src="<?= asset_url('assets/js/vendor/gsap.min.js') ?>" data-page-script></script>
-    <script src="<?= asset_url('assets/js/pages/podcast.js') ?>" data-page-script></script>
+    <script src="<?= asset_url('assets/js/vendor/gsap.min.js') ?>" defer data-page-script></script>
+    <script src="<?= asset_url('assets/js/pages/podcast.js') ?>" defer data-page-script></script>
 </body>
 </html>

@@ -8,6 +8,14 @@
     padding: 58px 5% 18px;
     border-top: 1px solid var(--glass-border);
     background: rgba(5, 10, 20, 0.78);
+    /* La barra flotante de escritorio (.sticky-player, position:fixed) tapa
+       lo ultimo del footer cuando aparece -- entre otras cosas el enlace
+       "Politica de privacidad" de .footer-bottom. El footer "presta" ese
+       alto como padding inferior (mismo patron que con el dock movil, mas
+       abajo). sticky-player.js mantiene --sticky-player-offset en 0 mientras
+       la barra esta oculta, asi que no deja hueco muerto. */
+    padding-bottom: calc(18px + var(--sticky-player-offset, 0px));
+    transition: padding-bottom var(--duration-slow, 0.4s) var(--ease-out, ease);
 }
 
 /* Grid de columnas del footer. */
@@ -71,6 +79,169 @@
     border-top: 1px solid var(--glass-border);
     color: rgba(255, 255, 255, 0.42);
     font-size: 0.82rem;
+}
+
+/* Enlace de "Política de privacidad" en la franja inferior: se ve como un
+   enlace mas del footer, no como un boton. */
+.footer-legal {
+    margin: 0;
+}
+
+.footer-legal-link {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color 0.2s ease;
+}
+
+.footer-legal-link:hover {
+    color: var(--cyan-glow);
+}
+
+.footer-bottom--split .footer-legal {
+    margin-left: auto;
+}
+
+/* ===== Aviso de privacidad (<dialog> nativo) ===== */
+.privacy-dialog {
+    /* El reset global "* { margin: 0 }" (base/reset.css) mata el
+       "margin: auto" con el que el <dialog> nativo se centra en modo
+       modal, asi que se repone aqui explicitamente. */
+    margin: auto;
+    width: min(560px, calc(100vw - 32px));
+    max-height: min(80vh, 720px);
+    padding: 0;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg, 18px);
+    background: #0b1424;
+    color: var(--text-main);
+    overflow: hidden;
+}
+
+.privacy-dialog::backdrop {
+    background: rgba(5, 10, 20, 0.6);
+    backdrop-filter: blur(8px);
+}
+
+.privacy-dialog-inner {
+    max-height: inherit;
+    overflow-y: auto;
+    padding: 32px clamp(20px, 5vw, 40px) 34px;
+    text-align: left;
+}
+
+.privacy-dialog-close {
+    position: sticky;
+    top: 0;
+    float: right;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    margin: -8px -8px 0 12px;
+    border: 0;
+    border-radius: var(--radius-full, 999px);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-main);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.privacy-dialog-close:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.privacy-dialog-close svg,
+.privacy-dialog-close i {
+    width: 18px;
+    height: 18px;
+}
+
+.privacy-dialog h2 {
+    margin: 0 0 4px;
+    font-size: 1.4rem;
+}
+
+.privacy-dialog-updated {
+    margin: 0 0 18px;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.privacy-dialog h3 {
+    margin: 22px 0 8px;
+    font-size: 1rem;
+    color: var(--cyan-glow);
+}
+
+.privacy-dialog p {
+    margin: 0 0 12px;
+    font-size: 0.9rem;
+    line-height: 1.65;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.privacy-dialog ul {
+    margin: 0 0 12px;
+    padding-left: 20px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.privacy-dialog li {
+    margin-bottom: 8px;
+}
+
+.privacy-dialog a {
+    color: var(--cyan-glow);
+}
+
+.privacy-dialog-contact {
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 1px solid var(--glass-border);
+    font-size: 0.82rem;
+}
+
+body.light-theme .footer-legal-link {
+    color: #334155;
+}
+
+body.light-theme .privacy-dialog {
+    background: #ffffff;
+    color: #0f172a;
+}
+
+body.light-theme .privacy-dialog p,
+body.light-theme .privacy-dialog ul {
+    color: #334155;
+}
+
+body.light-theme .privacy-dialog h3 {
+    color: #0369a1;
+}
+
+body.light-theme .privacy-dialog-close {
+    background: rgba(15, 23, 42, 0.06);
+    color: #0f172a;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .privacy-dialog[open] {
+        animation: privacy-dialog-in var(--duration-base, 200ms) var(--ease-out, ease);
+    }
+}
+
+@keyframes privacy-dialog-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ===== Footer enriquecido de Inicio ===== */

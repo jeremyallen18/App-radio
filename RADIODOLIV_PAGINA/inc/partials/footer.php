@@ -66,5 +66,119 @@ $extended = !empty($footerExtended);
         <?php if ($extended): ?>
         <p>Transmisión en vivo las 24 horas, los 7 días de la semana.</p>
         <?php endif; ?>
+        <p class="footer-legal">
+            <button type="button" class="footer-legal-link" data-privacy-open>Política de privacidad</button>
+        </p>
     </div>
+
+    <?php /* Aviso de privacidad. Va dentro del <footer> (fuera de <main>) a
+             proposito: el footer no se re-pinta en la navegacion AJAX (ver
+             core/page-router.js), asi que este <dialog> y su script quedan
+             disponibles en todas las paginas con una sola carga. Se usa el
+             <dialog> nativo por su cierre con Esc, backdrop y foco ya
+             resueltos, sin depender del JS de modales del sitio. */ ?>
+    <dialog class="privacy-dialog" id="privacy-dialog" aria-labelledby="privacy-dialog-title">
+        <div class="privacy-dialog-inner">
+            <button type="button" class="privacy-dialog-close" data-privacy-close aria-label="Cerrar aviso de privacidad">
+                <i data-lucide="x" aria-hidden="true"></i>
+            </button>
+            <h2 id="privacy-dialog-title">Política de privacidad</h2>
+            <p class="privacy-dialog-updated">Última actualización: 2026</p>
+
+            <p>En Radio Doliv cuidamos tu información. Este aviso resume qué datos
+               tratamos cuando visitas <b>radiodoliv</b> y para qué.</p>
+
+            <h3>Qué información recopilamos</h3>
+            <ul>
+                <li><b>Datos que tú envías.</b> Si dejas un comentario en vivo,
+                    pides una canción, usas el asistente DoliBot o nos escribes por
+                    correo o WhatsApp, guardamos el texto y los datos de contacto que
+                    decidas compartir para poder responderte y moderar el contenido.</li>
+                <li><b>Datos técnicos básicos.</b> Nuestro servidor registra de forma
+                    estándar la dirección IP, el navegador y la fecha de cada visita
+                    para seguridad y para evitar abuso o spam.</li>
+                <li><b>Preferencias en tu dispositivo.</b> Guardamos localmente en tu
+                    navegador ajustes como el tema claro/oscuro o el estado del
+                    reproductor. Esta información no sale de tu equipo.</li>
+            </ul>
+
+            <h3>Para qué la usamos</h3>
+            <ul>
+                <li>Mostrar y moderar los comentarios en vivo de cada transmisión.</li>
+                <li>Atender solicitudes de canciones, publicidad, eventos y dudas.</li>
+                <li>Responder tus mensajes al asistente DoliBot (las consultas se
+                    procesan mediante un proveedor de inteligencia artificial para
+                    generar la respuesta; no se usan para identificarte).</li>
+                <li>Mantener el sitio seguro y funcionando correctamente.</li>
+            </ul>
+
+            <h3>Con quién se comparte</h3>
+            <p>No vendemos ni intercambiamos tu información. Solo se comparte con los
+               servicios necesarios para operar el sitio: el proveedor de hosting, el
+               proveedor de inteligencia artificial que responde a DoliBot y los
+               servicios de redes sociales o video (TikTok, YouTube, Facebook,
+               Instagram) cuando abres un enlace o un contenido incrustado, momento en
+               el que aplican también sus propias políticas.</p>
+
+            <h3>Contenido incrustado y de terceros</h3>
+            <p>Algunas páginas cargan tipografías y librerías desde redes de
+               distribución (Google Fonts, CDNJS/unpkg) y videos de TikTok. Estos
+               terceros pueden recibir tu dirección IP por el simple hecho de cargar
+               ese recurso.</p>
+
+            <h3>Menores de edad</h3>
+            <p>El sitio es de contenido general. Si eres menor de edad, participa con
+               el acompañamiento de tu madre, padre o tutor.</p>
+
+            <h3>Tus opciones</h3>
+            <p>Puedes navegar sin dejar comentarios ni usar el chat. Puedes borrar en
+               cualquier momento las preferencias guardadas limpiando los datos del
+               sitio en tu navegador. Para solicitar la eliminación de un comentario o
+               de datos que nos hayas enviado, escríbenos a
+               <a href="mailto:grupodoliv@gmail.com">grupodoliv@gmail.com</a>.</p>
+
+            <h3>Cambios</h3>
+            <p>Podemos actualizar este aviso; la fecha de arriba indica la última
+               versión. El uso continuado del sitio implica la aceptación de los
+               cambios.</p>
+
+            <p class="privacy-dialog-contact">Dudas sobre privacidad:
+               <a href="mailto:grupodoliv@gmail.com">grupodoliv@gmail.com</a> ·
+               +52 1 713 120 5259</p>
+        </div>
+    </dialog>
+
+    <script>
+    (function () {
+        var dlg = document.getElementById('privacy-dialog');
+        if (!dlg || dlg.dataset.wired) return;
+        dlg.dataset.wired = '1';
+        function open() {
+            if (typeof dlg.showModal === 'function') dlg.showModal();
+            else dlg.setAttribute('open', '');
+            if (window.lucide) window.lucide.createIcons();
+        }
+        function close() {
+            if (typeof dlg.close === 'function') dlg.close();
+            else dlg.removeAttribute('open');
+        }
+        // Delegado en document: el boton disparador vive dentro del footer, que
+        // no se re-pinta en la navegacion AJAX, pero el delegado tampoco depende
+        // de eso y es robusto si algo cambia.
+        document.addEventListener('click', function (e) {
+            if (e.target.closest('[data-privacy-open]')) { e.preventDefault(); open(); }
+            else if (e.target.closest('[data-privacy-close]')) { e.preventDefault(); close(); }
+        });
+        // Clic fuera de la tarjeta (sobre el ::backdrop) cierra.
+        dlg.addEventListener('click', function (e) {
+            if (e.target === dlg) close();
+        });
+    })();
+    </script>
 </footer>
+
+<?php // Dock persistente SOLO para movil (<=768px): mini-reproductor +
+      // barra inferior de 5 pestanas. Fuera de <main> a proposito, para
+      // sobrevivir a la navegacion AJAX (ver core/page-router.js). En
+      // escritorio queda display:none (ver components/mobile-dock.css). ?>
+<?php include __DIR__ . '/mobile-dock.php'; ?>

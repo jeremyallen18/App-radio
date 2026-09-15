@@ -5,22 +5,46 @@ require_once __DIR__ . '/../helpers/html.php';
 // a la izquierda, el arte flota sin marco y el titulo va directo sobre el
 // fondo de la pagina, para que la parrilla se lea como el minutado de una
 // cabina y no como una rejilla de cajas.
-// Espera $program (una OCURRENCIA de program_occurrences(), ver
-// inc/data/programs.php: trae el horario de UNA franja propia en
-// slot_start/slot_end/weekdays, no el agregado del programa), $programIndex
-// y SITE_BASE_PATH.
+// Espera $program (un programa completo con slots[]), $programIndex y
+// SITE_BASE_PATH. La cabina/dial usan ocurrencias por franja; esta vista
+// publica agrupa esas franjas dentro de una sola ficha para no repetir el
+// mismo programa como si fueran programas diferentes.
 $base = SITE_BASE_PATH;
 [$scheduleDays, $scheduleTime] = array_map('trim', explode('|', $program['schedule'] . '|'));
-$hasSlot = $program['slot_start'] !== null && $program['slot_end'] !== null;
-// Con más de una franja, `schedule`/`badge_time` describen TODOS los
-// horarios del programa a la vez ("Mié | 09:00-13:00; Vie | 11:00-13:00")
-// -- para esta ocurrencia puntual se calcula el rango de su propia franja
-// en su lugar, igual de compacto que el badge_time de un programa de una
-// sola franja.
-$occurrenceRange = $hasSlot && !empty($program['_multi_slot'])
-    ? sprintf('%02d:00 - %02d:00', (int) $program['slot_start'], (int) $program['slot_end'])
+$slots = $program['slots'] ?? [];
+$hasSlot = !empty($slots) || ($program['slot_start'] !== null && $program['slot_end'] !== null);
+$weekdayShort = [1 => 'Lun', 2 => 'Mar', 3 => 'Mié', 4 => 'Jue', 5 => 'Vie', 6 => 'Sáb', 7 => 'Dom'];
+
+if (!$slots && $program['slot_start'] !== null && $program['slot_end'] !== null) {
+    $slotDays = array_values(array_filter(array_map('intval', explode(',', (string) ($program['weekdays'] ?? '')))));
+    if (!$slotDays) $slotDays = range(1, 7);
+    foreach ($slotDays as $weekday) {
+        $slots[] = [
+            'weekday' => $weekday,
+            'start_hour' => (int) $program['slot_start'],
+            'end_hour' => (int) $program['slot_end'],
+        ];
+    }
+}
+
+$slotGroups = [];
+foreach ($slots as $slot) {
+    $key = ((int) $slot['start_hour']) . '-' . ((int) $slot['end_hour']);
+    $slotGroups[$key]['start'] ??= (int) $slot['start_hour'];
+    $slotGroups[$key]['end'] ??= (int) $slot['end_hour'];
+    $slotGroups[$key]['days'][] = (int) $slot['weekday'];
+}
+
+$programSlotsJson = array_map(fn(array $slot) => [
+    'weekday' => (int) $slot['weekday'],
+    'start' => (int) $slot['start_hour'],
+    'end' => (int) $slot['end_hour'],
+], $slots);
+
+$firstSlot = $slots[0] ?? null;
+$primaryRange = $firstSlot
+    ? sprintf('%02d:00 - %02d:00', (int) $firstSlot['start_hour'], (int) $firstSlot['end_hour'])
     : ($program['badge_time'] ?? $scheduleTime);
-$occurrenceKey = $program['_occurrence_key'] ?? $program['slug'];
 
 // Etiquetas del programa (categories es texto separado por comas). Al
 // filtro viajan NORMALIZADAS (minusculas, sin acentos, ver
@@ -31,16 +55,18 @@ $allTags = array_filter(array_map('trim', explode(',', (string) ($program['categ
 $tagList = array_slice($allTags, 0, 3);
 $tagKeys = program_tag_keys($program['categories'] ?? '');
 ?>
-<article class="rundown-item<?= !empty($programHiddenToday) ? ' is-hidden-day' : '' ?>" id="programa-<?= h($occurrenceKey) ?>"
+<article class="rundown-item<?= !empty($programHiddenToday) ? ' is-hidden-day' : '' ?>" id="programa-<?= h($program['slug']) ?>"
     data-categories="<?= h(implode(',', $tagKeys)) ?>"
     data-title="<?= h($program['title']) ?>"
     data-host="<?= h($program['host']) ?>"
     data-accent="<?= h($program['accent']) ?>"
     data-image="<?= h($base . $program['image']) ?>"
-    data-time="<?= h($occurrenceRange) ?>"
-    <?php if ($hasSlot): ?>
-    data-slot-start="<?= (int) $program['slot_start'] ?>"
-    data-slot-end="<?= (int) $program['slot_end'] ?>"
+    data-time="<?= h($program['badge_time'] ?: $primaryRange) ?>"
+    data-schedule="<?= h($program['schedule']) ?>"
+    <?php if ($programSlotsJson): ?>
+    data-slots="<?= h(json_encode($programSlotsJson, JSON_UNESCAPED_UNICODE)) ?>"
+    data-slot-start="<?= (int) $programSlotsJson[0]['start'] ?>"
+    data-slot-end="<?= (int) $programSlotsJson[0]['end'] ?>"
     data-slot-weekdays="<?= h($program['weekdays'] ?? '') ?>"
     <?php endif; ?>
     style="--show-accent: <?= h($program['accent']) ?>;">
@@ -48,8 +74,8 @@ $tagKeys = program_tag_keys($program['categories'] ?? '');
     <!-- Canal de hora: cifra grande en mono, como el minutado de cabina. -->
     <div class="rundown-item-clock">
         <?php if ($hasSlot): ?>
-        <span class="rundown-item-hour"><?= sprintf('%02d', (int) $program['slot_start']) ?><i>:00</i></span>
-        <span class="rundown-item-range"><?= h($occurrenceRange) ?></span>
+        <span class="rundown-item-hour"><?= sprintf('%02d', (int) ($firstSlot['start_hour'] ?? $program['slot_start'])) ?><i>:00</i></span>
+        <span class="rundown-item-range"><?= h($program['badge_time'] ?: $primaryRange) ?></span>
         <?php else: ?>
         <span class="rundown-item-hour rundown-item-hour--always">24/7</span>
         <?php endif; ?>
@@ -65,6 +91,17 @@ $tagKeys = program_tag_keys($program['categories'] ?? '');
         <h3 class="rundown-item-title"><?= h($program['title']) ?></h3>
 
         <p class="rundown-item-host"><i data-lucide="mic-2"></i> Con <?= h($program['host']) ?><?= $scheduleDays !== '' ? ' · ' . h($scheduleDays) : '' ?></p>
+
+        <?php if ($slotGroups): ?>
+        <div class="rundown-item-schedule" aria-label="Horarios de <?= h($program['title']) ?>">
+            <?php foreach ($slotGroups as $group): ?>
+            <span class="rundown-slot-group">
+                <strong><?= h(implode(', ', array_map(fn(int $day) => $weekdayShort[$day] ?? '', $group['days']))) ?></strong>
+                <em><?= sprintf('%02d:00 - %02d:00', (int) $group['start'], (int) $group['end']) ?></em>
+            </span>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
 
         <p class="rundown-item-desc"><?= h($program['card_desc']) ?></p>
 
